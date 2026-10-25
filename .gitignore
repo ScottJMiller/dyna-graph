@@ -1,0 +1,34 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+.aws/
+
+# Local database files and SQLite journal sidecars
+data/*.db
+data/*.db-*
+.verification/
+
+# Local implementation/reference documents and tooling
+docs/local/
+CODEX_IMPLEMENTATION_GUIDE.md
+AGENTS.md
+**/AGENTS.md
+.agents/
+.codex/
+
+# Python environments, caches, builds, and editor files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+.vscode/
+.idea/
+.DS_Store
+*.log

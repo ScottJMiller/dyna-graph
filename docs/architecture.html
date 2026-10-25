@@ -1,0 +1,1930 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="An offline, zoomable map of DynaGraph's complete target architecture, current components, and planned integrations.">
+<meta name="color-scheme" content="light">
+<title>DynaGraph · Architecture Atlas</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#25313c;background:#f7f8f9;font-synthesis:none;--line:#dce2e6;--muted:#64717e;--ink:#25313c;--teal:#087f8c}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #087f8c;outline-offset:3px}a{color:#086e84;text-underline-offset:3px}.app{height:100dvh;min-height:640px;display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden}.top{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:20px 28px 16px;background:#fff;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:13px}.mark{width:38px;height:38px;color:#087f8c}.eyebrow{font-size:10px;letter-spacing:.17em;text-transform:uppercase;font-weight:800;color:var(--muted);margin:0 0 4px}.brand h1{font-size:22px;letter-spacing:-.7px;line-height:1.1;margin:0}.brand h1 span{font-weight:450;color:#667783}.top-note{font-size:12px;line-height:1.7;color:var(--muted);text-align:right}.status-key{display:flex;justify-content:flex-end;gap:16px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#177d61;margin-right:5px}.dot.planned{background:#b77831}.top-note a{color:inherit}.controls{padding:13px 28px 0;background:#fff;border-bottom:1px solid var(--line)}.control-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.search{position:relative;flex:1;min-width:210px;max-width:400px}.search svg{position:absolute;left:12px;top:12px;width:15px;height:15px;pointer-events:none;color:var(--muted)}input[type=search]{width:100%;background:#f5f7f8;border:1px solid var(--line);border-radius:8px;padding:10px 12px 10px 36px;font-size:13px;color:var(--ink)}.select-wrap{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}select{max-width:240px;padding:9px 28px 9px 10px;background:#fff;border:1px solid var(--line);border-radius:7px;font-size:12px;color:var(--ink)}.pill{border:1px solid var(--line);border-radius:7px;background:#fff;padding:9px 11px;font-size:12px;color:var(--ink)}.pill[aria-pressed=true]{background:#e9f3f4;color:#086977;border-color:#b1d6dc}.phase-nav{display:flex;gap:5px;overflow:auto;padding:12px 0 10px;scrollbar-width:thin}.phase-btn{flex:none;background:#fff;border:0;border-radius:5px;padding:6px 9px;font-size:11px;color:var(--muted);white-space:nowrap}.phase-btn:hover,.phase-btn[aria-pressed=true]{background:#edf2f4;color:#25313c}.phase-number{font-weight:750;margin-right:5px;color:var(--phase)}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 340px;min-height:0}.map-panel{position:relative;min-width:0;min-height:0;display:flex;flex-direction:column;background:#f3f6f7}.map-caption{padding:15px 22px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;border-bottom:1px solid #e5eaed;background:#f9fbfc}.map-caption h2{font-size:14px;margin:0 0 5px;font-weight:700}.map-caption p{font-size:12px;line-height:1.6;color:var(--muted);margin:0;max-width:880px}.count{font:11px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:nowrap;color:#667781;padding-top:3px}.canvas{flex:1;min-height:240px;position:relative;overflow:hidden}.canvas svg{display:block;width:100%;height:100%;touch-action:none;user-select:none;cursor:grab}.canvas svg.dragging{cursor:grabbing}.canvas svg:focus-visible{outline:3px solid #087f8c;outline-offset:-4px}.zoom-bar{position:absolute;bottom:18px;left:18px;display:flex;gap:1px;align-items:center;background:white;border:1px solid #d3dce1;border-radius:9px;box-shadow:0 3px 14px #1836460c;padding:3px}.zoom-bar button{border:0;background:#fff;border-radius:5px;width:32px;height:31px;font-size:18px;color:#314655}.zoom-bar button:hover{background:#eef3f5}.zoom-bar .fit{font-size:11px;width:42px}.zoom-bar output{min-width:48px;text-align:center;font:11px ui-monospace,SFMono-Regular,Consolas,monospace}.zoom-bar input{width:84px;accent-color:#087f8c;margin:0 8px}.map-hint{position:absolute;bottom:22px;right:16px;font-size:10px;color:#75838c;background:#f3f6f7e8;padding:6px 9px;border-radius:5px;pointer-events:none}.inspector{min-height:0;border-left:1px solid var(--line);background:#fff;display:flex;flex-direction:column}.tabs{display:flex;padding:0 17px;border-bottom:1px solid var(--line);gap:18px}.tab{font-size:12px;font-weight:650;color:var(--muted);border:0;border-bottom:2px solid transparent;padding:14px 0 12px;background:white}.tab[aria-selected=true]{color:#086e84;border-bottom-color:#087f8c}.pane{overflow:auto;min-height:0;flex:1;padding:22px}.pane[hidden]{display:none}.detail-kicker{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:var(--muted);display:flex;align-items:center;justify-content:space-between;gap:8px}.badge{font-size:9px;letter-spacing:.04em;padding:4px 6px;border-radius:4px;background:#edf6f2;color:#267456;white-space:nowrap}.badge.planned{background:#fbf0e3;color:#9c5d1d}.badge.resource{background:#edf1f4;color:#637480}.pane h2{font-size:22px;line-height:1.25;letter-spacing:-.7px;margin:16px 0 9px;overflow-wrap:anywhere}.file-path{font:11px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;color:#687b89;overflow-wrap:anywhere}.detail-description{font-size:13px;line-height:1.8;color:#42525f}.detail-section{border-top:1px solid #e5eaed;padding-top:16px;margin-top:18px}.detail-section h3{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#74828d;margin:0 0 8px}.detail-section p{font-size:12px;line-height:1.8;margin:0;color:#435461}.api{display:block;font:11px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;color:#466477;background:#f6f8f9;border:1px solid #e9edef;padding:7px 9px;border-radius:5px;margin:5px 0;overflow-wrap:anywhere}.connection{display:block;text-align:left;width:100%;border:0;border-radius:6px;background:#f6f8f9;padding:9px 10px;margin:6px 0;color:#415360}.connection:hover{background:#e9f1f4}.connection strong{font-size:11px;display:block;overflow-wrap:anywhere}.connection small{font-size:10px;line-height:1.6;display:block;color:#76848c;margin-top:3px}.note{background:#faf6ee;border-left:3px solid #c29255;padding:11px 13px;font-size:11px;line-height:1.8;color:#755c3d;margin-top:18px}.intro-list{padding-left:18px;font-size:12px;line-height:1.85;color:#435461}.intro-list li{padding:4px 0}.inventory-intro{font-size:11px;line-height:1.7;color:var(--muted);margin:0 0 12px}.file-group{font-size:10px;text-transform:uppercase;letter-spacing:.09em;font-weight:750;color:#81909a;margin:18px 0 7px}.file-row{display:block;width:100%;text-align:left;padding:9px;border:1px solid transparent;border-radius:6px;background:#fff}.file-row:hover,.file-row.active{background:#f1f6f8;border-color:#dce7ec}.file-row .file-label{display:flex;align-items:center;justify-content:space-between;gap:7px;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:#365166}.file-row small{font-size:10px;display:block;color:#7b8892;margin-top:4px;overflow-wrap:anywhere}.empty-state{font-size:12px;color:#74838e;line-height:1.7}.footer{display:flex;justify-content:space-between;gap:12px;align-items:center;background:white;padding:10px 28px;border-top:1px solid var(--line);font-size:10px;color:#71808b;line-height:1.5}.legend{display:flex;align-items:center;gap:15px;flex-wrap:wrap}.line-key{display:inline-block;vertical-align:middle;width:23px;border-top:2px solid #738a98;margin-right:5px}.line-key.planned{border-top-style:dashed}.line-key.observe{border-top-style:dotted}.footer a{color:#5d7685}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}svg .component{cursor:pointer;transition:opacity .15s}svg .component:focus{outline:none}svg .component:focus .card,svg .component.selected .card{stroke:#077c8c;stroke-width:3.2}svg .component.related .card{stroke-width:2}svg .component.dim{opacity:.13}svg .edge.dim{opacity:.05}svg .edge.active{opacity:.9;stroke-width:2.5}svg .edge{opacity:.32;transition:opacity .15s}svg .group.dim{opacity:.25}svg .edge-label{font:13px ui-sans-serif,system-ui,sans-serif;fill:#4e6b7b;stroke:#f3f6f7;stroke-width:5;paint-order:stroke;pointer-events:none}svg .card-title{font:650 22px ui-sans-serif,system-ui,sans-serif;fill:#2f4555}svg .card-subtitle{font:14px ui-sans-serif,system-ui,sans-serif;fill:#677c89}svg .card-status{font:650 11px ui-sans-serif,system-ui,sans-serif;letter-spacing:.5px}svg .group-title{font:750 13px ui-sans-serif,system-ui,sans-serif;letter-spacing:1.3px}svg .support-title{font:750 15px ui-sans-serif,system-ui,sans-serif;fill:#5e7482;letter-spacing:1.5px}svg .support-subtitle{font:15px ui-sans-serif,system-ui,sans-serif;fill:#81909b}
+@media(max-width:1100px){.workspace{grid-template-columns:minmax(0,1fr) 290px}.top{padding:17px 18px}.controls{padding-left:18px;padding-right:18px}.pane{padding:18px}.top-note{font-size:10px}.zoom-bar input{display:none}.map-hint{display:none}.map-caption{padding:12px 15px}.count{display:none}.footer{padding:9px 18px}}@media(max-width:760px){.app{height:auto;min-height:100dvh;overflow:visible;display:block}.top{align-items:flex-start;gap:12px}.brand h1{font-size:18px}.mark{width:30px;height:30px}.top-note .offline-note{display:none}.status-key{display:block;font-size:10px}.status-key span{display:block}.control-row{gap:8px}.search{max-width:none;flex-basis:100%}.select-wrap{flex:1 1 150px;min-width:0}.select-wrap.route-wrap{flex-basis:100%}.select-wrap select{flex:1;min-width:0;width:auto;max-width:100%}.phase-nav{padding-bottom:9px}.workspace{display:flex;flex-direction:column}.map-panel{height:64dvh;min-height:440px}.inspector{height:500px;border-left:0;border-top:1px solid var(--line)}.map-caption p{font-size:11px}.footer{align-items:flex-start;flex-direction:column;gap:8px}.pane h2{font-size:21px}.zoom-bar{bottom:13px;left:12px}}@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}@media print{.app{display:block;height:auto;overflow:visible}.controls,.footer,.inspector,.zoom-bar,.map-hint{display:none}.workspace{display:block}.map-panel{height:190mm}.canvas svg{height:175mm}.map-caption{background:white}.top-note{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+ <header class="top">
+  <div class="brand"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M9 10L30 7L32 29L13 33L9 10L32 29M30 7L13 33" fill="none" stroke="currentColor" stroke-width="1.4"/><g fill="currentColor"><circle cx="9" cy="10" r="4"/><circle cx="30" cy="7" r="3"/><circle cx="32" cy="29" r="4"/><circle cx="13" cy="33" r="3"/></g></svg><div><p class="eyebrow">Architecture atlas / complete target system</p><h1>DynaGraph <span>explained.</span></h1></div></div>
+  <div class="top-note"><div class="status-key"><span><i class="dot"></i>Implemented · phases 1–3</span><span><i class="dot planned"></i>Planned · phases 4–8</span></div><span class="offline-note">Two local nodes. One persistent graph. No cloud APIs.</span></div>
+ </header>
+ <section class="controls" aria-label="Map controls">
+  <div class="control-row">
+   <label class="search"><span class="sr-only">Find a component</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg><input id="search" type="search" placeholder="Find a file, responsibility, or interface…" autocomplete="off" spellcheck="false"></label>
+   <label class="select-wrap route-wrap">Explore <select id="route"><option value="system">Whole system</option><option value="turn">One agent turn</option><option value="remember">Remember a fact</option><option value="recall">Recall context</option><option value="experiment">The A/B experiment</option></select></label>
+   <label class="select-wrap"><span class="sr-only">Implementation status</span><select id="status"><option value="all">Built + planned</option><option value="implemented">Implemented only</option><option value="planned">Planned only</option></select></label>
+   <button id="support" class="pill" aria-pressed="false">Supporting files</button>
+   <button id="export" class="pill">Export SVG</button>
+  </div>
+  <nav id="phases" class="phase-nav" aria-label="Focus a project phase"></nav>
+ </section>
+ <main class="workspace">
+  <section class="map-panel" aria-labelledby="map-title">
+   <div class="map-caption"><div><h2 id="map-title">The finished project</h2><p id="map-description"></p></div><span id="count" class="count"></span></div>
+   <div class="canvas" id="canvas">
+    <svg id="map" role="graphics-document" tabindex="0" aria-label="Interactive DynaGraph architecture. Use plus and minus to zoom, arrow keys to pan, and Enter on a component to inspect it."><title>DynaGraph finished-project architecture</title><defs><pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#d6e0e5"/></pattern><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#8198a6"/></marker><marker id="arrow-active" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#087f8c"/></marker></defs><rect id="background" width="100%" height="100%" fill="url(#dots)"/><g id="scene"></g></svg>
+    <div class="zoom-bar" aria-label="Zoom controls"><button id="zoom-out" aria-label="Zoom out">−</button><output id="zoom-label" aria-live="polite">100%</output><input id="zoom-slider" type="range" min="18" max="260" value="100" aria-label="Zoom percentage"><button id="zoom-in" aria-label="Zoom in">+</button><button id="fit" class="fit" title="Fit visible map (F)">Fit</button><button id="reset" class="fit" title="Reset filters and selection">Reset</button></div>
+    <div class="map-hint">Drag to pan · scroll to zoom · click to inspect · F to fit</div>
+   </div>
+  </section>
+  <aside class="inspector" aria-label="Component information">
+   <div class="tabs" role="tablist" aria-label="Inspector view"><button class="tab" id="details-tab" role="tab" aria-selected="true" aria-controls="details">Overview / details</button><button class="tab" id="inventory-tab" role="tab" aria-selected="false" aria-controls="inventory">All components</button></div>
+   <div id="details" class="pane" role="tabpanel" aria-labelledby="details-tab"></div>
+   <div id="inventory" class="pane" role="tabpanel" aria-labelledby="inventory-tab" hidden></div>
+  </aside>
+ </main>
+ <footer class="footer"><div class="legend"><span><i class="line-key"></i>Existing connection</span><span><i class="line-key planned"></i>Planned integration</span><span><i class="line-key observe"></i>Observation / support</span></div><div><a href="architecture.md">Written architecture</a> · <a href="testing/architecture.md">Verification</a> · Standalone / offline</div></footer>
+</div>
+<p class="sr-only" id="announcer" aria-live="polite"></p>
+<script id="architecture-data" type="application/json">{
+  "nodes": [
+    {
+      "id": "task",
+      "path": "",
+      "phase": 6,
+      "summary": "A task and its evolving sub-goals",
+      "description": "The finished system accepts a task, cycles through specialized agents, and returns a verified result. This is a logical entry point; a user-facing CLI module is not specified yet.",
+      "interfaces": [],
+      "inputs": "A task, constraints, and a turn budget.",
+      "outputs": "Work submitted to the state machine.",
+      "notes": "The entry interface belongs to the future orchestration phase.",
+      "kind": "resource",
+      "label": "Task / sub-goal",
+      "status": "resource",
+      "support": false,
+      "x": 60,
+      "y": 120
+    },
+    {
+      "id": "state",
+      "path": "src/orchestration/state_machine.py",
+      "phase": 6,
+      "summary": "Coordinate turns and shared state",
+      "description": "Own the cyclic workflow: assemble context for the active sub-goal, dispatch an agent, receive its output, extract facts, apply governed persistence, and advance the turn.",
+      "interfaces": [
+        "Planned cyclic controller; method names not yet fixed"
+      ],
+      "inputs": "Task, agent roles, retrieved context, previous turn results.",
+      "outputs": "Agent dispatches, accepted state updates, memory checkpoints, final answer.",
+      "notes": "The extraction-to-storage bridge is planned here; today extraction and storage are independent APIs.",
+      "kind": "source",
+      "label": "state_machine.py",
+      "status": "planned",
+      "support": false,
+      "x": 400,
+      "y": 120
+    },
+    {
+      "id": "base",
+      "path": "src/agents/base_agent.py",
+      "phase": 6,
+      "summary": "Run one role with bounded context",
+      "description": "Abstract agent execution: combine role instructions, the active task, retrieved memory, and the local model client. Provide a common contract for specialized agents and tool-calling execution.",
+      "interfaces": [
+        "Planned BaseAgent abstraction"
+      ],
+      "inputs": "Role instructions, sub-goal, bounded graph context.",
+      "outputs": "An agent response and inference metadata.",
+      "notes": "Tool interfaces and error policies are future Phase 6 decisions. Node 2 hosts Ollama; Python agent coordination stays on Node 1.",
+      "kind": "source",
+      "label": "base_agent.py",
+      "status": "planned",
+      "support": false,
+      "x": 740,
+      "y": 120
+    },
+    {
+      "id": "personas",
+      "path": "src/agents/personas.py",
+      "phase": 6,
+      "summary": "Planner · researcher · verifier",
+      "description": "Define a planner and verifier using Node 1 inference and a research role using Node 2 inference. These are logical roles controlled by the same orchestrator.",
+      "interfaces": [
+        "Planned role definitions"
+      ],
+      "inputs": "Shared agent contract and role prompts.",
+      "outputs": "Configured planner, research, and verification agents.",
+      "notes": "A role is not a separate cloud service or a separate database owner.",
+      "kind": "source",
+      "label": "personas.py",
+      "status": "planned",
+      "support": false,
+      "x": 740,
+      "y": 255
+    },
+    {
+      "id": "client",
+      "path": "src/network/ollama_client.py",
+      "phase": 1,
+      "summary": "Async inference, metrics, fallback",
+      "description": "Own a reusable asynchronous HTTP client. Measure health and model inventories, request short or JSON generations, retain latency and token metadata, and optionally fail over once to the other local node.",
+      "interfaces": [
+        "OllamaClient.ping()",
+        "list_models()",
+        "generate()",
+        "generate_json()",
+        "GenerationResult / OllamaError"
+      ],
+      "inputs": "Validated node settings and prompts.",
+      "outputs": "Health/model records or generated text with node identity, timing, and failed attempts.",
+      "notes": "Health checks target the named node. Fallback applies to transport, timeout, 5xx, 408, and 429 failures; invalid payloads and other 4xx errors stay visible.",
+      "kind": "source",
+      "label": "ollama_client.py",
+      "status": "implemented",
+      "support": false,
+      "x": 1080,
+      "y": 120
+    },
+    {
+      "id": "config",
+      "path": "src/config.py",
+      "phase": 1,
+      "summary": "Validate LAN and storage settings",
+      "description": "Load the repository-root .env and process environment, validate private node addresses and local model names, and resolve storage paths. Environment values override dotenv values.",
+      "interfaces": [
+        "Settings",
+        "get_settings()",
+        "node_url() / node_model() / node_threads()"
+      ],
+      "inputs": "Private .env, environment overrides, defaults.",
+      "outputs": "Validated immutable settings for HTTP and storage.",
+      "notes": "Reading settings starts no server and creates no database. Public examples contain illustrative addresses only.",
+      "kind": "source",
+      "label": "config.py",
+      "status": "implemented",
+      "support": false,
+      "x": 1080,
+      "y": 255
+    },
+    {
+      "id": "ollama1",
+      "path": "",
+      "phase": 1,
+      "summary": "Node 1 · local HTTP inference",
+      "description": "The coordinator machine also runs a local quantized synthesis model. Planner/verifier inference uses this service; extraction may use it directly or as a fallback.",
+      "interfaces": [
+        "HTTP /api/version",
+        "/api/tags",
+        "/api/generate"
+      ],
+      "inputs": "Local HTTP requests from OllamaClient.",
+      "outputs": "Generated text, model inventory, and timing counters.",
+      "notes": "All storage and orchestration remain on Node 1. No external cloud inference is used.",
+      "kind": "resource",
+      "label": "Ollama · primary",
+      "status": "resource",
+      "support": false,
+      "x": 1420,
+      "y": 120
+    },
+    {
+      "id": "ollama2",
+      "path": "",
+      "phase": 1,
+      "summary": "Node 2 · LAN HTTP inference",
+      "description": "A secondary computer runs the smaller local model. It serves research/extraction requests over the private LAN; it does not open the SQLite file.",
+      "interfaces": [
+        "Same Ollama HTTP endpoints"
+      ],
+      "inputs": "Private LAN HTTP requests from Node 1.",
+      "outputs": "Local worker generations and timing counters.",
+      "notes": "Baseline: an Intel N100-or-better computer with 8–16 GB RAM. Keep one loaded model and one concurrent generation for constrained hardware.",
+      "kind": "resource",
+      "label": "Ollama · worker",
+      "status": "resource",
+      "support": false,
+      "x": 1760,
+      "y": 120
+    },
+    {
+      "id": "seed",
+      "path": "src/retrieval/seed_matcher.py",
+      "phase": 5,
+      "summary": "Find lexical starting entities",
+      "description": "Match the current sub-goal to active entity names/descriptions using SQLite FTS5. Fall back to recent active entities when lexical lookup yields no useful seeds.",
+      "interfaces": [
+        "Planned lexical seed matcher"
+      ],
+      "inputs": "An active sub-goal.",
+      "outputs": "A small ranked set of active entity IDs.",
+      "notes": "This is lexical matching, not an embedding service or a cloud vector database.",
+      "kind": "source",
+      "label": "seed_matcher.py",
+      "status": "planned",
+      "support": false,
+      "x": 60,
+      "y": 520
+    },
+    {
+      "id": "traversal",
+      "path": "src/retrieval/traversal.py",
+      "phase": 5,
+      "summary": "Expand an active neighborhood",
+      "description": "Expand seed entities one or two hops across active facts. Keep graph traversal inside SQLite queries rather than loading the entire graph into Python.",
+      "interfaces": [
+        "Planned bounded BFS / SQL traversal"
+      ],
+      "inputs": "Seed IDs, allowed depth, active-edge constraints.",
+      "outputs": "A bounded candidate subgraph.",
+      "notes": "Retrieval target: under 5 ms on the storage host. This is a future benchmark target, not a measured current guarantee.",
+      "kind": "source",
+      "label": "traversal.py",
+      "status": "planned",
+      "support": false,
+      "x": 400,
+      "y": 520
+    },
+    {
+      "id": "context",
+      "path": "src/retrieval/context_assembler.py",
+      "phase": 5,
+      "summary": "Fit graph memory into the prompt",
+      "description": "Select and format retrieved facts as concise Markdown or JSON for the active agent. Enforce the final graph-context token budget before dispatch.",
+      "interfaces": [
+        "Planned context assembler"
+      ],
+      "inputs": "Sub-goal, lexical seeds, candidate facts, token budget.",
+      "outputs": "A graph-memory block of at most 1,000 tokens.",
+      "notes": "The ceiling applies to retrieved graph context, not the full role/task prompt. Token accounting and truncation policy remain Phase 5 work.",
+      "kind": "source",
+      "label": "context_assembler.py",
+      "status": "planned",
+      "support": false,
+      "x": 740,
+      "y": 520
+    },
+    {
+      "id": "extractor",
+      "path": "src/extraction/extractor.py",
+      "phase": 3,
+      "summary": "Turn agent messages into facts",
+      "description": "Request JSON-mode output using two examples. Parse and validate the result, check literal source endpoints, and allow one corrective retry. Prefer Node 2; retain every generation attempt and recovered validation error.",
+      "interfaces": [
+        "Extractor.extract()",
+        "ExtractionResult",
+        "ExtractionError"
+      ],
+      "inputs": "AgentMessage and a configured, caller-owned OllamaClient.",
+      "outputs": "ExtractedGraph plus source message, repairs, attempts, and latency.",
+      "notes": "Returns data only: it does not initialize storage or persist facts. Syntax/grounding checks do not prove semantic truth or completeness.",
+      "kind": "source",
+      "label": "extractor.py",
+      "status": "implemented",
+      "support": false,
+      "x": 1080,
+      "y": 520
+    },
+    {
+      "id": "parser",
+      "path": "src/extraction/parser.py",
+      "phase": 3,
+      "summary": "Repair conservatively, then validate",
+      "description": "Unwrap one JSON object, strip Markdown/prose wrappers, repair limited string-local defects, and validate the result against the graph schema.",
+      "interfaces": [
+        "parse_graph_response()",
+        "ParsedGraph",
+        "GraphParseError"
+      ],
+      "inputs": "A generated response string.",
+      "outputs": "A validated graph and a tuple of performed repairs.",
+      "notes": "Reject duplicate keys, missing fields, ambiguous objects, truncated structures, excessive nesting, and non-finite values. Never evaluate model output as code.",
+      "kind": "source",
+      "label": "parser.py",
+      "status": "implemented",
+      "support": false,
+      "x": 1420,
+      "y": 520
+    },
+    {
+      "id": "schemas",
+      "path": "src/models/schemas.py",
+      "phase": 3,
+      "summary": "Define strict message and fact contracts",
+      "description": "Validate AgentMessage, SemanticTriple, and ExtractedGraph. Normalize label whitespace, case-fold predicates, remove repeated facts, and reject extra fields or invalid confidence.",
+      "interfaces": [
+        "AgentMessage",
+        "SemanticTriple",
+        "ExtractedGraph"
+      ],
+      "inputs": "Message fields or decoded JSON.",
+      "outputs": "Typed messages and subject–predicate–object facts.",
+      "notes": "Current bounds: 2,000 message characters; 16 triples; 256 characters per label; confidence in [0,1]. An explicit empty triples array is valid.",
+      "kind": "source",
+      "label": "schemas.py",
+      "status": "implemented",
+      "support": false,
+      "x": 1760,
+      "y": 520
+    },
+    {
+      "id": "supersession",
+      "path": "src/governance/supersession.py",
+      "phase": 4,
+      "summary": "Replace stale single-valued facts",
+      "description": "Before writing a new fact for a single-valued predicate, detect the old value, mark the previous fact SUPERSEDED, and preserve explicit SUPERSEDES provenance atomically.",
+      "interfaces": [
+        "Planned write-time supersession middleware"
+      ],
+      "inputs": "Validated new facts and the current active graph.",
+      "outputs": "A coherent active state and traceable superseded history.",
+      "notes": "Not every different object is a contradiction. The single-valued predicate policy and representation of fact-level provenance still need Phase 4 design.",
+      "kind": "source",
+      "label": "supersession.py",
+      "status": "planned",
+      "support": false,
+      "x": 60,
+      "y": 920
+    },
+    {
+      "id": "decay",
+      "path": "src/governance/decay.py",
+      "phase": 4,
+      "summary": "Score memory with four factors",
+      "description": "Compute a composite retention score from recency, frequency, graph centrality, and turn-based decay. Supply deterministic scores for pruning decisions.",
+      "interfaces": [
+        "Planned recency / frequency / centrality / turn-decay functions"
+      ],
+      "inputs": "Persisted access/turn metadata, graph connectivity, and time.",
+      "outputs": "A retention score for candidate memory.",
+      "notes": "Formulas, weights, and required metadata are not yet implemented or fixed by this map.",
+      "kind": "source",
+      "label": "decay.py",
+      "status": "planned",
+      "support": false,
+      "x": 400,
+      "y": 920
+    },
+    {
+      "id": "pruning",
+      "path": "src/governance/pruning.py",
+      "phase": 4,
+      "summary": "Soft-prune low-value leaf memory",
+      "description": "Run periodic maintenance, obtain decay scores, protect pinned entities, and soft-inactivate eligible leaf memory below the pruning threshold.",
+      "interfaces": [
+        "Planned background maintenance worker"
+      ],
+      "inputs": "Retention scores, pin flags, topology, pruning threshold.",
+      "outputs": "PRUNED records excluded from active retrieval.",
+      "notes": "This is planned soft deletion; the current GraphStore delete APIs physically remove records and cascade edges.",
+      "kind": "source",
+      "label": "pruning.py",
+      "status": "planned",
+      "support": false,
+      "x": 740,
+      "y": 920
+    },
+    {
+      "id": "graph",
+      "path": "src/storage/graph_store.py",
+      "phase": 2,
+      "summary": "Entity/triple CRUD and FTS lookup",
+      "description": "Expose the property graph as Python CRUD operations. Canonicalize entity names and predicates, group mutations in transactions, provide literal prefix search, and queue atomic async writes.",
+      "interfaces": [
+        "GraphStore.transaction()",
+        "write_async()",
+        "create/get/update/delete/list entities and triples",
+        "get_or_create_entity() / search_prefix()"
+      ],
+      "inputs": "Entity attributes, directed facts, IDs, literal lexical queries.",
+      "outputs": "Entity/Triple records or transactional graph updates.",
+      "notes": "Current CRUD does not detect contradictions or compute decay. Physical entity deletion cascades to incident triples and the FTS entry.",
+      "kind": "source",
+      "label": "graph_store.py",
+      "status": "implemented",
+      "support": false,
+      "x": 1080,
+      "y": 920
+    },
+    {
+      "id": "database",
+      "path": "src/storage/database.py",
+      "phase": 2,
+      "summary": "Pool connections; serialize writes",
+      "description": "Initialize the schema and manage a bounded pool with WAL, foreign keys, busy timeouts, FULL synchronization, nested savepoints, and read snapshots. Queue short sync callbacks off the event loop.",
+      "interfaces": [
+        "Database.from_settings()",
+        "connection() / transaction()",
+        "write_async()",
+        "close() / aclose()"
+      ],
+      "inputs": "A local path, pool size, timeout, and SQL callbacks.",
+      "outputs": "Exclusively leased connections and atomic durable transactions.",
+      "notes": "Keep SQLite on Node 1 local disk. Async close drains accepted writes; a started write finishes atomically even if its caller cancels.",
+      "kind": "source",
+      "label": "database.py",
+      "status": "implemented",
+      "support": false,
+      "x": 1420,
+      "y": 920
+    },
+    {
+      "id": "ddl",
+      "path": "src/storage/schema.sql",
+      "phase": 2,
+      "summary": "Tables, constraints, indexes, triggers",
+      "description": "Define schema version 1: entities, directed triples, uniqueness/foreign-key constraints, relationship indexes, FTS5 external content, and synchronous FTS triggers.",
+      "interfaces": [
+        "entities",
+        "triples",
+        "fts_entities",
+        "FTS insert/update/delete triggers"
+      ],
+      "inputs": "Initialization by Database.",
+      "outputs": "Persistent relational structure and a synchronized lexical index.",
+      "notes": "Entities store ACTIVE/PRUNED and pin state; triples store ACTIVE/SUPERSEDED/PRUNED. Having fields does not mean governance algorithms exist.",
+      "kind": "source",
+      "label": "schema.sql",
+      "status": "implemented",
+      "support": false,
+      "x": 1760,
+      "y": 920
+    },
+    {
+      "id": "sqlite",
+      "path": "data/dynagraph.db",
+      "phase": 2,
+      "summary": "Node 1 · persistent graph file",
+      "description": "The configured embedded SQLite database stores graph records and its FTS index. WAL sidecars support local concurrent readers and serialized writers.",
+      "interfaces": [
+        "Configured DATABASE_PATH"
+      ],
+      "inputs": "Transactions and queries through Database.",
+      "outputs": "Durable graph state across runs.",
+      "notes": "This is a generated, ignored runtime artifact. Node 2 never mounts or opens this database.",
+      "kind": "resource",
+      "label": "SQLite · local file",
+      "status": "resource",
+      "support": false,
+      "x": 1420,
+      "y": 1055
+    },
+    {
+      "id": "profiler",
+      "path": "src/telemetry/profiler.py",
+      "phase": 7,
+      "summary": "Measure every turn",
+      "description": "Collect prompt-token counts, generation latencies, active entity/edge counts, and memory usage around the agent cycle.",
+      "interfaces": [
+        "Planned per-turn metric collector"
+      ],
+      "inputs": "Orchestration events, inference results, graph counts, process metrics.",
+      "outputs": "Per-turn metric snapshots.",
+      "notes": "Current GenerationResult exposes latency and generated-token metadata. Capturing prompt tokens and complete turn records remains Phase 7 work.",
+      "kind": "source",
+      "label": "profiler.py",
+      "status": "planned",
+      "support": false,
+      "x": 60,
+      "y": 1320
+    },
+    {
+      "id": "dashboard",
+      "path": "src/telemetry/dashboard.py",
+      "phase": 7,
+      "summary": "Show live terminal state",
+      "description": "Display current swarm state and profiling metrics in a Rich/Curses terminal dashboard on Node 1.",
+      "interfaces": [
+        "Planned terminal dashboard"
+      ],
+      "inputs": "Metric snapshots and current workflow state.",
+      "outputs": "A live local terminal view.",
+      "notes": "This is the planned runtime dashboard. The HTML architecture map is documentation, not that dashboard.",
+      "kind": "source",
+      "label": "dashboard.py",
+      "status": "planned",
+      "support": false,
+      "x": 400,
+      "y": 1320
+    },
+    {
+      "id": "logger",
+      "path": "src/telemetry/logger.py",
+      "phase": 7,
+      "summary": "Export an auditable metric history",
+      "description": "Write per-turn measurements to local CSV for inspection, regression analysis, and the controlled experiment.",
+      "interfaces": [
+        "Planned CSV metric logger"
+      ],
+      "inputs": "Metric snapshots and experiment/condition identifiers.",
+      "outputs": "A local CSV history.",
+      "notes": "No hosted telemetry, analytics API, or cloud account is required.",
+      "kind": "source",
+      "label": "logger.py",
+      "status": "planned",
+      "support": false,
+      "x": 740,
+      "y": 1320
+    },
+    {
+      "id": "harness",
+      "path": "experiments/benchmark_harness.py",
+      "phase": 8,
+      "summary": "Run the same task under A and B",
+      "description": "Execute a shared 15–20 turn scenario with injected state changes. Condition A passes linear conversation history; Condition B uses the graph-memory loop.",
+      "interfaces": [
+        "Planned controlled benchmark runner"
+      ],
+      "inputs": "A fixed scenario, node/model settings, two context strategies.",
+      "outputs": "Condition-tagged runs and collected measurements.",
+      "notes": "Keep models, scenario, hardware, and generation settings comparable. The finished experiment evaluates a hypothesis; it does not assume graph memory wins.",
+      "kind": "source",
+      "label": "benchmark_harness.py",
+      "status": "planned",
+      "support": false,
+      "x": 1080,
+      "y": 1320
+    },
+    {
+      "id": "analysis",
+      "path": "experiments/analyze_results.py",
+      "phase": 8,
+      "summary": "Compare cost, latency, consistency",
+      "description": "Read recorded runs and compare prompt-token consumption, latency by turn, and factual consistency after injected updates.",
+      "interfaces": [
+        "Planned experiment analysis"
+      ],
+      "inputs": "Condition-tagged CSV records and scenario truth checks.",
+      "outputs": "Summaries and series for plotting.",
+      "notes": "No current result or asymptotic claim is established by the architecture. Report measured outcomes and their limits.",
+      "kind": "source",
+      "label": "analyze_results.py",
+      "status": "planned",
+      "support": false,
+      "x": 1420,
+      "y": 1320
+    },
+    {
+      "id": "plots",
+      "path": "experiments/generate_plots.py",
+      "phase": 8,
+      "summary": "Produce publication-ready figures",
+      "description": "Generate scientific plots from analyzed experiment results for sharing or the project report.",
+      "interfaces": [
+        "Planned figure generation"
+      ],
+      "inputs": "Analyzed condition A/B measurements.",
+      "outputs": "Standalone exported figures.",
+      "notes": "Plotting dependencies and output locations are future Phase 8 choices.",
+      "kind": "source",
+      "label": "generate_plots.py",
+      "status": "planned",
+      "support": false,
+      "x": 1760,
+      "y": 1320
+    },
+    {
+      "id": "csv",
+      "path": "",
+      "phase": 7,
+      "summary": "Local measurements · condition tagged",
+      "description": "Generated CSV records connect runtime observation to experiment analysis. The final file path and column contract will be defined with telemetry.",
+      "interfaces": [],
+      "inputs": "Per-turn measurements.",
+      "outputs": "Reproducible analysis input.",
+      "notes": "This node is an intended artifact, not a file already produced by the project.",
+      "kind": "resource",
+      "label": "Metrics CSV",
+      "status": "resource",
+      "support": false,
+      "x": 740,
+      "y": 1455
+    },
+    {
+      "id": "figures",
+      "path": "",
+      "phase": 8,
+      "summary": "Shareable experiment results",
+      "description": "Exported figures show token use, latency curves, and factual consistency for both conditions.",
+      "interfaces": [],
+      "inputs": "Analyzed measurements.",
+      "outputs": "Report-ready visual results.",
+      "notes": "The map contains no fabricated benchmark data.",
+      "kind": "resource",
+      "label": "Experiment figures",
+      "status": "resource",
+      "support": false,
+      "x": 1760,
+      "y": 1455
+    },
+    {
+      "id": "test1",
+      "path": "tests/test_phase1_network.py",
+      "phase": 1,
+      "summary": "Phase 1 verification",
+      "description": "Offline config/HTTP failure paths and opt-in live two-node checks.",
+      "interfaces": [
+        "pytest"
+      ],
+      "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
+      "outputs": "Assertions and diagnostic test output.",
+      "notes": "Implemented tests isolate ordinary offline checks from physical LAN services.",
+      "kind": "test",
+      "label": "test_phase1_network.py",
+      "status": "implemented",
+      "support": true,
+      "x": 60,
+      "y": 1810
+    },
+    {
+      "id": "test2",
+      "path": "tests/test_phase2_storage.py",
+      "phase": 2,
+      "summary": "Phase 2 verification",
+      "description": "Schema/CRUD/transactions/FTS/concurrency, plus an opt-in durable-insert benchmark.",
+      "interfaces": [
+        "pytest"
+      ],
+      "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
+      "outputs": "Assertions and diagnostic test output.",
+      "notes": "Implemented tests isolate ordinary offline checks from physical LAN services.",
+      "kind": "test",
+      "label": "test_phase2_storage.py",
+      "status": "implemented",
+      "support": true,
+      "x": 400,
+      "y": 1810
+    },
+    {
+      "id": "test3",
+      "path": "tests/test_phase3_extraction.py",
+      "phase": 3,
+      "summary": "Phase 3 verification",
+      "description": "Synthetic malformed outputs, retry/fallback/grounding, and opt-in two-node extraction.",
+      "interfaces": [
+        "pytest"
+      ],
+      "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
+      "outputs": "Assertions and diagnostic test output.",
+      "notes": "Implemented tests isolate ordinary offline checks from physical LAN services.",
+      "kind": "test",
+      "label": "test_phase3_extraction.py",
+      "status": "implemented",
+      "support": true,
+      "x": 740,
+      "y": 1810
+    },
+    {
+      "id": "test4",
+      "path": "tests/test_phase4_governance.py",
+      "phase": 4,
+      "summary": "Phase 4 verification",
+      "description": "Planned deterministic supersession, protection, and decay checks.",
+      "interfaces": [
+        "pytest"
+      ],
+      "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
+      "outputs": "Assertions and diagnostic test output.",
+      "notes": "A specified future deliverable; this file does not exist yet.",
+      "kind": "test",
+      "label": "test_phase4_governance.py",
+      "status": "planned",
+      "support": true,
+      "x": 1080,
+      "y": 1810
+    },
+    {
+      "id": "test5",
+      "path": "tests/test_phase5_retrieval.py",
+      "phase": 5,
+      "summary": "Phase 5 verification",
+      "description": "Planned retrieval latency and token-ceiling checks.",
+      "interfaces": [
+        "pytest"
+      ],
+      "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
+      "outputs": "Assertions and diagnostic test output.",
+      "notes": "A specified future deliverable; this file does not exist yet.",
+      "kind": "test",
+      "label": "test_phase5_retrieval.py",
+      "status": "planned",
+      "support": true,
+      "x": 1420,
+      "y": 1810
+    },
+    {
+      "id": "test6",
+      "path": "tests/test_phase6_orchestration.py",
+      "phase": 6,
+      "summary": "Phase 6 verification",
+      "description": "Planned three-role cyclic integration across local models.",
+      "interfaces": [
+        "pytest"
+      ],
+      "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
+      "outputs": "Assertions and diagnostic test output.",
+      "notes": "A specified future deliverable; this file does not exist yet.",
+      "kind": "test",
+      "label": "test_phase6_orchestration.py",
+      "status": "planned",
+      "support": true,
+      "x": 1760,
+      "y": 1810
+    },
+    {
+      "id": "test7",
+      "path": "tests/test_phase7_telemetry.py",
+      "phase": 7,
+      "summary": "Phase 7 verification",
+      "description": "Planned live metric and CSV integrity checks.",
+      "interfaces": [
+        "pytest"
+      ],
+      "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
+      "outputs": "Assertions and diagnostic test output.",
+      "notes": "A specified future deliverable; this file does not exist yet.",
+      "kind": "test",
+      "label": "test_phase7_telemetry.py",
+      "status": "planned",
+      "support": true,
+      "x": 60,
+      "y": 1955
+    },
+    {
+      "id": "test8",
+      "path": "tests/test_phase8_benchmark.py",
+      "phase": 8,
+      "summary": "Phase 8 verification",
+      "description": "Planned end-to-end condition A/B regression.",
+      "interfaces": [
+        "pytest"
+      ],
+      "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
+      "outputs": "Assertions and diagnostic test output.",
+      "notes": "A specified future deliverable; this file does not exist yet.",
+      "kind": "test",
+      "label": "test_phase8_benchmark.py",
+      "status": "planned",
+      "support": true,
+      "x": 400,
+      "y": 1955
+    },
+    {
+      "id": "fixtures",
+      "path": "tests/conftest.py",
+      "phase": 1,
+      "summary": "Gate live and benchmark tests",
+      "description": "Add --run-lan, --lan-node, and --run-storage-benchmark flags; skip external/hardware-dependent checks unless explicitly selected.",
+      "interfaces": [
+        "pytest_addoption()",
+        "pytest_collection_modifyitems()"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "conftest.py",
+      "status": "implemented",
+      "support": true,
+      "x": 740,
+      "y": 1955
+    },
+    {
+      "id": "pytest",
+      "path": "pytest.ini",
+      "phase": 1,
+      "summary": "Configure test discovery",
+      "description": "Set tests/ discovery, strict markers, and the LAN/storage benchmark marker declarations.",
+      "interfaces": [
+        "pytest configuration"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "pytest.ini",
+      "status": "implemented",
+      "support": true,
+      "x": 1080,
+      "y": 1955
+    },
+    {
+      "id": "env",
+      "path": ".env.example",
+      "phase": 1,
+      "summary": "Portable configuration template",
+      "description": "Provide illustrative private LAN addresses, per-node model/thread settings, local database settings, and HTTP budgets. Copy and edit as a private .env.",
+      "interfaces": [
+        "Configuration example"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": ".env.example",
+      "status": "implemented",
+      "support": true,
+      "x": 1420,
+      "y": 1955
+    },
+    {
+      "id": "requirements",
+      "path": "requirements.txt",
+      "phase": 1,
+      "summary": "Pin direct Python dependencies",
+      "description": "Pin Pydantic, pydantic-settings, HTTPX, pytest, Rich, and python-dotenv for reproducible installation.",
+      "interfaces": [
+        "python3 -m pip install -r requirements.txt"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "requirements.txt",
+      "status": "implemented",
+      "support": true,
+      "x": 1760,
+      "y": 1955
+    },
+    {
+      "id": "ignore",
+      "path": ".gitignore",
+      "phase": 1,
+      "summary": "Exclude local state and tooling",
+      "description": "Exclude private configuration, local databases and WAL sidecars, environments, test artifacts, and local reference notes.",
+      "interfaces": [
+        "Git ignore rules"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": ".gitignore",
+      "status": "implemented",
+      "support": true,
+      "x": 60,
+      "y": 2100
+    },
+    {
+      "id": "init-root",
+      "path": "src/__init__.py",
+      "phase": 1,
+      "summary": "Root package marker",
+      "description": "Mark the project Python package; no runtime initialization or service startup.",
+      "interfaces": [],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "__init__.py",
+      "status": "implemented",
+      "support": true,
+      "x": 400,
+      "y": 2100
+    },
+    {
+      "id": "init-network",
+      "path": "src/network/__init__.py",
+      "phase": 1,
+      "summary": "Network package marker",
+      "description": "Identify the local inference communication package; no service startup.",
+      "interfaces": [],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "__init__.py",
+      "status": "implemented",
+      "support": true,
+      "x": 740,
+      "y": 2100
+    },
+    {
+      "id": "init-storage",
+      "path": "src/storage/__init__.py",
+      "phase": 2,
+      "summary": "Storage package marker",
+      "description": "Identify the embedded graph-storage package; importing this marker does not open a database.",
+      "interfaces": [],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "__init__.py",
+      "status": "implemented",
+      "support": true,
+      "x": 1080,
+      "y": 2100
+    },
+    {
+      "id": "init-models",
+      "path": "src/models/__init__.py",
+      "phase": 3,
+      "summary": "Export schema types",
+      "description": "Re-export AgentMessage, SemanticTriple, and ExtractedGraph for callers.",
+      "interfaces": [
+        "AgentMessage / SemanticTriple / ExtractedGraph"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "__init__.py",
+      "status": "implemented",
+      "support": true,
+      "x": 1420,
+      "y": 2100
+    },
+    {
+      "id": "init-extraction",
+      "path": "src/extraction/__init__.py",
+      "phase": 3,
+      "summary": "Export extraction APIs",
+      "description": "Re-export Extractor, ExtractionResult, ExtractionError, parser functions, and parse result/error types.",
+      "interfaces": [
+        "Extractor / parse_graph_response()"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "__init__.py",
+      "status": "implemented",
+      "support": true,
+      "x": 1760,
+      "y": 2100
+    },
+    {
+      "id": "readme",
+      "path": "README.md",
+      "phase": 1,
+      "summary": "Introduce and run the project",
+      "description": "Explain the public setup, current feature status, examples, and verification entry points.",
+      "interfaces": [
+        "Project documentation"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "README.md",
+      "status": "implemented",
+      "support": true,
+      "x": 60,
+      "y": 2245
+    },
+    {
+      "id": "doc1",
+      "path": "docs/testing/phase1.md",
+      "phase": 1,
+      "summary": "Network verification protocol",
+      "description": "Document generic setup, live-node prerequisites, exact test commands, and expected diagnostics.",
+      "interfaces": [
+        "Phase 1 protocol"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "phase1.md",
+      "status": "implemented",
+      "support": true,
+      "x": 400,
+      "y": 2245
+    },
+    {
+      "id": "doc2",
+      "path": "docs/testing/phase2.md",
+      "phase": 2,
+      "summary": "Storage verification protocol",
+      "description": "Document SQLite capability checks, isolated CRUD, durable-insert benchmarking, and lifecycle contracts.",
+      "interfaces": [
+        "Phase 2 protocol"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "phase2.md",
+      "status": "implemented",
+      "support": true,
+      "x": 740,
+      "y": 2245
+    },
+    {
+      "id": "doc3",
+      "path": "docs/testing/phase3.md",
+      "phase": 3,
+      "summary": "Extraction verification protocol",
+      "description": "Document parser smoke checks, six live extraction cases, resource limits, and error recovery.",
+      "interfaces": [
+        "Phase 3 protocol"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "phase3.md",
+      "status": "implemented",
+      "support": true,
+      "x": 1080,
+      "y": 2245
+    },
+    {
+      "id": "logo",
+      "path": "dynagraph-logo.png",
+      "phase": 1,
+      "summary": "Project identity asset",
+      "description": "The local image displayed by the project README; it has no runtime inference or storage role.",
+      "interfaces": [],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "dynagraph-logo.png",
+      "status": "implemented",
+      "support": true,
+      "x": 1420,
+      "y": 2245
+    },
+    {
+      "id": "architecture-html",
+      "path": "docs/architecture.html",
+      "phase": 1,
+      "summary": "Explore the finished architecture",
+      "description": "This standalone offline map: pan/zoom, search, phase focus, module details, connections, and SVG export.",
+      "interfaces": [
+        "Browser document"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "architecture.html",
+      "status": "implemented",
+      "support": true,
+      "x": 1760,
+      "y": 2245
+    },
+    {
+      "id": "architecture-md",
+      "path": "docs/architecture.md",
+      "phase": 1,
+      "summary": "Read the architecture narrative",
+      "description": "A text and Mermaid companion covering the finished workflow, all specified source components, and current implementation boundaries.",
+      "interfaces": [
+        "Architecture documentation"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "architecture.md",
+      "status": "implemented",
+      "support": true,
+      "x": 60,
+      "y": 2390
+    },
+    {
+      "id": "architecture-checks",
+      "path": "docs/testing/architecture.md",
+      "phase": 1,
+      "summary": "Verify the interactive document",
+      "description": "Manual offline browser, interaction, source-coverage, and privacy checks for this documentation artifact.",
+      "interfaces": [
+        "Documentation verification"
+      ],
+      "inputs": "Project setup, development, or documentation use.",
+      "outputs": "A reusable development/documentation surface; no agent execution by itself.",
+      "notes": "Supporting file: packaging, tests, setup, or documentation rather than a step in the agent cycle.",
+      "kind": "support",
+      "label": "architecture.md",
+      "status": "implemented",
+      "support": true,
+      "x": 400,
+      "y": 2390
+    }
+  ],
+  "edges": [
+    {
+      "source": "task",
+      "target": "state",
+      "label": "submit task",
+      "kind": "call"
+    },
+    {
+      "source": "state",
+      "target": "base",
+      "label": "dispatch active role",
+      "kind": "call"
+    },
+    {
+      "source": "personas",
+      "target": "base",
+      "label": "specialize shared agent contract",
+      "kind": "call"
+    },
+    {
+      "source": "state",
+      "target": "personas",
+      "label": "select planner / researcher / verifier",
+      "kind": "call"
+    },
+    {
+      "source": "base",
+      "target": "client",
+      "label": "request local generation",
+      "kind": "call"
+    },
+    {
+      "source": "client",
+      "target": "config",
+      "label": "read per-node settings",
+      "kind": "call"
+    },
+    {
+      "source": "client",
+      "target": "ollama1",
+      "label": "local HTTP",
+      "kind": "call"
+    },
+    {
+      "source": "client",
+      "target": "ollama2",
+      "label": "LAN HTTP",
+      "kind": "call"
+    },
+    {
+      "source": "state",
+      "target": "context",
+      "label": "assemble memory for active sub-goal",
+      "kind": "call"
+    },
+    {
+      "source": "context",
+      "target": "seed",
+      "label": "find lexical seeds",
+      "kind": "call"
+    },
+    {
+      "source": "context",
+      "target": "traversal",
+      "label": "expand active seeds",
+      "kind": "call"
+    },
+    {
+      "source": "seed",
+      "target": "graph",
+      "label": "prefix search / recent active entities",
+      "kind": "call"
+    },
+    {
+      "source": "traversal",
+      "target": "database",
+      "label": "bounded SQL neighborhood query",
+      "kind": "call"
+    },
+    {
+      "source": "state",
+      "target": "extractor",
+      "label": "extract facts from agent output",
+      "kind": "call"
+    },
+    {
+      "source": "extractor",
+      "target": "client",
+      "label": "JSON generation; prefer worker",
+      "kind": "call"
+    },
+    {
+      "source": "extractor",
+      "target": "parser",
+      "label": "parse generated response",
+      "kind": "call"
+    },
+    {
+      "source": "extractor",
+      "target": "schemas",
+      "label": "consume AgentMessage / ExtractedGraph",
+      "kind": "call"
+    },
+    {
+      "source": "parser",
+      "target": "schemas",
+      "label": "validate graph data",
+      "kind": "call"
+    },
+    {
+      "source": "state",
+      "target": "supersession",
+      "label": "submit accepted facts for governed persistence",
+      "kind": "call"
+    },
+    {
+      "source": "supersession",
+      "target": "graph",
+      "label": "atomic state / provenance update",
+      "kind": "call"
+    },
+    {
+      "source": "state",
+      "target": "pruning",
+      "label": "schedule / own maintenance lifecycle",
+      "kind": "call"
+    },
+    {
+      "source": "pruning",
+      "target": "decay",
+      "label": "request retention scores",
+      "kind": "call"
+    },
+    {
+      "source": "decay",
+      "target": "database",
+      "label": "read usage metadata / connectivity",
+      "kind": "call"
+    },
+    {
+      "source": "pruning",
+      "target": "graph",
+      "label": "soft-inactivate eligible memory",
+      "kind": "call"
+    },
+    {
+      "source": "graph",
+      "target": "database",
+      "label": "transactions, reads, queued writes",
+      "kind": "call"
+    },
+    {
+      "source": "database",
+      "target": "ddl",
+      "label": "initialize schema",
+      "kind": "call"
+    },
+    {
+      "source": "database",
+      "target": "config",
+      "label": "load storage settings via from_settings",
+      "kind": "call"
+    },
+    {
+      "source": "database",
+      "target": "sqlite",
+      "label": "local SQL reads / writes",
+      "kind": "call"
+    },
+    {
+      "source": "state",
+      "target": "profiler",
+      "label": "record turn measurements",
+      "kind": "observe"
+    },
+    {
+      "source": "profiler",
+      "target": "database",
+      "label": "count active graph records",
+      "kind": "call"
+    },
+    {
+      "source": "profiler",
+      "target": "client",
+      "label": "consume inference timing / token metadata",
+      "kind": "observe"
+    },
+    {
+      "source": "dashboard",
+      "target": "profiler",
+      "label": "read live snapshots",
+      "kind": "observe"
+    },
+    {
+      "source": "logger",
+      "target": "profiler",
+      "label": "read metric snapshots",
+      "kind": "observe"
+    },
+    {
+      "source": "logger",
+      "target": "csv",
+      "label": "write local CSV",
+      "kind": "data"
+    },
+    {
+      "source": "harness",
+      "target": "state",
+      "label": "run controlled agent cycles",
+      "kind": "call"
+    },
+    {
+      "source": "harness",
+      "target": "logger",
+      "label": "record run / condition",
+      "kind": "call"
+    },
+    {
+      "source": "analysis",
+      "target": "csv",
+      "label": "read condition A/B records",
+      "kind": "data"
+    },
+    {
+      "source": "plots",
+      "target": "analysis",
+      "label": "consume comparison series",
+      "kind": "data"
+    },
+    {
+      "source": "plots",
+      "target": "figures",
+      "label": "write shareable figures",
+      "kind": "data"
+    },
+    {
+      "source": "test1",
+      "target": "client",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test1",
+      "target": "config",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test2",
+      "target": "graph",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test2",
+      "target": "database",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test2",
+      "target": "ddl",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test3",
+      "target": "extractor",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test3",
+      "target": "parser",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test3",
+      "target": "schemas",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test4",
+      "target": "supersession",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test4",
+      "target": "decay",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test4",
+      "target": "pruning",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test5",
+      "target": "seed",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test5",
+      "target": "traversal",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test5",
+      "target": "context",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test6",
+      "target": "state",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test6",
+      "target": "base",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test6",
+      "target": "personas",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test7",
+      "target": "profiler",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test7",
+      "target": "dashboard",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test7",
+      "target": "logger",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test8",
+      "target": "harness",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test8",
+      "target": "analysis",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "test8",
+      "target": "plots",
+      "label": "verifies behavior",
+      "kind": "test"
+    },
+    {
+      "source": "fixtures",
+      "target": "test1",
+      "label": "controls live checks",
+      "kind": "support"
+    },
+    {
+      "source": "fixtures",
+      "target": "test2",
+      "label": "controls benchmark opt-in",
+      "kind": "support"
+    },
+    {
+      "source": "fixtures",
+      "target": "test3",
+      "label": "controls live checks",
+      "kind": "support"
+    },
+    {
+      "source": "pytest",
+      "target": "fixtures",
+      "label": "declares test markers",
+      "kind": "support"
+    },
+    {
+      "source": "env",
+      "target": "config",
+      "label": "template for private .env",
+      "kind": "support"
+    },
+    {
+      "source": "requirements",
+      "target": "client",
+      "label": "declares HTTPX dependency",
+      "kind": "support"
+    },
+    {
+      "source": "requirements",
+      "target": "schemas",
+      "label": "declares Pydantic dependency",
+      "kind": "support"
+    },
+    {
+      "source": "ignore",
+      "target": "sqlite",
+      "label": "exclude local database artifacts",
+      "kind": "support"
+    },
+    {
+      "source": "init-root",
+      "target": "init-network",
+      "label": "organizes package",
+      "kind": "support"
+    },
+    {
+      "source": "init-root",
+      "target": "init-storage",
+      "label": "organizes package",
+      "kind": "support"
+    },
+    {
+      "source": "init-root",
+      "target": "init-models",
+      "label": "organizes package",
+      "kind": "support"
+    },
+    {
+      "source": "init-root",
+      "target": "init-extraction",
+      "label": "organizes package",
+      "kind": "support"
+    },
+    {
+      "source": "init-network",
+      "target": "client",
+      "label": "organizes module",
+      "kind": "support"
+    },
+    {
+      "source": "init-storage",
+      "target": "graph",
+      "label": "organizes module",
+      "kind": "support"
+    },
+    {
+      "source": "init-storage",
+      "target": "database",
+      "label": "organizes module",
+      "kind": "support"
+    },
+    {
+      "source": "init-models",
+      "target": "schemas",
+      "label": "re-exports types",
+      "kind": "support"
+    },
+    {
+      "source": "init-extraction",
+      "target": "extractor",
+      "label": "re-exports APIs",
+      "kind": "support"
+    },
+    {
+      "source": "init-extraction",
+      "target": "parser",
+      "label": "re-exports APIs",
+      "kind": "support"
+    },
+    {
+      "source": "doc1",
+      "target": "test1",
+      "label": "documents verification",
+      "kind": "support"
+    },
+    {
+      "source": "doc2",
+      "target": "test2",
+      "label": "documents verification",
+      "kind": "support"
+    },
+    {
+      "source": "doc3",
+      "target": "test3",
+      "label": "documents verification",
+      "kind": "support"
+    },
+    {
+      "source": "readme",
+      "target": "logo",
+      "label": "displays local identity asset",
+      "kind": "support"
+    },
+    {
+      "source": "readme",
+      "target": "architecture-html",
+      "label": "links to interactive map",
+      "kind": "support"
+    },
+    {
+      "source": "architecture-html",
+      "target": "architecture-md",
+      "label": "companion narrative",
+      "kind": "support"
+    },
+    {
+      "source": "architecture-checks",
+      "target": "architecture-html",
+      "label": "verifies document interactions",
+      "kind": "support"
+    }
+  ],
+  "phases": [
+    {
+      "id": 1,
+      "name": "Local inference",
+      "color": "#087f8c",
+      "description": "Validated configuration and asynchronous Ollama requests."
+    },
+    {
+      "id": 2,
+      "name": "Graph storage",
+      "color": "#2860b5",
+      "description": "Durable entities, triples, transactions, and lexical search."
+    },
+    {
+      "id": 3,
+      "name": "Fact extraction",
+      "color": "#7851a9",
+      "description": "Raw messages become validated, source-grounded triples."
+    },
+    {
+      "id": 4,
+      "name": "Memory governance",
+      "color": "#ad641d",
+      "description": "Supersession and selective forgetting keep memory current."
+    },
+    {
+      "id": 5,
+      "name": "Context retrieval",
+      "color": "#8c4587",
+      "description": "Relevant neighborhoods become bounded prompt context."
+    },
+    {
+      "id": 6,
+      "name": "Agent workflow",
+      "color": "#46648e",
+      "description": "Planner, researcher, and verifier share persistent state."
+    },
+    {
+      "id": 7,
+      "name": "Observability",
+      "color": "#29786c",
+      "description": "Per-turn metrics, terminal monitoring, and CSV history."
+    },
+    {
+      "id": 8,
+      "name": "Controlled experiment",
+      "color": "#a34c5d",
+      "description": "Compare linear history with dynamic graph memory."
+    }
+  ],
+  "groups": [
+    {
+      "phase": 6,
+      "label": "ROLE EXECUTION",
+      "x": 365,
+      "y": 65,
+      "w": 675,
+      "h": 330
+    },
+    {
+      "phase": 1,
+      "label": "NETWORK & SETTINGS",
+      "x": 1045,
+      "y": 65,
+      "w": 335,
+      "h": 330
+    },
+    {
+      "phase": 1,
+      "label": "TWO LOCAL INFERENCE SERVICES",
+      "x": 1385,
+      "y": 65,
+      "w": 675,
+      "h": 190
+    },
+    {
+      "phase": 5,
+      "label": "RELEVANT CONTEXT · TARGET ≤ 1,000 TOKENS",
+      "x": 25,
+      "y": 465,
+      "w": 1015,
+      "h": 210
+    },
+    {
+      "phase": 3,
+      "label": "STRUCTURED EXTRACTION",
+      "x": 1045,
+      "y": 465,
+      "w": 1015,
+      "h": 210
+    },
+    {
+      "phase": 4,
+      "label": "CURRENT STATE & SELECTIVE FORGETTING",
+      "x": 25,
+      "y": 865,
+      "w": 1015,
+      "h": 210
+    },
+    {
+      "phase": 2,
+      "label": "TRANSACTIONAL LOCAL STORAGE",
+      "x": 1045,
+      "y": 865,
+      "w": 1015,
+      "h": 355
+    },
+    {
+      "phase": 7,
+      "label": "OBSERVATION, NOT CLOUD TELEMETRY",
+      "x": 25,
+      "y": 1265,
+      "w": 1015,
+      "h": 355
+    },
+    {
+      "phase": 8,
+      "label": "CONTROLLED A/B EXPERIMENT",
+      "x": 1045,
+      "y": 1265,
+      "w": 1015,
+      "h": 355
+    }
+  ],
+  "routes": {
+    "system": {
+      "title": "The finished project",
+      "text": "A task becomes agent turns, bounded context, structured facts, governed graph memory, and measurable results. All Python coordination and SQLite live on Node 1; Node 2 supplies local Ollama inference.",
+      "ids": []
+    },
+    "turn": {
+      "title": "One agent turn",
+      "text": "The controller retrieves memory, runs the selected role, extracts its new facts, applies governed persistence, records metrics, and advances the cycle. Integration through the controller is planned for Phase 6.",
+      "ids": [
+        "task",
+        "state",
+        "context",
+        "seed",
+        "traversal",
+        "base",
+        "personas",
+        "client",
+        "ollama1",
+        "ollama2",
+        "extractor",
+        "supersession",
+        "graph",
+        "database",
+        "profiler"
+      ]
+    },
+    "remember": {
+      "title": "Remember a fact",
+      "text": "The extractor requests JSON from a local model, the parser validates it, and the future controller submits accepted facts through supersession to transactional storage. Extraction currently returns graphs without writing them.",
+      "ids": [
+        "state",
+        "extractor",
+        "client",
+        "ollama2",
+        "parser",
+        "schemas",
+        "supersession",
+        "graph",
+        "database",
+        "ddl",
+        "sqlite"
+      ]
+    },
+    "recall": {
+      "title": "Recall relevant context",
+      "text": "The future assembler finds lexical seeds, expands an active 1–2 hop neighborhood inside SQLite, and formats no more than 1,000 graph-context tokens for the active agent.",
+      "ids": [
+        "state",
+        "context",
+        "seed",
+        "traversal",
+        "graph",
+        "database",
+        "sqlite",
+        "base"
+      ]
+    },
+    "experiment": {
+      "title": "Measure the hypothesis",
+      "text": "Run the same 15–20 turn scenario under linear history (A) and graph memory (B), log the measurements, then compare tokens, latency, and factual consistency. Performance benefits remain an empirical question.",
+      "ids": [
+        "harness",
+        "state",
+        "profiler",
+        "logger",
+        "csv",
+        "analysis",
+        "plots",
+        "figures",
+        "dashboard"
+      ]
+    }
+  }
+}</script>
+<script>
+'use strict';
+const DATA=JSON.parse(document.getElementById('architecture-data').textContent);
+const byId=new Map(DATA.nodes.map(n=>[n.id,n]));
+const phases=new Map(DATA.phases.map(p=>[p.id,p]));
+const $=id=>document.getElementById(id);
+const NS='http://www.w3.org/2000/svg';
+const WIDTH=280,HEIGHT=112;
+let selected=null,phaseFocus=null,showSupport=false,status='all',query='',route='system';
+let camera={x:0,y:0,scale:1}, viewport={w:1,h:1},drag=null;
+const nodeEls=new Map(),edgeEls=[],groupEls=[];
+function svg(tag,attrs={},text){const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));if(text!==undefined)e.textContent=text;return e;}
+function html(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;}
+function statusLabel(n){return n.status==='implemented'?'IMPLEMENTED':n.status==='planned'?'PLANNED':'SERVICE / ARTIFACT';}
+function isPlanned(e){return byId.get(e.source).status==='planned'||byId.get(e.target).status==='planned';}
+function resourceInStatus(n){return n.status==='resource'&&(status==='all'||(status==='implemented'?n.phase<=3:n.phase>=4));}
+function visible(n){return (!n.support||showSupport)&&(status==='all'||n.status===status||resourceInStatus(n));}
+function matches(n){return !query||[n.label,n.path,n.summary,n.description,n.notes,...n.interfaces].join(' ').toLowerCase().includes(query);}
+function relatedIds(){if(selected){return new Set([selected,...DATA.edges.filter(e=>e.source===selected||e.target===selected).flatMap(e=>[e.source,e.target])]);}if(phaseFocus)return new Set(DATA.nodes.filter(n=>n.phase===phaseFocus).map(n=>n.id));const ids=DATA.routes[route].ids;return ids.length?new Set(ids):null;}
+function center(n){return {x:n.x+WIDTH/2,y:n.y+HEIGHT/2};}
+function pathFor(e,i){const a=byId.get(e.source),b=byId.get(e.target),ac=center(a),bc=center(b);const dir=bc.x>=ac.x?1:-1;
+ if(a.y===b.y&&Math.abs(a.x-b.x)<=345)return `M${dir>0?a.x+WIDTH:a.x} ${ac.y} H${dir>0?b.x:b.x+WIDTH}`;
+ if(a.y===b.y){const y=a.y-23-(i%4)*9;return `M${ac.x} ${a.y} V${y} H${bc.x} V${b.y}`;}
+ if(a.x===b.x){const gutter=a.x+WIDTH+20+(i%2)*7;return `M${a.x+WIDTH} ${ac.y} H${gutter} V${bc.y} H${b.x+WIDTH}`;}
+ const sx=dir>0?a.x+WIDTH:a.x,tx=dir>0?b.x:b.x+WIDTH,sxg=sx+dir*(16+(i%2)*6),txg=tx-dir*(16+(i%2)*6),channel=a.y+HEIGHT+24+(i%4)*9;
+ return `M${sx} ${ac.y} H${sxg} V${channel} H${txg} V${bc.y} H${tx}`;
+}
+function buildMap(){
+ const scene=$('scene');
+ for(const group of DATA.groups){const g=svg('g',{class:'group'}),p=phases.get(group.phase);g.append(svg('rect',{x:group.x,y:group.y,width:group.w,height:group.h,rx:14,fill:p.color,'fill-opacity':.035,stroke:p.color,'stroke-opacity':.18,'stroke-dasharray':group.phase>=4?'6 5':'none'}));g.append(svg('text',{x:group.x+18,y:group.y+27,class:'group-title',fill:p.color},`${String(group.phase).padStart(2,'0')}  ${group.label}`));scene.append(g);groupEls.push({g,phase:group.phase});}
+ const supportTitle=svg('g',{id:'support-title'});supportTitle.append(svg('text',{x:60,y:1730,class:'support-title'},'SUPPORTING FILES & VERIFICATION'));supportTitle.append(svg('text',{x:60,y:1756,class:'support-subtitle'},'Tests, package boundaries, configuration, and documentation. These are not steps in the runtime agent loop.'));scene.append(supportTitle);
+ const edgeGroup=svg('g');scene.append(edgeGroup);
+ DATA.edges.forEach((e,i)=>{const group=svg('g'),muted=['observe','support','test'].includes(e.kind),path=svg('path',{d:pathFor(e,i),class:'edge',fill:'none',stroke:'#8198a6','stroke-width':1.7,'stroke-dasharray':muted?'2 6':isPlanned(e)?'8 6':'none','marker-end':'url(#arrow)'});path.append(svg('title',{},`${byId.get(e.source).label} → ${byId.get(e.target).label}: ${e.label}${isPlanned(e)?' (planned integration)':''}`));const label=svg('text',{class:'edge-label',hidden:''},e.label);label.style.display='none';group.append(path,label);edgeGroup.append(group);edgeEls.push({e,group,path,label,positioned:false});});
+ for(const n of DATA.nodes){const color=phases.get(n.phase).color,g=svg('g',{class:'component',transform:`translate(${n.x} ${n.y})`,tabindex:0,role:'button','data-id':n.id,'aria-label':`${n.path||n.label}. ${statusLabel(n)}. ${n.summary}`});g.append(svg('title',{},`${n.path||n.label}\n${n.summary}\n${statusLabel(n)}`));g.append(svg('rect',{class:'card',width:WIDTH,height:HEIGHT,rx:9,fill:'#fff',stroke:n.status==='planned'?'#c9c6c1':'#cedce2','stroke-width':1.5,'stroke-dasharray':n.status==='planned'?'6 4':'none'}));g.append(svg('rect',{x:0,y:18,width:4,height:HEIGHT-36,rx:2,fill:color}));g.append(svg('text',{x:17,y:24,class:'card-status',fill:n.status==='planned'?'#a46a2b':n.status==='implemented'?'#317e65':'#74858f'},`${n.support?'SUPPORT':`PHASE ${n.phase}`} · ${n.status==='resource'?'LOCAL / LOGICAL':n.status.toUpperCase()}`));
+ const title=svg('text',{x:17,y:54,class:'card-title'},n.label);if(n.label.length>22)title.style.fontSize='16px';else if(n.label.length>19)title.style.fontSize='19px';g.append(title);
+ const words=n.summary.split(' ');let line='',lines=[];for(const word of words){if((line+' '+word).trim().length>34){lines.push(line);line=word;}else line=(line+' '+word).trim();}if(line)lines.push(line);lines.slice(0,2).forEach((text,i)=>g.append(svg('text',{x:17,y:77+i*18,class:'card-subtitle'},text)));
+ g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();selectNode(n.id,true);}});scene.append(g);nodeEls.set(n.id,g);}
+}
+function render(){
+ const related=relatedIds();let shown=0;
+ for(const n of DATA.nodes){const e=nodeEls.get(n.id),shownHere=visible(n);e.style.display=shownHere?'':'none';if(shownHere)shown++;const dim=(!matches(n))||(related&&!related.has(n.id));e.classList.toggle('dim',!!dim);e.classList.toggle('selected',selected===n.id);e.classList.toggle('related',!!related&&related.has(n.id));e.setAttribute('aria-pressed',String(selected===n.id));}
+ for(const {e,group,path,label} of edgeEls){const a=byId.get(e.source),b=byId.get(e.target),show=visible(a)&&visible(b);group.style.display=show?'':'none';const adjacent=selected&&(e.source===selected||e.target===selected);const highlighted=!!related&&related.has(e.source)&&related.has(e.target)&&matches(a)&&matches(b);path.classList.toggle('dim',!!related&&!highlighted||!!query&&(!matches(a)||!matches(b)));path.classList.toggle('active',!!highlighted);path.setAttribute('stroke',highlighted?'#087f8c':'#8198a6');path.setAttribute('marker-end',highlighted?'url(#arrow-active)':'url(#arrow)');label.style.display='none';}
+ for(const {g,phase} of groupEls)g.classList.toggle('dim',!!phaseFocus&&phaseFocus!==phase);
+ $('support-title').style.display=showSupport?'':'none';
+ $('count').textContent=`${shown} visible / ${DATA.nodes.length} components`;
+ $('support').setAttribute('aria-pressed',String(showSupport));
+ for(const b of $('phases').children)b.setAttribute('aria-pressed',String(Number(b.dataset.phase)===phaseFocus));
+ if(query){$('map-title').textContent='Find a component';const total=DATA.nodes.filter(matches).length;$('map-description').textContent=`${total} matching component${total===1?'':'s'}. Press Enter to focus the first match, or select a result in All components.`;}
+ else if(phaseFocus){const p=phases.get(phaseFocus);$('map-title').textContent=`Phase ${p.id} · ${p.name}`;$('map-description').textContent=p.description;}
+ else{$('map-title').textContent=DATA.routes[route].title;$('map-description').textContent=DATA.routes[route].text;}
+ positionLabels();renderInventory();
+}
+function positionLabels(){
+ const occupied=DATA.nodes.filter(visible).map(n=>({x:n.x-7,y:n.y-7,w:WIDTH+14,h:HEIGHT+14}));
+ for(const g of DATA.groups)occupied.push({x:g.x,y:g.y+7,w:g.w,h:32});
+ const overlaps=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+ for(const item of edgeEls){const {e,group,path,label}=item;item.positioned=false;label.style.display='none';if(group.style.display==='none'||!selected||(e.source!==selected&&e.target!==selected))continue;
+  const w=e.label.length*7.1+8;
+  for(const fraction of [.5,.35,.65,.2,.8]){const p=path.getPointAtLength(path.getTotalLength()*fraction),box={x:p.x-w/2,y:p.y-23,w,h:18};if(occupied.some(other=>overlaps(box,other)))continue;label.setAttribute('x',p.x);label.setAttribute('y',p.y-8);label.setAttribute('text-anchor','middle');item.positioned=true;occupied.push(box);if(camera.scale>=.5)label.style.display='';break;}
+ }
+}
+function applyCamera(){camera.scale=Math.min(2.6,Math.max(.18,camera.scale));$('scene').setAttribute('transform',`translate(${camera.x} ${camera.y}) scale(${camera.scale})`);$('zoom-label').value=`${Math.round(camera.scale*100)}%`;$('zoom-label').textContent=`${Math.round(camera.scale*100)}%`;$('zoom-slider').value=Math.round(camera.scale*100);for(const {positioned,label} of edgeEls)label.style.display=positioned&&camera.scale>=.5?'':'none';}
+function zoomAt(scale,x=viewport.w/2,y=viewport.h/2){const next=Math.min(2.6,Math.max(.18,scale));camera.x=x-(x-camera.x)*next/camera.scale;camera.y=y-(y-camera.y)*next/camera.scale;camera.scale=next;applyCamera();}
+function fitNodes(items,cap=1.1){if(!items.length)return;let minX=Math.min(...items.map(n=>n.x))-35,minY=Math.min(...items.map(n=>n.y))-45,maxX=Math.max(...items.map(n=>n.x+WIDTH))+35,maxY=Math.max(...items.map(n=>n.y+HEIGHT))+35;camera.scale=Math.min(cap,(viewport.w-36)/(maxX-minX),(viewport.h-35)/(maxY-minY));camera.scale=Math.max(.18,camera.scale);camera.x=(viewport.w-(maxX-minX)*camera.scale)/2-minX*camera.scale;camera.y=(viewport.h-(maxY-minY)*camera.scale)/2-minY*camera.scale;applyCamera();}
+function fit(){const ids=relatedIds();fitNodes(DATA.nodes.filter(n=>visible(n)&&matches(n)&&(!ids||ids.has(n.id))));}
+function focusNode(n){const c=center(n);camera.scale=Math.max(.85,Math.min(1.2,(viewport.w-60)/(WIDTH+80)));camera.x=viewport.w/2-c.x*camera.scale;camera.y=viewport.h/2-c.y*camera.scale;applyCamera();}
+function tab(name){const details=name==='details';$('details').hidden=!details;$('inventory').hidden=details;$('details-tab').setAttribute('aria-selected',String(details));$('inventory-tab').setAttribute('aria-selected',String(!details));}
+function section(parent,label,content){const box=html('section','detail-section');box.append(html('h3','',label));if(typeof content==='string')box.append(html('p','',content));else box.append(content);parent.append(box);}
+function renderDetails(n){const root=$('details');root.replaceChildren();if(!n){const kicker=html('div','detail-kicker','READ THE SYSTEM, THEN THE CODE');root.append(kicker,html('h2','','Local agents. Persistent memory.'),html('p','detail-description','DynaGraph is designed to replace repeated full-history context with a small, current graph of facts. The atlas shows the finished eight-phase design and the files that exist today.'));
+ const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','Phases 1–3 are implemented. Future wiring is dashed. Planned performance targets and benefits are not measured results. Click any card, search a path, or explore All components.'));return;}
+ const p=phases.get(n.phase),kicker=html('div','detail-kicker');kicker.append(html('span','',n.support?'SUPPORTING FILE':`PHASE ${n.phase} · ${p.name}`),html('span',`badge ${n.status}`,statusLabel(n)));root.append(kicker,html('h2','',n.label));
+ if(n.path){const path=html('div','file-path',n.path);root.append(path);if(n.status==='implemented'){const source=html('a','file-path','Open source file ↗');source.href='../'+n.path;source.target='_blank';source.rel='noopener';root.append(source);}}
+ root.append(html('p','detail-description',n.description));section(root,'Inputs',n.inputs);section(root,'Outputs',n.outputs);
+ if(n.interfaces.length){const apis=html('div');for(const method of n.interfaces)apis.append(html('code','api',method));section(root,'Interfaces / records',apis);}root.append(html('div','note',n.notes));
+ const incoming=DATA.edges.filter(e=>e.target===n.id),outgoing=DATA.edges.filter(e=>e.source===n.id);
+ for(const [title,list,inbound] of [['Used / reached by',incoming,true],['Calls / connects to',outgoing,false]]){if(!list.length)continue;const content=html('div');for(const e of list){const other=byId.get(inbound?e.source:e.target),button=html('button','connection');button.append(html('strong','',`${inbound?'←':'→'} ${other.label}`),html('small','',`${e.label}${isPlanned(e)?' · planned':''}`));button.addEventListener('click',()=>selectNode(other.id,true));content.append(button);}section(root,title,content);}
+ root.scrollTop=0;
+}
+function selectNode(id,focus=true){const n=byId.get(id);if(!n)return;if(n.support)showSupport=true;if(status!=='all'&&!visible(n)){status='all';$('status').value='all';}selected=id;phaseFocus=null;query='';$('search').value='';renderDetails(n);tab('details');render();if(focus)focusNode(n);history.replaceState(null,'','#'+encodeURIComponent(id));$('announcer').textContent=`${n.label}, ${statusLabel(n)}, ${n.summary}`;}
+function renderInventory(){const root=$('inventory');root.replaceChildren();const matchesAll=DATA.nodes.filter(n=>matches(n)&&(status==='all'||n.status===status||resourceInStatus(n)));root.append(html('p','inventory-intro',`${matchesAll.length} components. Includes files hidden by the supporting-files toggle. Select a row to reveal and inspect it.`));const groups=[['Core modules',n=>n.kind==='source'],['Local services / artifacts',n=>n.kind==='resource'],['Automated verification',n=>n.kind==='test'],['Packaging, setup & documentation',n=>n.kind==='support']];for(const [title,test] of groups){const items=matchesAll.filter(test);if(!items.length)continue;root.append(html('h3','file-group',title));for(const n of items){const b=html('button','file-row'+(n.id===selected?' active':''));const line=html('span','file-label');line.append(html('span','',n.label),html('span',`badge ${n.status}`,n.status==='implemented'?'BUILT':n.status==='planned'?'PLAN':'LOCAL'));b.append(line,html('small','',n.path||n.summary));b.addEventListener('click',()=>selectNode(n.id,true));root.append(b);}}if(!matchesAll.length)root.append(html('p','empty-state','No matching files. Try a module name, responsibility, phase, or interface.'));}
+function reset(){selected=null;phaseFocus=null;route='system';status='all';query='';showSupport=false;$('route').value=route;$('status').value=status;$('search').value='';history.replaceState(null,'',location.pathname+location.search);renderDetails(null);render();fit();}
+function localPoint(e){const rect=$('map').getBoundingClientRect();return{x:e.clientX-rect.left,y:e.clientY-rect.top};}
+function exportSvg(){const clone=$('map').cloneNode(true);clone.removeAttribute('tabindex');clone.setAttribute('xmlns',NS);clone.setAttribute('role','img');clone.setAttribute('aria-label','DynaGraph architecture snapshot');const visibleNodes=DATA.nodes.filter(visible),minX=Math.min(...visibleNodes.map(n=>n.x))-45,minY=35,maxX=Math.max(...visibleNodes.map(n=>n.x+WIDTH))+45,maxY=Math.max(...visibleNodes.map(n=>n.y+HEIGHT))+50;clone.setAttribute('viewBox',`${minX} ${minY} ${maxX-minX} ${maxY-minY}`);clone.setAttribute('width',maxX-minX);clone.setAttribute('height',maxY-minY);clone.querySelector('#scene').removeAttribute('transform');clone.querySelector('#background').setAttribute('fill','#f3f6f7');const style=svg('style');style.textContent=Array.from(document.styleSheets[0].cssRules).filter(r=>r.selectorText&&r.selectorText.includes('svg .')).map(r=>r.cssText).join('\n');clone.prepend(style);for(const node of clone.querySelectorAll('[tabindex]'))node.removeAttribute('tabindex');const blob=new Blob([new XMLSerializer().serializeToString(clone)],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),a=html('a');a.href=url;a.download='dynagraph-architecture.svg';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);$('announcer').textContent='Architecture exported as SVG.';}
+
+buildMap();
+for(const p of DATA.phases){const button=html('button','phase-btn');button.dataset.phase=p.id;button.style.setProperty('--phase',p.color);button.setAttribute('aria-pressed','false');button.append(html('span','phase-number',String(p.id).padStart(2,'0')),document.createTextNode(p.name));button.addEventListener('click',()=>{phaseFocus=phaseFocus===p.id?null:p.id;selected=null;query='';$('search').value='';route='system';$('route').value=route;if(phaseFocus&&status!=='all'){status='all';$('status').value=status;}renderDetails(null);render();fit();});$('phases').append(button);}
+$('search').addEventListener('input',e=>{query=e.target.value.trim().toLowerCase();selected=null;phaseFocus=null;render();tab('inventory');});
+$('search').addEventListener('keydown',e=>{if(e.key==='Enter'){const match=DATA.nodes.find(matches);if(match)selectNode(match.id,true);}if(e.key==='Escape'){query='';e.target.value='';render();}});
+$('support').addEventListener('click',()=>{showSupport=!showSupport;if(!showSupport&&selected&&byId.get(selected).support){selected=null;renderDetails(null);}render();fit();});
+$('status').addEventListener('change',e=>{status=e.target.value;selected=null;phaseFocus=null;renderDetails(null);render();fit();});
+$('route').addEventListener('change',e=>{route=e.target.value;selected=null;phaseFocus=null;query='';$('search').value='';status='all';$('status').value=status;renderDetails(null);render();fit();});
+$('zoom-in').addEventListener('click',()=>zoomAt(camera.scale*1.25));$('zoom-out').addEventListener('click',()=>zoomAt(camera.scale/1.25));$('zoom-slider').addEventListener('input',e=>zoomAt(Number(e.target.value)/100));$('fit').addEventListener('click',fit);$('reset').addEventListener('click',reset);$('export').addEventListener('click',exportSvg);$('details-tab').addEventListener('click',()=>tab('details'));$('inventory-tab').addEventListener('click',()=>tab('inventory'));
+$('map').addEventListener('wheel',e=>{e.preventDefault();const pt=localPoint(e);zoomAt(camera.scale*Math.exp(-e.deltaY*.0015),pt.x,pt.y);},{passive:false});
+$('map').addEventListener('pointerdown',e=>{if(e.button!==0)return;const pt=localPoint(e);drag={x:pt.x,y:pt.y,startX:camera.x,startY:camera.y,moved:false,id:e.target.closest('.component')?.dataset.id};$('map').setPointerCapture(e.pointerId);});
+$('map').addEventListener('pointermove',e=>{if(!drag)return;const pt=localPoint(e),dx=pt.x-drag.x,dy=pt.y-drag.y;if(Math.hypot(dx,dy)>4)drag.moved=true;if(drag.moved){camera.x=drag.startX+dx;camera.y=drag.startY+dy;applyCamera();$('map').classList.add('dragging');}});
+$('map').addEventListener('pointerup',e=>{if(!drag)return;const d=drag;drag=null;$('map').classList.remove('dragging');if($('map').hasPointerCapture(e.pointerId))$('map').releasePointerCapture(e.pointerId);if(!d.moved&&d.id)selectNode(d.id,false);});
+$('map').addEventListener('pointercancel',()=>{drag=null;$('map').classList.remove('dragging');});
+$('map').addEventListener('keydown',e=>{const actions={'+':()=>zoomAt(camera.scale*1.25),'=':()=>zoomAt(camera.scale*1.25),'-':()=>zoomAt(camera.scale/1.25),'f':fit,'F':fit,'Escape':reset,'ArrowLeft':()=>{camera.x+=65;applyCamera();},'ArrowRight':()=>{camera.x-=65;applyCamera();},'ArrowUp':()=>{camera.y+=65;applyCamera();},'ArrowDown':()=>{camera.y-=65;applyCamera();}};if(actions[e.key]){e.preventDefault();actions[e.key]();}});
+let initial=true;new ResizeObserver(()=>{const rect=$('canvas').getBoundingClientRect(),old=viewport;viewport={w:rect.width,h:rect.height};$('map').setAttribute('viewBox',`0 0 ${viewport.w} ${viewport.h}`);if(initial){initial=false;renderDetails(null);render();let id='';try{id=decodeURIComponent(location.hash.slice(1));}catch{}if(byId.has(id))selectNode(id,true);else fit();}else{camera.x+=(viewport.w-old.w)/2;camera.y+=(viewport.h-old.h)/2;applyCamera();}}).observe($('canvas'));
+</script>
+</body>
+</html>
