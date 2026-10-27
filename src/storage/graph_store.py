@@ -103,7 +103,7 @@ class GraphStore:
 
     Names are unique after casefolding and whitespace normalization. Properties
     replace the complete JSON object on update. Physical entity deletion cascades
-    to incident triples; governance/soft-pruning algorithms are separate phases.
+    to incident triples; use GovernedWriter and Pruner for supersession and soft pruning.
     """
 
     def __init__(self, database: Database) -> None:

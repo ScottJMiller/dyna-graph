@@ -38,7 +38,7 @@ def test_schema_indexes_and_triggers(database):
         assert all(objects[name] == "trigger" for name in (
             "entities_fts_insert", "entities_fts_delete", "entities_fts_update",
         ))
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
         assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 

@@ -1,4 +1,4 @@
--- Schema version 1: local entities, directed triples, and synchronized FTS5.
+-- Schema version 2 (additive upgrade from version 1): local entities, directed triples, and synchronized FTS5.
 CREATE TABLE IF NOT EXISTS entities (
     id INTEGER PRIMARY KEY AUTOINCREMENT CHECK (id > 0),
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
@@ -52,3 +52,26 @@ CREATE TRIGGER IF NOT EXISTS entities_fts_update AFTER UPDATE OF name, canonical
     INSERT INTO fts_entities(rowid, name, canonical_name, description)
     VALUES (new.id, new.name, new.canonical_name, new.description);
 END;
+
+-- Access metadata is populated only when memory is actually used. For legacy
+-- entities without a row, governance starts from created_at, turn 0, count 0.
+CREATE TABLE IF NOT EXISTS entity_memory (
+    entity_id INTEGER PRIMARY KEY REFERENCES entities(id) ON DELETE CASCADE,
+    last_access_at REAL NOT NULL CHECK (last_access_at >= 0 AND last_access_at <= 1.7976931348623157e308),
+    last_access_turn INTEGER NOT NULL CHECK (last_access_turn >= 0),
+    access_count INTEGER NOT NULL CHECK (access_count >= 0)
+) STRICT;
+
+-- Fact-level temporal edges. Endpoints reference triples, never entity IDs.
+-- A repeated SPO can be reactivated; distinct event IDs preserve reversals.
+CREATE TABLE IF NOT EXISTS supersession_edges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    newer_triple_id INTEGER NOT NULL REFERENCES triples(id) ON DELETE CASCADE,
+    older_triple_id INTEGER NOT NULL REFERENCES triples(id) ON DELETE CASCADE,
+    relation TEXT NOT NULL DEFAULT 'SUPERSEDES' CHECK (relation = 'SUPERSEDES'),
+    asserted_at REAL NOT NULL CHECK (asserted_at >= 0 AND asserted_at <= 1.7976931348623157e308),
+    turn INTEGER NOT NULL CHECK (turn >= 0),
+    CHECK (newer_triple_id <> older_triple_id)
+) STRICT;
+CREATE INDEX IF NOT EXISTS idx_supersession_newer ON supersession_edges(newer_triple_id, id);
+CREATE INDEX IF NOT EXISTS idx_supersession_older ON supersession_edges(older_triple_id, id);

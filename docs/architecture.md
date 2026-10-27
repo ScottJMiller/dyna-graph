@@ -16,6 +16,10 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 Visit **http://127.0.0.1:8765/docs/architecture.html**. Stop the server with Ctrl+C.
 
+Use the Dark mode / Light mode toggle to change the entire atlas, including the
+canvas, cards, inspector, and SVG exports. The first visit follows the browser
+preference; an explicit choice is saved locally when browser storage is available.
+
 Use the mouse wheel or +/− buttons to zoom and drag to pan. Click a component for
 its purpose, inputs, outputs, interfaces, constraints, and incoming/outgoing
 connections. Search includes hidden supporting files; selecting a result reveals
@@ -26,7 +30,13 @@ diagram of the current visible component set. Reset first for an unhighlighted
 whole-system export; enable Supporting files for the complete inventory.
 
 The map describes the **finished target design**, while its status labels reflect
-the current checkout: phases **1–3 exist** and phases **4–8 are planned**.
+the current checkout: phases **1–4 exist** and phases **5–8 are planned**.
+Components have wider gutters and connectors use distinct perimeter ports. An
+orthogonal router reserves separate tracks and keeps lines out of every card.
+Parallel line sections cannot overlap; perpendicular crossings use a background
+halo to distinguish one passing over another. Normal and highlighted lines are
+50% thicker than in the original atlas.
+
 Connections touching planned modules describe intended integration; they are not
 claims that those calls already execute. Packaging and documentation connections
 indicate organization or use, rather than an execution sequence. Paths/interfaces
@@ -113,7 +123,7 @@ timestamps. FTS5 indexes entity names and descriptions for lexical prefix lookup
 Foreign keys preserve relationship integrity, and triggers update FTS in the
 same transaction as entity changes.
 
-For a predicate explicitly configured as single-valued, a future update such as
+For a predicate explicitly configured as single-valued, an update such as
 `Project Cedar → primary_database → PostgreSQL` can supersede an earlier
 `Project Cedar → primary_database → SQLite`. Retrieval should use the active
 value while preserving the old fact's provenance. This policy must not treat
@@ -121,12 +131,22 @@ every multi-object relationship as a contradiction.
 
 Current identity handling normalizes whitespace and case; it does not infer
 arbitrary aliases or entity equivalence. Likewise, current `GraphStore.delete_*`
-methods physically delete data; they are different from planned soft-pruning.
-Status columns already exist, but supersession and decay algorithms do not.
+methods physically delete data; `Pruner` instead marks eligible entities and their
+active facts `PRUNED`. Pinned entities and the endpoints of their active facts are
+protected. Raw CRUD bypasses governance; use `GovernedWriter` for accepted facts.
 
-The single-valued-predicate policy, representation of `SUPERSEDES` provenance,
-decay formulas/weights, and persisted access/turn metadata remain Phase 4 design
-work. Token accounting and precise retrieval selection remain Phase 5 work.
+Schema version 2 adds `entity_memory` for access counts/time/turns and
+`supersession_edges` for explicit fact-to-fact `SUPERSEDES` events. Reasserting
+an older SPO reuses its triple row, while ordered event IDs retain replacement
+history. These provenance edges are separate from semantic entity edges.
+
+Retention uses weighted recency, time-faded frequency, active incident-edge
+centrality, and elapsed-turn decay. The pruner scans bounded pages and only
+considers nodes with at most one active incident fact in that pass. The daemon
+must be started explicitly and receives turns from its caller. See the
+[Phase 4 protocol](testing/phase4.md) for formulas, default parameters, pin
+semantics, access recording, and backup/upgrade instructions. Retrieval/token
+accounting remains Phase 5 work; controller integration remains Phase 6 work.
 
 ## How the experiment evaluates the system
 
@@ -154,7 +174,7 @@ experiment is intended to test those benefits rather than assume them.
 | Extraction | Implemented limits of 2,000 input characters, 16 triples, 256 characters per label, and at most one corrective generation. |
 | JSON safety | Implemented bounded parsing with explicit errors; output is never evaluated as Python/code or silently converted to a successful empty graph. |
 | Semantic quality | Source-label checks help reject unrelated endpoints; schema validity does not establish relation truth or completeness. |
-| Governance | Planned four-factor scoring, protected pins, soft-pruning, and write-time single-valued supersession. |
+| Governance | Implemented four-factor scoring, persisted usage, protected pins and active pinned facts, bounded soft-pruning, and atomic single-valued supersession with fact-level provenance. |
 | Retrieval | Planned 1–2 hop active traversal, ≤1,000 graph-context tokens, and a <5 ms benchmark target. |
 | Insert latency | Existing storage protocol checks a <1 ms median for individually committed inserts on the storage host. Hardware/load affect results. |
 | Experiment | Planned comparison, not existing measurements or a proven complexity claim. |
@@ -182,7 +202,7 @@ metadata beyond the specified deliverables.
 | --- | --- | --- |
 | [src/storage/graph_store.py](../src/storage/graph_store.py) | Implemented | Expose the property graph as Python CRUD operations. Canonicalize entity names and predicates, group mutations in transactions, provide literal prefix search, and queue atomic async writes. |
 | [src/storage/database.py](../src/storage/database.py) | Implemented | Initialize the schema and manage a bounded pool with WAL, foreign keys, busy timeouts, FULL synchronization, nested savepoints, and read snapshots. Queue short sync callbacks off the event loop. |
-| [src/storage/schema.sql](../src/storage/schema.sql) | Implemented | Define schema version 1: entities, directed triples, uniqueness/foreign-key constraints, relationship indexes, FTS5 external content, and synchronous FTS triggers. |
+| [src/storage/schema.sql](../src/storage/schema.sql) | Implemented | Define schema version 2: entities, directed triples, usage metadata, fact-level supersession events, constraints/indexes, FTS5, and synchronous FTS triggers. Preserve version 1 data with an additive upgrade. |
 | [tests/test_phase2_storage.py](../tests/test_phase2_storage.py) | Implemented | Schema/CRUD/transactions/FTS/concurrency, plus an opt-in durable-insert benchmark. |
 | [src/storage/__init__.py](../src/storage/__init__.py) | Implemented | Identify the embedded graph-storage package; importing this marker does not open a database. |
 
@@ -201,10 +221,11 @@ metadata beyond the specified deliverables.
 
 | File | Status | Responsibility |
 | --- | --- | --- |
-| `src/governance/supersession.py` | Planned | Before writing a new fact for a single-valued predicate, detect the old value, mark the previous fact SUPERSEDED, and preserve explicit SUPERSEDES provenance atomically. |
-| `src/governance/decay.py` | Planned | Compute a composite retention score from recency, frequency, graph centrality, and turn-based decay. Supply deterministic scores for pruning decisions. |
-| `src/governance/pruning.py` | Planned | Run periodic maintenance, obtain decay scores, protect pinned entities, and soft-inactivate eligible leaf memory below the pruning threshold. |
-| `tests/test_phase4_governance.py` | Planned | Planned deterministic supersession, protection, and decay checks. |
+| [src/governance/supersession.py](../src/governance/supersession.py) | Implemented | Before writing a new fact for a single-valued predicate, detect the old value, mark the previous fact SUPERSEDED, and preserve explicit SUPERSEDES provenance atomically. |
+| [src/governance/decay.py](../src/governance/decay.py) | Implemented | Compute a composite retention score from recency, frequency, graph centrality, and turn-based decay. Supply deterministic scores for pruning decisions. |
+| [src/governance/pruning.py](../src/governance/pruning.py) | Implemented | Run periodic maintenance, obtain decay scores, protect pinned entities, and soft-inactivate eligible leaf memory below the pruning threshold. |
+| [tests/test_phase4_governance.py](../tests/test_phase4_governance.py) | Implemented | Deterministic scoring, supersession/reversals, pins, rollback, migration, bounded maintenance, and async lifecycle checks. |
+| [src/governance/__init__.py](../src/governance/__init__.py) | Implemented | Export retention, governed write, and pruning APIs; no services start on import. |
 
 ### Phase 5: Context retrieval
 
@@ -248,17 +269,19 @@ metadata beyond the specified deliverables.
 | --- | --- |
 | [tests/conftest.py](../tests/conftest.py) | Add --run-lan, --lan-node, and --run-storage-benchmark flags; skip external/hardware-dependent checks unless explicitly selected. |
 | [pytest.ini](../pytest.ini) | Set tests/ discovery, strict markers, and the LAN/storage benchmark marker declarations. |
-| [.env.example](../.env.example) | Provide illustrative private LAN addresses, per-node model/thread settings, local database settings, and HTTP budgets. Copy and edit as a private .env. |
+| [.env.example](../.env.example) | Provide illustrative private LAN addresses, per-node model/thread settings, local database settings, HTTP budgets, and governance defaults. Copy and edit as a private .env. |
 | [requirements.txt](../requirements.txt) | Pin Pydantic, pydantic-settings, HTTPX, pytest, Rich, and python-dotenv for reproducible installation. |
 | [.gitignore](../.gitignore) | Exclude private configuration, local databases and WAL sidecars, environments, test artifacts, and local reference notes. |
 | [README.md](../README.md) | Explain the public setup, current feature status, examples, and verification entry points. |
 | [docs/testing/phase1.md](../docs/testing/phase1.md) | Document generic setup, live-node prerequisites, exact test commands, and expected diagnostics. |
 | [docs/testing/phase2.md](../docs/testing/phase2.md) | Document SQLite capability checks, isolated CRUD, durable-insert benchmarking, and lifecycle contracts. |
 | [docs/testing/phase3.md](../docs/testing/phase3.md) | Document parser smoke checks, six live extraction cases, resource limits, and error recovery. |
+| [docs/testing/phase4.md](../docs/testing/phase4.md) | Document governance formulas, offline tests, reproducible smoke output, daemon lifecycle, and safe schema upgrades. |
 | [dynagraph-logo.png](../dynagraph-logo.png) | The local image displayed by the project README; it has no runtime inference or storage role. |
 | [docs/architecture.html](../docs/architecture.html) | This standalone offline map: pan/zoom, search, phase focus, module details, connections, and SVG export. |
 | [docs/architecture.md](../docs/architecture.md) | A text and Mermaid companion covering the finished workflow, all specified source components, and current implementation boundaries. |
 | [docs/testing/architecture.md](../docs/testing/architecture.md) | Manual offline browser, interaction, source-coverage, and privacy checks for this documentation artifact. |
+| [docs/testing/architecture-routing.mjs](../docs/testing/architecture-routing.mjs) | Optional Node.js geometry checks for unique ports, card avoidance, and separated connector tracks. |
 
 ## Keep the map accurate
 

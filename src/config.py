@@ -64,6 +64,24 @@ class Settings(BaseSettings):
     ollama_health_timeout_seconds: float = Field(default=10, gt=0, le=120)
     ollama_inference_timeout_seconds: float = Field(default=300, gt=0, le=1800)
 
+    # Domain-specific single-value policy; JSON array in .env, empty by default.
+    single_valued_predicates: tuple[str, ...] = ()
+    pruning_threshold: float = Field(default=0.2, ge=0, le=1)
+    pruning_batch_size: int = Field(default=100, ge=1, le=1000)
+    pruning_interval_seconds: float = Field(default=60, gt=0, le=86400)
+    decay_recency_half_life_seconds: float = Field(default=86400, gt=0, le=31536000)
+    decay_turn_half_life: float = Field(default=10, gt=0, le=1_000_000)
+
+    @field_validator("single_valued_predicates")
+    @classmethod
+    def normalize_single_valued_predicates(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) > 100:
+            raise ValueError("at most 100 single-valued predicates are supported")
+        normalized = tuple(dict.fromkeys(" ".join(item.split()).casefold() for item in value))
+        if any(not item or len(item) > 256 for item in normalized):
+            raise ValueError("single-valued predicates must have 1-256 characters")
+        return normalized
+
     @field_validator("coordinator_host")
     @classmethod
     def coordinator_is_local(cls, value: str) -> str:

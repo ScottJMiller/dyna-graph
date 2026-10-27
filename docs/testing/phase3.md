@@ -234,8 +234,8 @@ python3 -m pytest tests/test_phase3_extraction.py --run-lan -v -s --tb=long
 | Invalid input | Check bounds, field types, and extra fields before sending a request. |
 | Skipped LAN checks | Use `--run-lan` with both nodes selected. |
 
-Acceptance requires **110 Phase 3 checks passing without skips**, both-node
-direct extraction with the expected fact sets, and **300 passing offline
+Acceptance requires **111 Phase 3 checks passing without skips**, both-node
+direct extraction with the expected fact sets, and **301 passing offline
 regression tests**. After initial installation, repeat live checks with WAN
 access disconnected while preserving LAN routing to verify local-only operation.
 

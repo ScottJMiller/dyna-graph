@@ -4,18 +4,93 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="An offline, zoomable map of DynaGraph's complete target architecture, current components, and planned integrations.">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
+<script>
+// Prefer the saved choice, or follow the browser preference until one is made.
+try { const saved=localStorage.getItem("dynagraph-architecture-theme"); document.documentElement.dataset.theme=(saved==="dark"||saved==="light")?saved:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"); } catch { document.documentElement.dataset.theme=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"; }
+</script>
 <title>DynaGraph · Architecture Atlas</title>
 <style>
-:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#25313c;background:#f7f8f9;font-synthesis:none;--line:#dce2e6;--muted:#64717e;--ink:#25313c;--teal:#087f8c}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #087f8c;outline-offset:3px}a{color:#086e84;text-underline-offset:3px}.app{height:100dvh;min-height:640px;display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden}.top{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:20px 28px 16px;background:#fff;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:13px}.mark{width:38px;height:38px;color:#087f8c}.eyebrow{font-size:10px;letter-spacing:.17em;text-transform:uppercase;font-weight:800;color:var(--muted);margin:0 0 4px}.brand h1{font-size:22px;letter-spacing:-.7px;line-height:1.1;margin:0}.brand h1 span{font-weight:450;color:#667783}.top-note{font-size:12px;line-height:1.7;color:var(--muted);text-align:right}.status-key{display:flex;justify-content:flex-end;gap:16px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#177d61;margin-right:5px}.dot.planned{background:#b77831}.top-note a{color:inherit}.controls{padding:13px 28px 0;background:#fff;border-bottom:1px solid var(--line)}.control-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.search{position:relative;flex:1;min-width:210px;max-width:400px}.search svg{position:absolute;left:12px;top:12px;width:15px;height:15px;pointer-events:none;color:var(--muted)}input[type=search]{width:100%;background:#f5f7f8;border:1px solid var(--line);border-radius:8px;padding:10px 12px 10px 36px;font-size:13px;color:var(--ink)}.select-wrap{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}select{max-width:240px;padding:9px 28px 9px 10px;background:#fff;border:1px solid var(--line);border-radius:7px;font-size:12px;color:var(--ink)}.pill{border:1px solid var(--line);border-radius:7px;background:#fff;padding:9px 11px;font-size:12px;color:var(--ink)}.pill[aria-pressed=true]{background:#e9f3f4;color:#086977;border-color:#b1d6dc}.phase-nav{display:flex;gap:5px;overflow:auto;padding:12px 0 10px;scrollbar-width:thin}.phase-btn{flex:none;background:#fff;border:0;border-radius:5px;padding:6px 9px;font-size:11px;color:var(--muted);white-space:nowrap}.phase-btn:hover,.phase-btn[aria-pressed=true]{background:#edf2f4;color:#25313c}.phase-number{font-weight:750;margin-right:5px;color:var(--phase)}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 340px;min-height:0}.map-panel{position:relative;min-width:0;min-height:0;display:flex;flex-direction:column;background:#f3f6f7}.map-caption{padding:15px 22px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;border-bottom:1px solid #e5eaed;background:#f9fbfc}.map-caption h2{font-size:14px;margin:0 0 5px;font-weight:700}.map-caption p{font-size:12px;line-height:1.6;color:var(--muted);margin:0;max-width:880px}.count{font:11px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:nowrap;color:#667781;padding-top:3px}.canvas{flex:1;min-height:240px;position:relative;overflow:hidden}.canvas svg{display:block;width:100%;height:100%;touch-action:none;user-select:none;cursor:grab}.canvas svg.dragging{cursor:grabbing}.canvas svg:focus-visible{outline:3px solid #087f8c;outline-offset:-4px}.zoom-bar{position:absolute;bottom:18px;left:18px;display:flex;gap:1px;align-items:center;background:white;border:1px solid #d3dce1;border-radius:9px;box-shadow:0 3px 14px #1836460c;padding:3px}.zoom-bar button{border:0;background:#fff;border-radius:5px;width:32px;height:31px;font-size:18px;color:#314655}.zoom-bar button:hover{background:#eef3f5}.zoom-bar .fit{font-size:11px;width:42px}.zoom-bar output{min-width:48px;text-align:center;font:11px ui-monospace,SFMono-Regular,Consolas,monospace}.zoom-bar input{width:84px;accent-color:#087f8c;margin:0 8px}.map-hint{position:absolute;bottom:22px;right:16px;font-size:10px;color:#75838c;background:#f3f6f7e8;padding:6px 9px;border-radius:5px;pointer-events:none}.inspector{min-height:0;border-left:1px solid var(--line);background:#fff;display:flex;flex-direction:column}.tabs{display:flex;padding:0 17px;border-bottom:1px solid var(--line);gap:18px}.tab{font-size:12px;font-weight:650;color:var(--muted);border:0;border-bottom:2px solid transparent;padding:14px 0 12px;background:white}.tab[aria-selected=true]{color:#086e84;border-bottom-color:#087f8c}.pane{overflow:auto;min-height:0;flex:1;padding:22px}.pane[hidden]{display:none}.detail-kicker{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:var(--muted);display:flex;align-items:center;justify-content:space-between;gap:8px}.badge{font-size:9px;letter-spacing:.04em;padding:4px 6px;border-radius:4px;background:#edf6f2;color:#267456;white-space:nowrap}.badge.planned{background:#fbf0e3;color:#9c5d1d}.badge.resource{background:#edf1f4;color:#637480}.pane h2{font-size:22px;line-height:1.25;letter-spacing:-.7px;margin:16px 0 9px;overflow-wrap:anywhere}.file-path{font:11px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;color:#687b89;overflow-wrap:anywhere}.detail-description{font-size:13px;line-height:1.8;color:#42525f}.detail-section{border-top:1px solid #e5eaed;padding-top:16px;margin-top:18px}.detail-section h3{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#74828d;margin:0 0 8px}.detail-section p{font-size:12px;line-height:1.8;margin:0;color:#435461}.api{display:block;font:11px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;color:#466477;background:#f6f8f9;border:1px solid #e9edef;padding:7px 9px;border-radius:5px;margin:5px 0;overflow-wrap:anywhere}.connection{display:block;text-align:left;width:100%;border:0;border-radius:6px;background:#f6f8f9;padding:9px 10px;margin:6px 0;color:#415360}.connection:hover{background:#e9f1f4}.connection strong{font-size:11px;display:block;overflow-wrap:anywhere}.connection small{font-size:10px;line-height:1.6;display:block;color:#76848c;margin-top:3px}.note{background:#faf6ee;border-left:3px solid #c29255;padding:11px 13px;font-size:11px;line-height:1.8;color:#755c3d;margin-top:18px}.intro-list{padding-left:18px;font-size:12px;line-height:1.85;color:#435461}.intro-list li{padding:4px 0}.inventory-intro{font-size:11px;line-height:1.7;color:var(--muted);margin:0 0 12px}.file-group{font-size:10px;text-transform:uppercase;letter-spacing:.09em;font-weight:750;color:#81909a;margin:18px 0 7px}.file-row{display:block;width:100%;text-align:left;padding:9px;border:1px solid transparent;border-radius:6px;background:#fff}.file-row:hover,.file-row.active{background:#f1f6f8;border-color:#dce7ec}.file-row .file-label{display:flex;align-items:center;justify-content:space-between;gap:7px;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:#365166}.file-row small{font-size:10px;display:block;color:#7b8892;margin-top:4px;overflow-wrap:anywhere}.empty-state{font-size:12px;color:#74838e;line-height:1.7}.footer{display:flex;justify-content:space-between;gap:12px;align-items:center;background:white;padding:10px 28px;border-top:1px solid var(--line);font-size:10px;color:#71808b;line-height:1.5}.legend{display:flex;align-items:center;gap:15px;flex-wrap:wrap}.line-key{display:inline-block;vertical-align:middle;width:23px;border-top:2px solid #738a98;margin-right:5px}.line-key.planned{border-top-style:dashed}.line-key.observe{border-top-style:dotted}.footer a{color:#5d7685}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}svg .component{cursor:pointer;transition:opacity .15s}svg .component:focus{outline:none}svg .component:focus .card,svg .component.selected .card{stroke:#077c8c;stroke-width:3.2}svg .component.related .card{stroke-width:2}svg .component.dim{opacity:.13}svg .edge.dim{opacity:.05}svg .edge.active{opacity:.9;stroke-width:2.5}svg .edge{opacity:.32;transition:opacity .15s}svg .group.dim{opacity:.25}svg .edge-label{font:13px ui-sans-serif,system-ui,sans-serif;fill:#4e6b7b;stroke:#f3f6f7;stroke-width:5;paint-order:stroke;pointer-events:none}svg .card-title{font:650 22px ui-sans-serif,system-ui,sans-serif;fill:#2f4555}svg .card-subtitle{font:14px ui-sans-serif,system-ui,sans-serif;fill:#677c89}svg .card-status{font:650 11px ui-sans-serif,system-ui,sans-serif;letter-spacing:.5px}svg .group-title{font:750 13px ui-sans-serif,system-ui,sans-serif;letter-spacing:1.3px}svg .support-title{font:750 15px ui-sans-serif,system-ui,sans-serif;fill:#5e7482;letter-spacing:1.5px}svg .support-subtitle{font:15px ui-sans-serif,system-ui,sans-serif;fill:#81909b}
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#25313c;background:#f7f8f9;font-synthesis:none;--line:#dce2e6;--muted:#64717e;--ink:#25313c;--teal:#087f8c}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #087f8c;outline-offset:3px}a{color:#086e84;text-underline-offset:3px}.app{height:100dvh;min-height:640px;display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden}.top{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:20px 28px 16px;background:#fff;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:13px}.mark{width:38px;height:38px;color:#087f8c}.eyebrow{font-size:10px;letter-spacing:.17em;text-transform:uppercase;font-weight:800;color:var(--muted);margin:0 0 4px}.brand h1{font-size:22px;letter-spacing:-.7px;line-height:1.1;margin:0}.brand h1 span{font-weight:450;color:#667783}.top-note{font-size:12px;line-height:1.7;color:var(--muted);text-align:right}.status-key{display:flex;justify-content:flex-end;gap:16px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#177d61;margin-right:5px}.dot.planned{background:#b77831}.top-note a{color:inherit}.controls{padding:13px 28px 0;background:#fff;border-bottom:1px solid var(--line)}.control-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.search{position:relative;flex:1;min-width:210px;max-width:400px}.search svg{position:absolute;left:12px;top:12px;width:15px;height:15px;pointer-events:none;color:var(--muted)}input[type=search]{width:100%;background:#f5f7f8;border:1px solid var(--line);border-radius:8px;padding:10px 12px 10px 36px;font-size:13px;color:var(--ink)}.select-wrap{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}select{max-width:240px;padding:9px 28px 9px 10px;background:#fff;border:1px solid var(--line);border-radius:7px;font-size:12px;color:var(--ink)}.pill{border:1px solid var(--line);border-radius:7px;background:#fff;padding:9px 11px;font-size:12px;color:var(--ink)}.pill[aria-pressed=true]{background:#e9f3f4;color:#086977;border-color:#b1d6dc}.phase-nav{display:flex;gap:5px;overflow:auto;padding:12px 0 10px;scrollbar-width:thin}.phase-btn{flex:none;background:#fff;border:0;border-radius:5px;padding:6px 9px;font-size:11px;color:var(--muted);white-space:nowrap}.phase-btn:hover,.phase-btn[aria-pressed=true]{background:#edf2f4;color:#25313c}.phase-number{font-weight:750;margin-right:5px;color:var(--phase)}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 340px;min-height:0}.map-panel{position:relative;min-width:0;min-height:0;display:flex;flex-direction:column;background:#f3f6f7}.map-caption{padding:15px 22px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;border-bottom:1px solid #e5eaed;background:#f9fbfc}.map-caption h2{font-size:14px;margin:0 0 5px;font-weight:700}.map-caption p{font-size:12px;line-height:1.6;color:var(--muted);margin:0;max-width:880px}.count{font:11px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:nowrap;color:#667781;padding-top:3px}.canvas{flex:1;min-height:240px;position:relative;overflow:hidden}.canvas svg{display:block;width:100%;height:100%;touch-action:none;user-select:none;cursor:grab}.canvas svg.dragging{cursor:grabbing}.canvas svg:focus-visible{outline:3px solid #087f8c;outline-offset:-4px}.zoom-bar{position:absolute;bottom:18px;left:18px;display:flex;gap:1px;align-items:center;background:white;border:1px solid #d3dce1;border-radius:9px;box-shadow:0 3px 14px #1836460c;padding:3px}.zoom-bar button{border:0;background:#fff;border-radius:5px;width:32px;height:31px;font-size:18px;color:#314655}.zoom-bar button:hover{background:#eef3f5}.zoom-bar .fit{font-size:11px;width:42px}.zoom-bar output{min-width:48px;text-align:center;font:11px ui-monospace,SFMono-Regular,Consolas,monospace}.zoom-bar input{width:84px;accent-color:#087f8c;margin:0 8px}.map-hint{position:absolute;bottom:22px;right:16px;font-size:10px;color:#75838c;background:#f3f6f7e8;padding:6px 9px;border-radius:5px;pointer-events:none}.inspector{min-height:0;border-left:1px solid var(--line);background:#fff;display:flex;flex-direction:column}.tabs{display:flex;padding:0 17px;border-bottom:1px solid var(--line);gap:18px}.tab{font-size:12px;font-weight:650;color:var(--muted);border:0;border-bottom:2px solid transparent;padding:14px 0 12px;background:white}.tab[aria-selected=true]{color:#086e84;border-bottom-color:#087f8c}.pane{overflow:auto;min-height:0;flex:1;padding:22px}.pane[hidden]{display:none}.detail-kicker{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:var(--muted);display:flex;align-items:center;justify-content:space-between;gap:8px}.badge{font-size:9px;letter-spacing:.04em;padding:4px 6px;border-radius:4px;background:#edf6f2;color:#267456;white-space:nowrap}.badge.planned{background:#fbf0e3;color:#9c5d1d}.badge.resource{background:#edf1f4;color:#637480}.pane h2{font-size:22px;line-height:1.25;letter-spacing:-.7px;margin:16px 0 9px;overflow-wrap:anywhere}.file-path{font:11px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;color:#687b89;overflow-wrap:anywhere}.detail-description{font-size:13px;line-height:1.8;color:#42525f}.detail-section{border-top:1px solid #e5eaed;padding-top:16px;margin-top:18px}.detail-section h3{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#74828d;margin:0 0 8px}.detail-section p{font-size:12px;line-height:1.8;margin:0;color:#435461}.api{display:block;font:11px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;color:#466477;background:#f6f8f9;border:1px solid #e9edef;padding:7px 9px;border-radius:5px;margin:5px 0;overflow-wrap:anywhere}.connection{display:block;text-align:left;width:100%;border:0;border-radius:6px;background:#f6f8f9;padding:9px 10px;margin:6px 0;color:#415360}.connection:hover{background:#e9f1f4}.connection strong{font-size:11px;display:block;overflow-wrap:anywhere}.connection small{font-size:10px;line-height:1.6;display:block;color:#76848c;margin-top:3px}.note{background:#faf6ee;border-left:3px solid #c29255;padding:11px 13px;font-size:11px;line-height:1.8;color:#755c3d;margin-top:18px}.intro-list{padding-left:18px;font-size:12px;line-height:1.85;color:#435461}.intro-list li{padding:4px 0}.inventory-intro{font-size:11px;line-height:1.7;color:var(--muted);margin:0 0 12px}.file-group{font-size:10px;text-transform:uppercase;letter-spacing:.09em;font-weight:750;color:#81909a;margin:18px 0 7px}.file-row{display:block;width:100%;text-align:left;padding:9px;border:1px solid transparent;border-radius:6px;background:#fff}.file-row:hover,.file-row.active{background:#f1f6f8;border-color:#dce7ec}.file-row .file-label{display:flex;align-items:center;justify-content:space-between;gap:7px;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:#365166}.file-row small{font-size:10px;display:block;color:#7b8892;margin-top:4px;overflow-wrap:anywhere}.empty-state{font-size:12px;color:#74838e;line-height:1.7}.footer{display:flex;justify-content:space-between;gap:12px;align-items:center;background:white;padding:10px 28px;border-top:1px solid var(--line);font-size:10px;color:#71808b;line-height:1.5}.legend{display:flex;align-items:center;gap:15px;flex-wrap:wrap}.line-key{display:inline-block;vertical-align:middle;width:23px;border-top:2px solid #738a98;margin-right:5px}.line-key.planned{border-top-style:dashed}.line-key.observe{border-top-style:dotted}.footer a{color:#5d7685}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}svg .component{cursor:pointer;transition:opacity .15s}svg .component:focus{outline:none}svg .component:focus .card,svg .component.selected .card{stroke:#077c8c;stroke-width:3.2}svg .component.related .card{stroke-width:2}svg .component.dim{opacity:.13}svg .edge.dim{opacity:.05}svg .edge.active{opacity:.9;stroke-width:3.75}svg .edge{opacity:.32;transition:opacity .15s}svg .group.dim{opacity:.25}svg .edge-label{font:13px ui-sans-serif,system-ui,sans-serif;fill:#4e6b7b;stroke:#f3f6f7;stroke-width:5;paint-order:stroke;pointer-events:none}svg .card-title{font:650 22px ui-sans-serif,system-ui,sans-serif;fill:#2f4555}svg .card-subtitle{font:14px ui-sans-serif,system-ui,sans-serif;fill:#677c89}svg .card-status{font:650 11px ui-sans-serif,system-ui,sans-serif;letter-spacing:.5px}svg .group-title{font:750 13px ui-sans-serif,system-ui,sans-serif;letter-spacing:1.3px}svg .support-title{font:750 15px ui-sans-serif,system-ui,sans-serif;fill:#5e7482;letter-spacing:1.5px}svg .support-subtitle{font:15px ui-sans-serif,system-ui,sans-serif;fill:#81909b}
 @media(max-width:1100px){.workspace{grid-template-columns:minmax(0,1fr) 290px}.top{padding:17px 18px}.controls{padding-left:18px;padding-right:18px}.pane{padding:18px}.top-note{font-size:10px}.zoom-bar input{display:none}.map-hint{display:none}.map-caption{padding:12px 15px}.count{display:none}.footer{padding:9px 18px}}@media(max-width:760px){.app{height:auto;min-height:100dvh;overflow:visible;display:block}.top{align-items:flex-start;gap:12px}.brand h1{font-size:18px}.mark{width:30px;height:30px}.top-note .offline-note{display:none}.status-key{display:block;font-size:10px}.status-key span{display:block}.control-row{gap:8px}.search{max-width:none;flex-basis:100%}.select-wrap{flex:1 1 150px;min-width:0}.select-wrap.route-wrap{flex-basis:100%}.select-wrap select{flex:1;min-width:0;width:auto;max-width:100%}.phase-nav{padding-bottom:9px}.workspace{display:flex;flex-direction:column}.map-panel{height:64dvh;min-height:440px}.inspector{height:500px;border-left:0;border-top:1px solid var(--line)}.map-caption p{font-size:11px}.footer{align-items:flex-start;flex-direction:column;gap:8px}.pane h2{font-size:21px}.zoom-bar{bottom:13px;left:12px}}@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}@media print{.app{display:block;height:auto;overflow:visible}.controls,.footer,.inspector,.zoom-bar,.map-hint{display:none}.workspace{display:block}.map-panel{height:190mm}.canvas svg{height:175mm}.map-caption{background:white}.top-note{display:none}}
+/* Theme tokens also travel with standalone SVG exports. */
+:root {
+  color-scheme: light;
+  --page: #f7f8f9; --surface: #fff; --surface-alt: #f5f7f8;
+  --canvas: #f3f6f7; --caption: #f9fbfc; --line: #dce2e6;
+  --ink: #25313c; --muted: #64717e; --accent: #087f8c;
+  --accent-bg: #e9f3f4; --card-border: #cedce2; --planned-border: #c9c6c1;
+  --edge: #718e9e; --edge-active: #087f8c; --grid-dot: #d6e0e5;
+  --good: #317e65; --good-bg: #edf6f2; --planned: #a46a2b; --planned-bg: #fbf0e3;
+  --local-bg: #edf1f4; --note-bg: #faf6ee; --note-text: #755c3d; --note-line: #c29255;
+  --phase-brightness: 1;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #101820; --surface: #17232e; --surface-alt: #1d2d39;
+  --canvas: #101c25; --caption: #14222d; --line: #344854;
+  --ink: #e4edf2; --muted: #a3b3bf; --accent: #69d2da;
+  --accent-bg: #203e47; --card-border: #486171; --planned-border: #7f715f;
+  --edge: #8ba8bb; --edge-active: #69d2da; --grid-dot: #2b414f;
+  --good: #85dcb6; --good-bg: #223b32; --planned: #e4bb79; --planned-bg: #3b3023;
+  --local-bg: #263845; --note-bg: #302b22; --note-text: #e3c99f; --note-line: #b9945e;
+  --phase-brightness: 1.5;
+}
+body { color: var(--ink); background: var(--page); }
+a, .mark, .tab[aria-selected="true"] { color: var(--accent); }
+.top, .controls, .inspector, .footer, .tab, .phase-btn, .pill, select,
+.zoom-bar, .zoom-bar button, .file-row { background: var(--surface); color: var(--ink); }
+.brand h1 span, .file-path, .count, .zoom-bar output, .file-group,
+.detail-section h3, .connection small, .file-row small, .footer,
+.footer a { color: var(--muted); }
+.select-wrap, .eyebrow, .top-note, .tab, .map-caption p, .inventory-intro,
+.empty-state { color: var(--muted); }
+input[type="search"], .api, .connection { background: var(--surface-alt); border-color: var(--line); color: var(--ink); }
+input[type="search"]::placeholder { color: var(--muted); }
+.map-panel { background: var(--canvas); }
+.map-caption { background: var(--caption); border-color: var(--line); }
+.phase-btn:hover, .phase-btn[aria-pressed="true"], .connection:hover,
+.file-row:hover, .file-row.active, .zoom-bar button:hover { background: var(--surface-alt); color: var(--ink); }
+.pill[aria-pressed="true"] { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+.detail-section, .file-row.active, .file-row:hover, .zoom-bar { border-color: var(--line); }
+.detail-description, .detail-section p, .intro-list, .file-row .file-label { color: var(--ink); }
+.note { background: var(--note-bg); color: var(--note-text); border-color: var(--note-line); }
+.badge { background: var(--good-bg); color: var(--good); }
+.badge.planned { background: var(--planned-bg); color: var(--planned); }
+.badge.resource { background: var(--local-bg); color: var(--muted); }
+.dot { background: var(--good); } .dot.planned { background: var(--planned); }
+.phase-number { filter: brightness(var(--phase-brightness)); }
+.map-hint { background: var(--canvas); color: var(--muted); }
+.zoom-bar input { accent-color: var(--accent); }
+.line-key { border-color: var(--edge); border-top-width: 3px; }
+.theme-glyph { font-size: 15px; margin-right: 5px; vertical-align: -1px; }
+svg .card { fill: var(--surface); stroke: var(--card-border); }
+svg .component[data-status="planned"] .card { stroke: var(--planned-border); }
+svg .component.selected .card, svg .component:focus .card { stroke: var(--accent); }
+svg .card-title { fill: var(--ink); }
+svg .card-subtitle, svg .card-status, svg .support-title, svg .support-subtitle { fill: var(--muted); }
+svg .component[data-status="implemented"] .card-status { fill: var(--good); }
+svg .component[data-status="planned"] .card-status { fill: var(--planned); }
+svg .group-title { filter: brightness(var(--phase-brightness)); }
+svg .edge { stroke: var(--edge); opacity: .55; }
+svg .edge.active { stroke: var(--edge-active); opacity: .95; stroke-width: 3.75; }
+svg .edge.dim { opacity: .07; }
+svg .edge-halo { stroke: var(--canvas); stroke-width: 8; fill: none; pointer-events: none; }
+svg .edge-label { fill: var(--muted); stroke: var(--canvas); }
+svg .port { fill: var(--surface); stroke: var(--edge); stroke-width: 1.5; pointer-events: none; }
+svg .port.active { stroke: var(--edge-active); }
+svg #dots circle { fill: var(--grid-dot); }
+svg #arrow path { fill: var(--edge); }
+svg #arrow-active path { fill: var(--edge-active); }
+@media print { :root { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+
 </style>
 </head>
 <body>
 <div class="app">
  <header class="top">
   <div class="brand"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M9 10L30 7L32 29L13 33L9 10L32 29M30 7L13 33" fill="none" stroke="currentColor" stroke-width="1.4"/><g fill="currentColor"><circle cx="9" cy="10" r="4"/><circle cx="30" cy="7" r="3"/><circle cx="32" cy="29" r="4"/><circle cx="13" cy="33" r="3"/></g></svg><div><p class="eyebrow">Architecture atlas / complete target system</p><h1>DynaGraph <span>explained.</span></h1></div></div>
-  <div class="top-note"><div class="status-key"><span><i class="dot"></i>Implemented · phases 1–3</span><span><i class="dot planned"></i>Planned · phases 4–8</span></div><span class="offline-note">Two local nodes. One persistent graph. No cloud APIs.</span></div>
+  <div class="top-note"><div class="status-key"><span><i class="dot"></i>Implemented · phases 1–4</span><span><i class="dot planned"></i>Planned · phases 5–8</span></div><span class="offline-note">Two local nodes. One persistent graph. No cloud APIs.</span></div>
  </header>
  <section class="controls" aria-label="Map controls">
   <div class="control-row">
@@ -23,6 +98,7 @@
    <label class="select-wrap route-wrap">Explore <select id="route"><option value="system">Whole system</option><option value="turn">One agent turn</option><option value="remember">Remember a fact</option><option value="recall">Recall context</option><option value="experiment">The A/B experiment</option></select></label>
    <label class="select-wrap"><span class="sr-only">Implementation status</span><select id="status"><option value="all">Built + planned</option><option value="implemented">Implemented only</option><option value="planned">Planned only</option></select></label>
    <button id="support" class="pill" aria-pressed="false">Supporting files</button>
+   <button id="theme" class="pill" type="button" aria-pressed="false"><span class="theme-glyph" aria-hidden="true">◐</span><span id="theme-label">Dark mode</span></button>
    <button id="export" class="pill">Export SVG</button>
   </div>
   <nav id="phases" class="phase-nav" aria-label="Focus a project phase"></nav>
@@ -31,8 +107,8 @@
   <section class="map-panel" aria-labelledby="map-title">
    <div class="map-caption"><div><h2 id="map-title">The finished project</h2><p id="map-description"></p></div><span id="count" class="count"></span></div>
    <div class="canvas" id="canvas">
-    <svg id="map" role="graphics-document" tabindex="0" aria-label="Interactive DynaGraph architecture. Use plus and minus to zoom, arrow keys to pan, and Enter on a component to inspect it."><title>DynaGraph finished-project architecture</title><defs><pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#d6e0e5"/></pattern><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#8198a6"/></marker><marker id="arrow-active" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#087f8c"/></marker></defs><rect id="background" width="100%" height="100%" fill="url(#dots)"/><g id="scene"></g></svg>
-    <div class="zoom-bar" aria-label="Zoom controls"><button id="zoom-out" aria-label="Zoom out">−</button><output id="zoom-label" aria-live="polite">100%</output><input id="zoom-slider" type="range" min="18" max="260" value="100" aria-label="Zoom percentage"><button id="zoom-in" aria-label="Zoom in">+</button><button id="fit" class="fit" title="Fit visible map (F)">Fit</button><button id="reset" class="fit" title="Reset filters and selection">Reset</button></div>
+    <svg id="map" role="graphics-document" tabindex="0" aria-label="Interactive DynaGraph architecture. Use plus and minus to zoom, arrow keys to pan, and Enter on a component to inspect it."><title>DynaGraph finished-project architecture</title><defs><pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#d6e0e5"/></pattern><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#8198a6"/></marker><marker id="arrow-active" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#087f8c"/></marker></defs><rect id="background" width="100%" height="100%" fill="url(#dots)"/><g id="scene"></g></svg>
+    <div class="zoom-bar" aria-label="Zoom controls"><button id="zoom-out" aria-label="Zoom out">−</button><output id="zoom-label" aria-live="polite">100%</output><input id="zoom-slider" type="range" min="10" max="260" value="100" aria-label="Zoom percentage"><button id="zoom-in" aria-label="Zoom in">+</button><button id="fit" class="fit" title="Fit visible map (F)">Fit</button><button id="reset" class="fit" title="Reset filters and selection">Reset</button></div>
     <div class="map-hint">Drag to pan · scroll to zoom · click to inspect · F to fit</div>
    </div>
   </section>
@@ -80,7 +156,7 @@
       "label": "state_machine.py",
       "status": "planned",
       "support": false,
-      "x": 400,
+      "x": 540,
       "y": 120
     },
     {
@@ -99,7 +175,7 @@
       "label": "base_agent.py",
       "status": "planned",
       "support": false,
-      "x": 740,
+      "x": 1020,
       "y": 120
     },
     {
@@ -118,8 +194,8 @@
       "label": "personas.py",
       "status": "planned",
       "support": false,
-      "x": 740,
-      "y": 255
+      "x": 1020,
+      "y": 328
     },
     {
       "id": "client",
@@ -141,7 +217,7 @@
       "label": "ollama_client.py",
       "status": "implemented",
       "support": false,
-      "x": 1080,
+      "x": 1500,
       "y": 120
     },
     {
@@ -149,7 +225,7 @@
       "path": "src/config.py",
       "phase": 1,
       "summary": "Validate LAN and storage settings",
-      "description": "Load the repository-root .env and process environment, validate private node addresses and local model names, and resolve storage paths. Environment values override dotenv values.",
+      "description": "Load the repository-root .env and process environment, validate private node addresses and local model names, and resolve storage paths. Environment values override dotenv values. Validate single-valued predicate policy and bounded governance settings.",
       "interfaces": [
         "Settings",
         "get_settings()",
@@ -162,8 +238,8 @@
       "label": "config.py",
       "status": "implemented",
       "support": false,
-      "x": 1080,
-      "y": 255
+      "x": 1500,
+      "y": 328
     },
     {
       "id": "ollama1",
@@ -183,7 +259,7 @@
       "label": "Ollama · primary",
       "status": "resource",
       "support": false,
-      "x": 1420,
+      "x": 1980,
       "y": 120
     },
     {
@@ -202,7 +278,7 @@
       "label": "Ollama · worker",
       "status": "resource",
       "support": false,
-      "x": 1760,
+      "x": 2460,
       "y": 120
     },
     {
@@ -222,7 +298,7 @@
       "status": "planned",
       "support": false,
       "x": 60,
-      "y": 520
+      "y": 640
     },
     {
       "id": "traversal",
@@ -240,8 +316,8 @@
       "label": "traversal.py",
       "status": "planned",
       "support": false,
-      "x": 400,
-      "y": 520
+      "x": 540,
+      "y": 640
     },
     {
       "id": "context",
@@ -259,8 +335,8 @@
       "label": "context_assembler.py",
       "status": "planned",
       "support": false,
-      "x": 740,
-      "y": 520
+      "x": 1020,
+      "y": 640
     },
     {
       "id": "extractor",
@@ -280,8 +356,8 @@
       "label": "extractor.py",
       "status": "implemented",
       "support": false,
-      "x": 1080,
-      "y": 520
+      "x": 1500,
+      "y": 640
     },
     {
       "id": "parser",
@@ -301,8 +377,8 @@
       "label": "parser.py",
       "status": "implemented",
       "support": false,
-      "x": 1420,
-      "y": 520
+      "x": 1980,
+      "y": 640
     },
     {
       "id": "schemas",
@@ -322,8 +398,8 @@
       "label": "schemas.py",
       "status": "implemented",
       "support": false,
-      "x": 1760,
-      "y": 520
+      "x": 2460,
+      "y": 640
     },
     {
       "id": "supersession",
@@ -332,17 +408,18 @@
       "summary": "Replace stale single-valued facts",
       "description": "Before writing a new fact for a single-valued predicate, detect the old value, mark the previous fact SUPERSEDED, and preserve explicit SUPERSEDES provenance atomically.",
       "interfaces": [
-        "Planned write-time supersession middleware"
+        "GovernedWriter.write_fact() / write_fact_async()",
+        "list_supersessions()"
       ],
       "inputs": "Validated new facts and the current active graph.",
       "outputs": "A coherent active state and traceable superseded history.",
-      "notes": "Not every different object is a contradiction. The single-valued predicate policy and representation of fact-level provenance still need Phase 4 design.",
+      "notes": "Explicit single-valued policy, empty by default. FK-checked fact-to-fact SUPERSEDES events preserve reversals by event ID; raw CRUD bypasses this policy. Reassertions reuse SPO rows.",
       "kind": "source",
       "label": "supersession.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
       "x": 60,
-      "y": 920
+      "y": 1160
     },
     {
       "id": "decay",
@@ -351,17 +428,19 @@
       "summary": "Score memory with four factors",
       "description": "Compute a composite retention score from recency, frequency, graph centrality, and turn-based decay. Supply deterministic scores for pruning decisions.",
       "interfaces": [
-        "Planned recency / frequency / centrality / turn-decay functions"
+        "DecayPolicy.score()",
+        "record_access()",
+        "score_entity()"
       ],
       "inputs": "Persisted access/turn metadata, graph connectivity, and time.",
       "outputs": "A retention score for candidate memory.",
-      "notes": "Formulas, weights, and required metadata are not yet implemented or fixed by this map.",
+      "notes": "Weights: recency .35, time-faded frequency .20, centrality .15, turn decay .30. Half-lives default to 86,400 seconds and 10 turns. Reads/scans do not count as use.",
       "kind": "source",
       "label": "decay.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
-      "x": 400,
-      "y": 920
+      "x": 540,
+      "y": 1160
     },
     {
       "id": "pruning",
@@ -370,17 +449,18 @@
       "summary": "Soft-prune low-value leaf memory",
       "description": "Run periodic maintenance, obtain decay scores, protect pinned entities, and soft-inactivate eligible leaf memory below the pruning threshold.",
       "interfaces": [
-        "Planned background maintenance worker"
+        "Pruner.run_once() / run_once_async()",
+        "PruningDaemon.start() / stop()"
       ],
       "inputs": "Retention scores, pin flags, topology, pruning threshold.",
       "outputs": "PRUNED records excluded from active retrieval.",
-      "notes": "This is planned soft deletion; the current GraphStore delete APIs physically remove records and cascade edges.",
+      "notes": "Bounded cursor pages; degree <= 1; retention strictly below threshold. Protect pins and active pinned facts. Preserve inactive history. Explicit startup, supplied turns, and observable shutdown/failures.",
       "kind": "source",
       "label": "pruning.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
-      "x": 740,
-      "y": 920
+      "x": 1020,
+      "y": 1160
     },
     {
       "id": "graph",
@@ -401,15 +481,15 @@
       "label": "graph_store.py",
       "status": "implemented",
       "support": false,
-      "x": 1080,
-      "y": 920
+      "x": 1500,
+      "y": 1160
     },
     {
       "id": "database",
       "path": "src/storage/database.py",
       "phase": 2,
       "summary": "Pool connections; serialize writes",
-      "description": "Initialize the schema and manage a bounded pool with WAL, foreign keys, busy timeouts, FULL synchronization, nested savepoints, and read snapshots. Queue short sync callbacks off the event loop.",
+      "description": "Initialize the schema and manage a bounded pool with WAL, foreign keys, busy timeouts, FULL synchronization, nested savepoints, and read snapshots. Queue short sync callbacks off the event loop. Additively upgrade schema version 1 to version 2 in the initialization transaction.",
       "interfaces": [
         "Database.from_settings()",
         "connection() / transaction()",
@@ -423,30 +503,29 @@
       "label": "database.py",
       "status": "implemented",
       "support": false,
-      "x": 1420,
-      "y": 920
+      "x": 1980,
+      "y": 1160
     },
     {
       "id": "ddl",
       "path": "src/storage/schema.sql",
       "phase": 2,
       "summary": "Tables, constraints, indexes, triggers",
-      "description": "Define schema version 1: entities, directed triples, uniqueness/foreign-key constraints, relationship indexes, FTS5 external content, and synchronous FTS triggers.",
+      "description": "Define schema version 2: semantic entities/triples, FTS5, usage metadata, and explicit fact-level supersession events. Upgrade version 1 additively.",
       "interfaces": [
-        "entities",
-        "triples",
-        "fts_entities",
+        "entities / triples / fts_entities",
+        "entity_memory / supersession_edges",
         "FTS insert/update/delete triggers"
       ],
       "inputs": "Initialization by Database.",
       "outputs": "Persistent relational structure and a synchronized lexical index.",
-      "notes": "Entities store ACTIVE/PRUNED and pin state; triples store ACTIVE/SUPERSEDED/PRUNED. Having fields does not mean governance algorithms exist.",
+      "notes": "Fact-level SUPERSEDES endpoints reference triples in a separate event table. Existing SPO uniqueness, rows, pins, and FTS are preserved during upgrade.",
       "kind": "source",
       "label": "schema.sql",
       "status": "implemented",
       "support": false,
-      "x": 1760,
-      "y": 920
+      "x": 2460,
+      "y": 1160
     },
     {
       "id": "sqlite",
@@ -464,8 +543,8 @@
       "label": "SQLite · local file",
       "status": "resource",
       "support": false,
-      "x": 1420,
-      "y": 1055
+      "x": 1980,
+      "y": 1368
     },
     {
       "id": "profiler",
@@ -484,7 +563,7 @@
       "status": "planned",
       "support": false,
       "x": 60,
-      "y": 1320
+      "y": 1680
     },
     {
       "id": "dashboard",
@@ -502,8 +581,8 @@
       "label": "dashboard.py",
       "status": "planned",
       "support": false,
-      "x": 400,
-      "y": 1320
+      "x": 540,
+      "y": 1680
     },
     {
       "id": "logger",
@@ -521,8 +600,8 @@
       "label": "logger.py",
       "status": "planned",
       "support": false,
-      "x": 740,
-      "y": 1320
+      "x": 1020,
+      "y": 1680
     },
     {
       "id": "harness",
@@ -540,8 +619,8 @@
       "label": "benchmark_harness.py",
       "status": "planned",
       "support": false,
-      "x": 1080,
-      "y": 1320
+      "x": 1500,
+      "y": 1680
     },
     {
       "id": "analysis",
@@ -559,8 +638,8 @@
       "label": "analyze_results.py",
       "status": "planned",
       "support": false,
-      "x": 1420,
-      "y": 1320
+      "x": 1980,
+      "y": 1680
     },
     {
       "id": "plots",
@@ -578,8 +657,8 @@
       "label": "generate_plots.py",
       "status": "planned",
       "support": false,
-      "x": 1760,
-      "y": 1320
+      "x": 2460,
+      "y": 1680
     },
     {
       "id": "csv",
@@ -595,8 +674,8 @@
       "label": "Metrics CSV",
       "status": "resource",
       "support": false,
-      "x": 740,
-      "y": 1455
+      "x": 1020,
+      "y": 1888
     },
     {
       "id": "figures",
@@ -612,8 +691,8 @@
       "label": "Experiment figures",
       "status": "resource",
       "support": false,
-      "x": 1760,
-      "y": 1455
+      "x": 2460,
+      "y": 1888
     },
     {
       "id": "test1",
@@ -632,7 +711,7 @@
       "status": "implemented",
       "support": true,
       "x": 60,
-      "y": 1810
+      "y": 2368
     },
     {
       "id": "test2",
@@ -650,8 +729,8 @@
       "label": "test_phase2_storage.py",
       "status": "implemented",
       "support": true,
-      "x": 400,
-      "y": 1810
+      "x": 540,
+      "y": 2368
     },
     {
       "id": "test3",
@@ -669,27 +748,27 @@
       "label": "test_phase3_extraction.py",
       "status": "implemented",
       "support": true,
-      "x": 740,
-      "y": 1810
+      "x": 1020,
+      "y": 2368
     },
     {
       "id": "test4",
       "path": "tests/test_phase4_governance.py",
       "phase": 4,
       "summary": "Phase 4 verification",
-      "description": "Planned deterministic supersession, protection, and decay checks.",
+      "description": "Offline deterministic scoring, atomic supersession/reversals, pin protection, rollback, migration, and async maintenance checks.",
       "interfaces": [
         "pytest"
       ],
       "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
       "outputs": "Assertions and diagnostic test output.",
-      "notes": "A specified future deliverable; this file does not exist yet.",
+      "notes": "102 offline checks; no Ollama or LAN access required.",
       "kind": "test",
       "label": "test_phase4_governance.py",
-      "status": "planned",
+      "status": "implemented",
       "support": true,
-      "x": 1080,
-      "y": 1810
+      "x": 1500,
+      "y": 2368
     },
     {
       "id": "test5",
@@ -707,8 +786,8 @@
       "label": "test_phase5_retrieval.py",
       "status": "planned",
       "support": true,
-      "x": 1420,
-      "y": 1810
+      "x": 1980,
+      "y": 2368
     },
     {
       "id": "test6",
@@ -726,8 +805,8 @@
       "label": "test_phase6_orchestration.py",
       "status": "planned",
       "support": true,
-      "x": 1760,
-      "y": 1810
+      "x": 2460,
+      "y": 2368
     },
     {
       "id": "test7",
@@ -746,7 +825,7 @@
       "status": "planned",
       "support": true,
       "x": 60,
-      "y": 1955
+      "y": 2592
     },
     {
       "id": "test8",
@@ -764,8 +843,8 @@
       "label": "test_phase8_benchmark.py",
       "status": "planned",
       "support": true,
-      "x": 400,
-      "y": 1955
+      "x": 540,
+      "y": 2592
     },
     {
       "id": "fixtures",
@@ -784,8 +863,8 @@
       "label": "conftest.py",
       "status": "implemented",
       "support": true,
-      "x": 740,
-      "y": 1955
+      "x": 1020,
+      "y": 2592
     },
     {
       "id": "pytest",
@@ -803,8 +882,8 @@
       "label": "pytest.ini",
       "status": "implemented",
       "support": true,
-      "x": 1080,
-      "y": 1955
+      "x": 1500,
+      "y": 2592
     },
     {
       "id": "env",
@@ -822,8 +901,8 @@
       "label": ".env.example",
       "status": "implemented",
       "support": true,
-      "x": 1420,
-      "y": 1955
+      "x": 1980,
+      "y": 2592
     },
     {
       "id": "requirements",
@@ -841,8 +920,8 @@
       "label": "requirements.txt",
       "status": "implemented",
       "support": true,
-      "x": 1760,
-      "y": 1955
+      "x": 2460,
+      "y": 2592
     },
     {
       "id": "ignore",
@@ -861,7 +940,7 @@
       "status": "implemented",
       "support": true,
       "x": 60,
-      "y": 2100
+      "y": 2816
     },
     {
       "id": "init-root",
@@ -877,8 +956,8 @@
       "label": "__init__.py",
       "status": "implemented",
       "support": true,
-      "x": 400,
-      "y": 2100
+      "x": 540,
+      "y": 2816
     },
     {
       "id": "init-network",
@@ -894,8 +973,8 @@
       "label": "__init__.py",
       "status": "implemented",
       "support": true,
-      "x": 740,
-      "y": 2100
+      "x": 1020,
+      "y": 2816
     },
     {
       "id": "init-storage",
@@ -911,8 +990,8 @@
       "label": "__init__.py",
       "status": "implemented",
       "support": true,
-      "x": 1080,
-      "y": 2100
+      "x": 1500,
+      "y": 2816
     },
     {
       "id": "init-models",
@@ -930,8 +1009,8 @@
       "label": "__init__.py",
       "status": "implemented",
       "support": true,
-      "x": 1420,
-      "y": 2100
+      "x": 1980,
+      "y": 2816
     },
     {
       "id": "init-extraction",
@@ -949,8 +1028,8 @@
       "label": "__init__.py",
       "status": "implemented",
       "support": true,
-      "x": 1760,
-      "y": 2100
+      "x": 2460,
+      "y": 2816
     },
     {
       "id": "readme",
@@ -969,7 +1048,7 @@
       "status": "implemented",
       "support": true,
       "x": 60,
-      "y": 2245
+      "y": 3040
     },
     {
       "id": "doc1",
@@ -987,8 +1066,8 @@
       "label": "phase1.md",
       "status": "implemented",
       "support": true,
-      "x": 400,
-      "y": 2245
+      "x": 540,
+      "y": 3040
     },
     {
       "id": "doc2",
@@ -1006,8 +1085,8 @@
       "label": "phase2.md",
       "status": "implemented",
       "support": true,
-      "x": 740,
-      "y": 2245
+      "x": 1020,
+      "y": 3040
     },
     {
       "id": "doc3",
@@ -1025,8 +1104,8 @@
       "label": "phase3.md",
       "status": "implemented",
       "support": true,
-      "x": 1080,
-      "y": 2245
+      "x": 1500,
+      "y": 3040
     },
     {
       "id": "logo",
@@ -1042,8 +1121,8 @@
       "label": "dynagraph-logo.png",
       "status": "implemented",
       "support": true,
-      "x": 1420,
-      "y": 2245
+      "x": 1980,
+      "y": 3040
     },
     {
       "id": "architecture-html",
@@ -1061,8 +1140,8 @@
       "label": "architecture.html",
       "status": "implemented",
       "support": true,
-      "x": 1760,
-      "y": 2245
+      "x": 2460,
+      "y": 3040
     },
     {
       "id": "architecture-md",
@@ -1081,7 +1160,7 @@
       "status": "implemented",
       "support": true,
       "x": 60,
-      "y": 2390
+      "y": 3264
     },
     {
       "id": "architecture-checks",
@@ -1099,8 +1178,65 @@
       "label": "architecture.md",
       "status": "implemented",
       "support": true,
-      "x": 400,
-      "y": 2390
+      "x": 540,
+      "y": 3264
+    },
+    {
+      "id": "routing-checks",
+      "path": "docs/testing/architecture-routing.mjs",
+      "phase": 1,
+      "summary": "Check connector geometry",
+      "description": "Run dependency-free Node.js checks for unique perimeter ports, obstacle avoidance, and non-overlapping connector segments.",
+      "interfaces": [
+        "node --test docs/testing/architecture-routing.mjs"
+      ],
+      "inputs": "The embedded map and orthogonal router in architecture.html.",
+      "outputs": "Automated geometry and routing regression assertions.",
+      "notes": "Optional documentation-development verification. Viewing the atlas needs only a browser.",
+      "kind": "support",
+      "label": "architecture-routing.mjs",
+      "status": "implemented",
+      "support": true,
+      "x": 1020,
+      "y": 3264
+    },
+    {
+      "id": "governance-init",
+      "path": "src/governance/__init__.py",
+      "phase": 4,
+      "summary": "Governance public API",
+      "description": "Export decay policy, access recording, governed writes, pruner, and daemon. No background task starts on import.",
+      "interfaces": [
+        "Public governance APIs"
+      ],
+      "inputs": "Local application code and temporary test databases.",
+      "outputs": "Documented and verified memory governance.",
+      "notes": "No retrieval, agent orchestration, or cloud service is implemented here.",
+      "kind": "support",
+      "label": "__init__.py",
+      "status": "implemented",
+      "support": true,
+      "x": 1500,
+      "y": 3264
+    },
+    {
+      "id": "phase4-doc",
+      "path": "docs/testing/phase4.md",
+      "phase": 4,
+      "summary": "Phase 4 verification protocol",
+      "description": "Offline governance checks, formulas, lifecycle, reproducible smoke output, migration and backup commands.",
+      "interfaces": [
+        "Phase 4 protocol"
+      ],
+      "inputs": "Local application code and temporary test databases.",
+      "outputs": "Documented and verified memory governance.",
+      "notes": "No retrieval, agent orchestration, or cloud service is implemented here.",
+      "kind": "support",
+      "label": "phase4.md",
+      "status": "implemented",
+      "support": true,
+      "x": 1980,
+      "y": 3264
     }
   ],
   "edges": [
@@ -1625,6 +1761,60 @@
       "target": "architecture-html",
       "label": "verifies document interactions",
       "kind": "support"
+    },
+    {
+      "source": "routing-checks",
+      "target": "architecture-html",
+      "label": "verifies connector geometry",
+      "kind": "test"
+    },
+    {
+      "source": "supersession",
+      "target": "decay",
+      "label": "record endpoint access metadata",
+      "kind": "call"
+    },
+    {
+      "source": "supersession",
+      "target": "database",
+      "label": "commit provenance and state atomically",
+      "kind": "call"
+    },
+    {
+      "source": "pruning",
+      "target": "database",
+      "label": "queue bounded maintenance transactions",
+      "kind": "call"
+    },
+    {
+      "source": "governance-init",
+      "target": "supersession",
+      "label": "exports governed writer",
+      "kind": "support"
+    },
+    {
+      "source": "governance-init",
+      "target": "decay",
+      "label": "exports scoring / access APIs",
+      "kind": "support"
+    },
+    {
+      "source": "governance-init",
+      "target": "pruning",
+      "label": "exports maintenance APIs",
+      "kind": "support"
+    },
+    {
+      "source": "phase4-doc",
+      "target": "test4",
+      "label": "documents governance verification",
+      "kind": "support"
+    },
+    {
+      "source": "readme",
+      "target": "phase4-doc",
+      "label": "links to governance protocol",
+      "kind": "support"
     }
   ],
   "phases": [
@@ -1681,74 +1871,74 @@
     {
       "phase": 6,
       "label": "ROLE EXECUTION",
-      "x": 365,
-      "y": 65,
-      "w": 675,
-      "h": 330
+      "x": 516,
+      "y": 56,
+      "w": 808,
+      "h": 408
     },
     {
       "phase": 1,
       "label": "NETWORK & SETTINGS",
-      "x": 1045,
-      "y": 65,
-      "w": 335,
-      "h": 330
+      "x": 1476,
+      "y": 56,
+      "w": 328,
+      "h": 408
     },
     {
       "phase": 1,
       "label": "TWO LOCAL INFERENCE SERVICES",
-      "x": 1385,
-      "y": 65,
-      "w": 675,
-      "h": 190
+      "x": 1956,
+      "y": 56,
+      "w": 808,
+      "h": 200
     },
     {
       "phase": 5,
       "label": "RELEVANT CONTEXT · TARGET ≤ 1,000 TOKENS",
-      "x": 25,
-      "y": 465,
-      "w": 1015,
-      "h": 210
+      "x": 36,
+      "y": 576,
+      "w": 1288,
+      "h": 200
     },
     {
       "phase": 3,
       "label": "STRUCTURED EXTRACTION",
-      "x": 1045,
-      "y": 465,
-      "w": 1015,
-      "h": 210
+      "x": 1476,
+      "y": 576,
+      "w": 1288,
+      "h": 200
     },
     {
       "phase": 4,
       "label": "CURRENT STATE & SELECTIVE FORGETTING",
-      "x": 25,
-      "y": 865,
-      "w": 1015,
-      "h": 210
+      "x": 36,
+      "y": 1096,
+      "w": 1288,
+      "h": 200
     },
     {
       "phase": 2,
       "label": "TRANSACTIONAL LOCAL STORAGE",
-      "x": 1045,
-      "y": 865,
-      "w": 1015,
-      "h": 355
+      "x": 1476,
+      "y": 1096,
+      "w": 1288,
+      "h": 408
     },
     {
       "phase": 7,
       "label": "OBSERVATION, NOT CLOUD TELEMETRY",
-      "x": 25,
-      "y": 1265,
-      "w": 1015,
-      "h": 355
+      "x": 36,
+      "y": 1616,
+      "w": 1288,
+      "h": 408
     },
     {
       "phase": 8,
       "label": "CONTROLLED A/B EXPERIMENT",
-      "x": 1045,
-      "y": 1265,
-      "w": 1015,
-      "h": 355
+      "x": 1476,
+      "y": 1616,
+      "w": 1288,
+      "h": 408
     }
   ],
   "routes": {
@@ -1837,29 +2027,218 @@ const WIDTH=280,HEIGHT=112;
 let selected=null,phaseFocus=null,showSupport=false,status='all',query='',route='system';
 let camera={x:0,y:0,scale:1}, viewport={w:1,h:1},drag=null;
 const nodeEls=new Map(),edgeEls=[],groupEls=[];
+/* CONNECTOR ROUTER START
+ * Deterministic orthogonal routing. Separate perimeter ports and reserved
+ * horizontal/vertical tracks prohibit shared line sections. Perpendicular
+ * crossings are allowed; turns cannot merge into another connector.
+ */
+function routeConnections(nodes, edges, width, height, headers = []) {
+  const STEP = 8, STUB = 24, PADDING = 16, MARGIN = 128;
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const minX = Math.min(...nodes.map(n => n.x)) - MARGIN;
+  const minY = Math.min(...nodes.map(n => n.y)) - MARGIN;
+  const maxX = Math.max(...nodes.map(n => n.x + width)) + MARGIN;
+  const maxY = Math.max(...nodes.map(n => n.y + height)) + MARGIN;
+  const cols = Math.round((maxX - minX) / STEP) + 1;
+  const rows = Math.round((maxY - minY) / STEP) + 1;
+  const cells = cols * rows;
+  const blocked = new Uint8Array(cells);
+  const horizontal = new Uint16Array(cells);
+  const vertical = new Uint16Array(cells);
+  const index = p => Math.round((p.y - minY) / STEP) * cols + Math.round((p.x - minX) / STEP);
+  const point = cell => ({x: minX + (cell % cols) * STEP, y: minY + Math.floor(cell / cols) * STEP});
+  function obstacle(x, y, w, h) {
+    const left = Math.max(0, Math.ceil((x - minX) / STEP));
+    const right = Math.min(cols - 1, Math.floor((x + w - minX) / STEP));
+    const top = Math.max(0, Math.ceil((y - minY) / STEP));
+    const bottom = Math.min(rows - 1, Math.floor((y + h - minY) / STEP));
+    for (let row = top; row <= bottom; row++) blocked.fill(1, row * cols + left, row * cols + right + 1);
+  }
+  for (const n of nodes) obstacle(n.x - PADDING, n.y - PADDING, width + PADDING * 2, height + PADDING * 2);
+  for (const h of headers) obstacle(h.x, h.y, h.w, h.h);
+
+  const usedPorts = new Map(nodes.map(n => [n.id, new Set()]));
+  function portFor(n, other) {
+    const candidates = [];
+    const sides = [
+      ['left', -1, 0], ['right', 1, 0], ['top', 0, -1], ['bottom', 0, 1],
+    ];
+    const dx = other.x - n.x, dy = other.y - n.y;
+    for (const [side, nx, ny] of sides) {
+      const size = nx ? height : width;
+      for (let offset = 24; offset <= size - 24; offset += 16) {
+        const key = `${side}:${offset}`;
+        if (usedPorts.get(n.id).has(key)) continue;
+        const p = {x: n.x + (nx < 0 ? 0 : nx > 0 ? width : offset),
+                   y: n.y + (ny < 0 ? 0 : ny > 0 ? height : offset)};
+        const escape = {x: p.x + nx * STUB, y: p.y + ny * STUB};
+        if (blocked[index(escape)]) continue;
+        const away = dx * nx + dy * ny < 0 ? 160 : 0;
+        const score = Math.abs(escape.x - other.x - width / 2) +
+                      Math.abs(escape.y - other.y - height / 2) +
+                      Math.abs(offset - size / 2) * .35 + away;
+        candidates.push({point: p, escape, side, axis: nx ? 0 : 1, key, score});
+      }
+    }
+    candidates.sort((a, b) => a.score - b.score || a.key.localeCompare(b.key));
+    const selected = candidates[0];
+    if (!selected) throw new Error(`No free perimeter port for ${n.id}`);
+    usedPorts.get(n.id).add(selected.key);
+    return selected;
+  }
+  function reserve(a, b, owner) {
+    const start = index(a), end = index(b), axis = a.y === b.y ? horizontal : vertical;
+    const step = a.y === b.y ? Math.sign(end - start) : Math.sign(end - start) * cols;
+    if (!step) return;
+    for (let cell = start; ; cell += step) {
+      if (axis[cell] && axis[cell] !== owner) throw new Error('Connector track already reserved');
+      axis[cell] = owner;
+      if (cell === end) break;
+    }
+  }
+  // Reserve every attachment before routing, including currently hidden files.
+  const ports = edges.map((e, i) => {
+    const a = nodeMap.get(e.source), b = nodeMap.get(e.target);
+    const source = portFor(a, b), target = portFor(b, a);
+    reserve(source.point, source.escape, i + 1);
+    reserve(target.point, target.escape, i + 1);
+    return {source, target};
+  });
+
+  class MinHeap {
+    constructor() { this.items = []; }
+    push(state, priority) {
+      const item = {state, priority};
+      let i = this.items.length; this.items.push(item);
+      while (i) { const parent = (i - 1) >> 1; if (this.items[parent].priority <= priority) break;
+        this.items[i] = this.items[parent]; i = parent; }
+      this.items[i] = item;
+    }
+    pop() {
+      const first = this.items[0], last = this.items.pop();
+      if (this.items.length) {
+        let i = 0;
+        while (i * 2 + 1 < this.items.length) {
+          let child = i * 2 + 1;
+          if (child + 1 < this.items.length && this.items[child + 1].priority < this.items[child].priority) child++;
+          if (this.items[child].priority >= last.priority) break;
+          this.items[i] = this.items[child]; i = child;
+        }
+        this.items[i] = last;
+      }
+      return first;
+    }
+  }
+  const costs = new Float64Array(cells * 2), parents = new Int32Array(cells * 2);
+  const closed = new Uint8Array(cells * 2);
+  function findPath(startPort, endPort, owner) {
+    costs.fill(Infinity); parents.fill(-1); closed.fill(0);
+    const start = index(startPort.escape), goal = index(endPort.escape);
+    const goalX = goal % cols, goalY = Math.floor(goal / cols);
+    const heuristic = cell => (Math.abs(cell % cols - goalX) + Math.abs(Math.floor(cell / cols) - goalY)) * STEP;
+    const queue = new MinHeap(), initial = start * 2 + startPort.axis;
+    costs[initial] = 0; queue.push(initial, heuristic(start));
+    while (queue.items.length) {
+      const {state} = queue.pop(); if (closed[state]) continue; closed[state] = 1;
+      const cell = state >> 1, previousAxis = state & 1;
+      if (cell === goal) {
+        const result = []; let current = state;
+        while (current !== -1) { result.push(point(current >> 1)); current = parents[current]; }
+        return result.reverse();
+      }
+      const x = cell % cols, y = Math.floor(cell / cols);
+      for (let direction = 0; direction < 4; direction++) {
+        const axis = direction < 2 ? 0 : 1;
+        if ((direction === 0 && !x) || (direction === 1 && x === cols - 1) ||
+            (direction === 2 && !y) || (direction === 3 && y === rows - 1)) continue;
+        const next = cell + [-1, 1, -cols, cols][direction];
+        if (blocked[next]) continue;
+        const tracks = axis ? vertical : horizontal;
+        if ((tracks[cell] && tracks[cell] !== owner) || (tracks[next] && tracks[next] !== owner)) continue;
+        const stateNext = next * 2 + axis;
+        if (closed[stateNext]) continue;
+        const crossing = (axis ? horizontal[next] : vertical[next]);
+        const cost = costs[state] + STEP + (axis !== previousAxis ? 40 : 0) + (crossing && crossing !== owner ? 24 : 0);
+        if (cost >= costs[stateNext]) continue;
+        costs[stateNext] = cost; parents[stateNext] = state; queue.push(stateNext, cost + heuristic(next));
+      }
+    }
+    throw new Error(`No non-overlapping route for ${edges[owner - 1].source} → ${edges[owner - 1].target}`);
+  }
+  const routes = new Array(edges.length);
+  // Short local links keep their direct corridors; longer links use free tracks.
+  const order = edges.map((e, i) => ({i, length: Math.abs(nodeMap.get(e.source).x - nodeMap.get(e.target).x) +
+    Math.abs(nodeMap.get(e.source).y - nodeMap.get(e.target).y)})).sort((a, b) => a.length - b.length || a.i - b.i);
+  for (const {i} of order) {
+    const {source, target} = ports[i], middle = findPath(source, target, i + 1);
+    for (let p = 1; p < middle.length; p++) reserve(middle[p - 1], middle[p], i + 1);
+    const all = [source.point, ...middle, target.point], points = [];
+    for (const p of all) {
+      const last = points.at(-1);
+      if (last && last.x === p.x && last.y === p.y) continue;
+      const before = points.at(-2);
+      if (before && ((before.x === last.x && last.x === p.x) || (before.y === last.y && last.y === p.y))) points.pop();
+      points.push(p);
+    }
+    routes[i] = {points, sourcePort: source.point, targetPort: target.point,
+      sourceSide: source.side, targetSide: target.side};
+  }
+  return {routes, bounds: {minX, minY, maxX, maxY}};
+}
+/* CONNECTOR ROUTER END */
+
+const SUPPORT_Y=2288;
+function routingHeaders(groups) {
+  return [...groups.map(g=>({x:g.x+10,y:g.y+12,w:Math.min(g.w-20,g.label.length*8+55),h:22})),
+    {x:60,y:SUPPORT_Y-24,w:1240,h:54}];
+}
+const CONNECTORS=routeConnections(DATA.nodes,DATA.edges,WIDTH,HEIGHT,routingHeaders(DATA.groups));
+let themeIsExplicit=false;
+try{themeIsExplicit=["light","dark"].includes(localStorage.getItem("dynagraph-architecture-theme"));}catch{}
+function updateThemeButton(){
+  const dark=document.documentElement.dataset.theme==='dark';
+  $('theme').setAttribute('aria-pressed',String(dark));
+  $('theme').setAttribute('aria-label',`Switch to ${dark?'light':'dark'} mode`);
+  $('theme-label').textContent=dark?'Light mode':'Dark mode';
+}
+updateThemeButton();
+$('theme').addEventListener('click',()=>{
+  themeIsExplicit=true;
+  const next=document.documentElement.dataset.theme==='dark'?'light':'dark';
+  document.documentElement.dataset.theme=next;
+  try{localStorage.setItem('dynagraph-architecture-theme',next);}catch{}
+  updateThemeButton();
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',event=>{
+  if(themeIsExplicit)return;
+  document.documentElement.dataset.theme=event.matches?'dark':'light';updateThemeButton();
+});
 function svg(tag,attrs={},text){const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));if(text!==undefined)e.textContent=text;return e;}
 function html(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;}
 function statusLabel(n){return n.status==='implemented'?'IMPLEMENTED':n.status==='planned'?'PLANNED':'SERVICE / ARTIFACT';}
 function isPlanned(e){return byId.get(e.source).status==='planned'||byId.get(e.target).status==='planned';}
-function resourceInStatus(n){return n.status==='resource'&&(status==='all'||(status==='implemented'?n.phase<=3:n.phase>=4));}
+function resourceInStatus(n){return n.status==='resource'&&(status==='all'||(status==='implemented'?n.phase<=4:n.phase>=5));}
 function visible(n){return (!n.support||showSupport)&&(status==='all'||n.status===status||resourceInStatus(n));}
 function matches(n){return !query||[n.label,n.path,n.summary,n.description,n.notes,...n.interfaces].join(' ').toLowerCase().includes(query);}
 function relatedIds(){if(selected){return new Set([selected,...DATA.edges.filter(e=>e.source===selected||e.target===selected).flatMap(e=>[e.source,e.target])]);}if(phaseFocus)return new Set(DATA.nodes.filter(n=>n.phase===phaseFocus).map(n=>n.id));const ids=DATA.routes[route].ids;return ids.length?new Set(ids):null;}
 function center(n){return {x:n.x+WIDTH/2,y:n.y+HEIGHT/2};}
-function pathFor(e,i){const a=byId.get(e.source),b=byId.get(e.target),ac=center(a),bc=center(b);const dir=bc.x>=ac.x?1:-1;
- if(a.y===b.y&&Math.abs(a.x-b.x)<=345)return `M${dir>0?a.x+WIDTH:a.x} ${ac.y} H${dir>0?b.x:b.x+WIDTH}`;
- if(a.y===b.y){const y=a.y-23-(i%4)*9;return `M${ac.x} ${a.y} V${y} H${bc.x} V${b.y}`;}
- if(a.x===b.x){const gutter=a.x+WIDTH+20+(i%2)*7;return `M${a.x+WIDTH} ${ac.y} H${gutter} V${bc.y} H${b.x+WIDTH}`;}
- const sx=dir>0?a.x+WIDTH:a.x,tx=dir>0?b.x:b.x+WIDTH,sxg=sx+dir*(16+(i%2)*6),txg=tx-dir*(16+(i%2)*6),channel=a.y+HEIGHT+24+(i%4)*9;
- return `M${sx} ${ac.y} H${sxg} V${channel} H${txg} V${bc.y} H${tx}`;
+function pathFor(e,i){return CONNECTORS.routes[i].points.map((p,index)=>`${index?'L':'M'}${p.x} ${p.y}`).join(' ');}
+function boundsFor(items){
+  const ids=new Set(items.map(n=>n.id));
+  const points=items.flatMap(n=>[{x:n.x,y:n.y},{x:n.x+WIDTH,y:n.y+HEIGHT}]);
+  DATA.edges.forEach((e,i)=>{if(ids.has(e.source)&&ids.has(e.target))points.push(...CONNECTORS.routes[i].points);});
+  return {minX:Math.min(...points.map(p=>p.x))-64,minY:Math.min(...points.map(p=>p.y))-72,
+    maxX:Math.max(...points.map(p=>p.x))+64,maxY:Math.max(...points.map(p=>p.y))+48};
 }
 function buildMap(){
  const scene=$('scene');
  for(const group of DATA.groups){const g=svg('g',{class:'group'}),p=phases.get(group.phase);g.append(svg('rect',{x:group.x,y:group.y,width:group.w,height:group.h,rx:14,fill:p.color,'fill-opacity':.035,stroke:p.color,'stroke-opacity':.18,'stroke-dasharray':group.phase>=4?'6 5':'none'}));g.append(svg('text',{x:group.x+18,y:group.y+27,class:'group-title',fill:p.color},`${String(group.phase).padStart(2,'0')}  ${group.label}`));scene.append(g);groupEls.push({g,phase:group.phase});}
- const supportTitle=svg('g',{id:'support-title'});supportTitle.append(svg('text',{x:60,y:1730,class:'support-title'},'SUPPORTING FILES & VERIFICATION'));supportTitle.append(svg('text',{x:60,y:1756,class:'support-subtitle'},'Tests, package boundaries, configuration, and documentation. These are not steps in the runtime agent loop.'));scene.append(supportTitle);
+ const supportTitle=svg('g',{id:'support-title'});supportTitle.append(svg('text',{x:60,y:SUPPORT_Y,class:'support-title'},'SUPPORTING FILES & VERIFICATION'));supportTitle.append(svg('text',{x:60,y:SUPPORT_Y+26,class:'support-subtitle'},'Tests, package boundaries, configuration, and documentation. These are not steps in the runtime agent loop.'));scene.append(supportTitle);
  const edgeGroup=svg('g');scene.append(edgeGroup);
- DATA.edges.forEach((e,i)=>{const group=svg('g'),muted=['observe','support','test'].includes(e.kind),path=svg('path',{d:pathFor(e,i),class:'edge',fill:'none',stroke:'#8198a6','stroke-width':1.7,'stroke-dasharray':muted?'2 6':isPlanned(e)?'8 6':'none','marker-end':'url(#arrow)'});path.append(svg('title',{},`${byId.get(e.source).label} → ${byId.get(e.target).label}: ${e.label}${isPlanned(e)?' (planned integration)':''}`));const label=svg('text',{class:'edge-label',hidden:''},e.label);label.style.display='none';group.append(path,label);edgeGroup.append(group);edgeEls.push({e,group,path,label,positioned:false});});
- for(const n of DATA.nodes){const color=phases.get(n.phase).color,g=svg('g',{class:'component',transform:`translate(${n.x} ${n.y})`,tabindex:0,role:'button','data-id':n.id,'aria-label':`${n.path||n.label}. ${statusLabel(n)}. ${n.summary}`});g.append(svg('title',{},`${n.path||n.label}\n${n.summary}\n${statusLabel(n)}`));g.append(svg('rect',{class:'card',width:WIDTH,height:HEIGHT,rx:9,fill:'#fff',stroke:n.status==='planned'?'#c9c6c1':'#cedce2','stroke-width':1.5,'stroke-dasharray':n.status==='planned'?'6 4':'none'}));g.append(svg('rect',{x:0,y:18,width:4,height:HEIGHT-36,rx:2,fill:color}));g.append(svg('text',{x:17,y:24,class:'card-status',fill:n.status==='planned'?'#a46a2b':n.status==='implemented'?'#317e65':'#74858f'},`${n.support?'SUPPORT':`PHASE ${n.phase}`} · ${n.status==='resource'?'LOCAL / LOGICAL':n.status.toUpperCase()}`));
+ DATA.edges.forEach((e,i)=>{const group=svg('g'),muted=['observe','support','test'].includes(e.kind),path=svg('path',{d:pathFor(e,i),class:'edge',fill:'none',stroke:'#8198a6','stroke-width':2.55,'stroke-dasharray':muted?'2 6':isPlanned(e)?'8 6':'none','marker-end':'url(#arrow)'});path.append(svg('title',{},`${byId.get(e.source).label} → ${byId.get(e.target).label}: ${e.label}${isPlanned(e)?' (planned integration)':''}`));const label=svg('text',{class:'edge-label',hidden:''},e.label);label.style.display='none';const halo=svg('path',{d:pathFor(e,i),class:'edge-halo','stroke-linejoin':'round'});
+ const ports=svg('g',{'pointer-events':'none'});for(const p of [CONNECTORS.routes[i].sourcePort,CONNECTORS.routes[i].targetPort])ports.append(svg('circle',{cx:p.x,cy:p.y,r:2.5,class:'port'}));
+ group.append(halo,path,label,ports);edgeGroup.append(group);edgeEls.push({e,group,path,label,ports,positioned:false});});
+ for(const n of DATA.nodes){const color=phases.get(n.phase).color,g=svg('g',{class:'component',transform:`translate(${n.x} ${n.y})`,tabindex:0,role:'button','data-id':n.id,'data-status':n.status,'aria-label':`${n.path||n.label}. ${statusLabel(n)}. ${n.summary}`});g.append(svg('title',{},`${n.path||n.label}\n${n.summary}\n${statusLabel(n)}`));g.append(svg('rect',{class:'card',width:WIDTH,height:HEIGHT,rx:9,fill:'#fff',stroke:n.status==='planned'?'#c9c6c1':'#cedce2','stroke-width':1.5,'stroke-dasharray':n.status==='planned'?'6 4':'none'}));g.append(svg('rect',{x:0,y:18,width:4,height:HEIGHT-36,rx:2,fill:color}));g.append(svg('text',{x:17,y:24,class:'card-status',fill:n.status==='planned'?'#a46a2b':n.status==='implemented'?'#317e65':'#74858f'},`${n.support?'SUPPORT':`PHASE ${n.phase}`} · ${n.status==='resource'?'LOCAL / LOGICAL':n.status.toUpperCase()}`));
  const title=svg('text',{x:17,y:54,class:'card-title'},n.label);if(n.label.length>22)title.style.fontSize='16px';else if(n.label.length>19)title.style.fontSize='19px';g.append(title);
  const words=n.summary.split(' ');let line='',lines=[];for(const word of words){if((line+' '+word).trim().length>34){lines.push(line);line=word;}else line=(line+' '+word).trim();}if(line)lines.push(line);lines.slice(0,2).forEach((text,i)=>g.append(svg('text',{x:17,y:77+i*18,class:'card-subtitle'},text)));
  g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();selectNode(n.id,true);}});scene.append(g);nodeEls.set(n.id,g);}
@@ -1867,7 +2246,7 @@ function buildMap(){
 function render(){
  const related=relatedIds();let shown=0;
  for(const n of DATA.nodes){const e=nodeEls.get(n.id),shownHere=visible(n);e.style.display=shownHere?'':'none';if(shownHere)shown++;const dim=(!matches(n))||(related&&!related.has(n.id));e.classList.toggle('dim',!!dim);e.classList.toggle('selected',selected===n.id);e.classList.toggle('related',!!related&&related.has(n.id));e.setAttribute('aria-pressed',String(selected===n.id));}
- for(const {e,group,path,label} of edgeEls){const a=byId.get(e.source),b=byId.get(e.target),show=visible(a)&&visible(b);group.style.display=show?'':'none';const adjacent=selected&&(e.source===selected||e.target===selected);const highlighted=!!related&&related.has(e.source)&&related.has(e.target)&&matches(a)&&matches(b);path.classList.toggle('dim',!!related&&!highlighted||!!query&&(!matches(a)||!matches(b)));path.classList.toggle('active',!!highlighted);path.setAttribute('stroke',highlighted?'#087f8c':'#8198a6');path.setAttribute('marker-end',highlighted?'url(#arrow-active)':'url(#arrow)');label.style.display='none';}
+ for(const {e,group,path,label,ports} of edgeEls){const a=byId.get(e.source),b=byId.get(e.target),show=visible(a)&&visible(b);group.style.display=show?'':'none';const adjacent=selected&&(e.source===selected||e.target===selected);const highlighted=!!related&&related.has(e.source)&&related.has(e.target)&&matches(a)&&matches(b);path.classList.toggle('dim',!!related&&!highlighted||!!query&&(!matches(a)||!matches(b)));path.classList.toggle('active',!!highlighted);for(const port of ports.children)port.classList.toggle('active',!!highlighted);ports.style.opacity=highlighted?'1':related&&!highlighted?'.12':'.7';path.setAttribute('marker-end',highlighted?'url(#arrow-active)':'url(#arrow)');label.style.display='none';}
  for(const {g,phase} of groupEls)g.classList.toggle('dim',!!phaseFocus&&phaseFocus!==phase);
  $('support-title').style.display=showSupport?'':'none';
  $('count').textContent=`${shown} visible / ${DATA.nodes.length} components`;
@@ -1887,15 +2266,15 @@ function positionLabels(){
   for(const fraction of [.5,.35,.65,.2,.8]){const p=path.getPointAtLength(path.getTotalLength()*fraction),box={x:p.x-w/2,y:p.y-23,w,h:18};if(occupied.some(other=>overlaps(box,other)))continue;label.setAttribute('x',p.x);label.setAttribute('y',p.y-8);label.setAttribute('text-anchor','middle');item.positioned=true;occupied.push(box);if(camera.scale>=.5)label.style.display='';break;}
  }
 }
-function applyCamera(){camera.scale=Math.min(2.6,Math.max(.18,camera.scale));$('scene').setAttribute('transform',`translate(${camera.x} ${camera.y}) scale(${camera.scale})`);$('zoom-label').value=`${Math.round(camera.scale*100)}%`;$('zoom-label').textContent=`${Math.round(camera.scale*100)}%`;$('zoom-slider').value=Math.round(camera.scale*100);for(const {positioned,label} of edgeEls)label.style.display=positioned&&camera.scale>=.5?'':'none';}
-function zoomAt(scale,x=viewport.w/2,y=viewport.h/2){const next=Math.min(2.6,Math.max(.18,scale));camera.x=x-(x-camera.x)*next/camera.scale;camera.y=y-(y-camera.y)*next/camera.scale;camera.scale=next;applyCamera();}
-function fitNodes(items,cap=1.1){if(!items.length)return;let minX=Math.min(...items.map(n=>n.x))-35,minY=Math.min(...items.map(n=>n.y))-45,maxX=Math.max(...items.map(n=>n.x+WIDTH))+35,maxY=Math.max(...items.map(n=>n.y+HEIGHT))+35;camera.scale=Math.min(cap,(viewport.w-36)/(maxX-minX),(viewport.h-35)/(maxY-minY));camera.scale=Math.max(.18,camera.scale);camera.x=(viewport.w-(maxX-minX)*camera.scale)/2-minX*camera.scale;camera.y=(viewport.h-(maxY-minY)*camera.scale)/2-minY*camera.scale;applyCamera();}
+function applyCamera(){camera.scale=Math.min(2.6,Math.max(.10,camera.scale));$('scene').setAttribute('transform',`translate(${camera.x} ${camera.y}) scale(${camera.scale})`);$('zoom-label').value=`${Math.round(camera.scale*100)}%`;$('zoom-label').textContent=`${Math.round(camera.scale*100)}%`;$('zoom-slider').value=Math.round(camera.scale*100);for(const {positioned,label} of edgeEls)label.style.display=positioned&&camera.scale>=.5?'':'none';}
+function zoomAt(scale,x=viewport.w/2,y=viewport.h/2){const next=Math.min(2.6,Math.max(.10,scale));camera.x=x-(x-camera.x)*next/camera.scale;camera.y=y-(y-camera.y)*next/camera.scale;camera.scale=next;applyCamera();}
+function fitNodes(items,cap=1.1){if(!items.length)return;const {minX,minY,maxX,maxY}=boundsFor(items);camera.scale=Math.min(cap,(viewport.w-36)/(maxX-minX),(viewport.h-35)/(maxY-minY));camera.scale=Math.max(.10,camera.scale);camera.x=(viewport.w-(maxX-minX)*camera.scale)/2-minX*camera.scale;camera.y=(viewport.h-(maxY-minY)*camera.scale)/2-minY*camera.scale;applyCamera();}
 function fit(){const ids=relatedIds();fitNodes(DATA.nodes.filter(n=>visible(n)&&matches(n)&&(!ids||ids.has(n.id))));}
 function focusNode(n){const c=center(n);camera.scale=Math.max(.85,Math.min(1.2,(viewport.w-60)/(WIDTH+80)));camera.x=viewport.w/2-c.x*camera.scale;camera.y=viewport.h/2-c.y*camera.scale;applyCamera();}
 function tab(name){const details=name==='details';$('details').hidden=!details;$('inventory').hidden=details;$('details-tab').setAttribute('aria-selected',String(details));$('inventory-tab').setAttribute('aria-selected',String(!details));}
 function section(parent,label,content){const box=html('section','detail-section');box.append(html('h3','',label));if(typeof content==='string')box.append(html('p','',content));else box.append(content);parent.append(box);}
 function renderDetails(n){const root=$('details');root.replaceChildren();if(!n){const kicker=html('div','detail-kicker','READ THE SYSTEM, THEN THE CODE');root.append(kicker,html('h2','','Local agents. Persistent memory.'),html('p','detail-description','DynaGraph is designed to replace repeated full-history context with a small, current graph of facts. The atlas shows the finished eight-phase design and the files that exist today.'));
- const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','Phases 1–3 are implemented. Future wiring is dashed. Planned performance targets and benefits are not measured results. Click any card, search a path, or explore All components.'));return;}
+ const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','Phases 1–4 are implemented. Future wiring is dashed. Planned performance targets and benefits are not measured results. Click any card, search a path, or explore All components.'));return;}
  const p=phases.get(n.phase),kicker=html('div','detail-kicker');kicker.append(html('span','',n.support?'SUPPORTING FILE':`PHASE ${n.phase} · ${p.name}`),html('span',`badge ${n.status}`,statusLabel(n)));root.append(kicker,html('h2','',n.label));
  if(n.path){const path=html('div','file-path',n.path);root.append(path);if(n.status==='implemented'){const source=html('a','file-path','Open source file ↗');source.href='../'+n.path;source.target='_blank';source.rel='noopener';root.append(source);}}
  root.append(html('p','detail-description',n.description));section(root,'Inputs',n.inputs);section(root,'Outputs',n.outputs);
@@ -1908,7 +2287,17 @@ function selectNode(id,focus=true){const n=byId.get(id);if(!n)return;if(n.suppor
 function renderInventory(){const root=$('inventory');root.replaceChildren();const matchesAll=DATA.nodes.filter(n=>matches(n)&&(status==='all'||n.status===status||resourceInStatus(n)));root.append(html('p','inventory-intro',`${matchesAll.length} components. Includes files hidden by the supporting-files toggle. Select a row to reveal and inspect it.`));const groups=[['Core modules',n=>n.kind==='source'],['Local services / artifacts',n=>n.kind==='resource'],['Automated verification',n=>n.kind==='test'],['Packaging, setup & documentation',n=>n.kind==='support']];for(const [title,test] of groups){const items=matchesAll.filter(test);if(!items.length)continue;root.append(html('h3','file-group',title));for(const n of items){const b=html('button','file-row'+(n.id===selected?' active':''));const line=html('span','file-label');line.append(html('span','',n.label),html('span',`badge ${n.status}`,n.status==='implemented'?'BUILT':n.status==='planned'?'PLAN':'LOCAL'));b.append(line,html('small','',n.path||n.summary));b.addEventListener('click',()=>selectNode(n.id,true));root.append(b);}}if(!matchesAll.length)root.append(html('p','empty-state','No matching files. Try a module name, responsibility, phase, or interface.'));}
 function reset(){selected=null;phaseFocus=null;route='system';status='all';query='';showSupport=false;$('route').value=route;$('status').value=status;$('search').value='';history.replaceState(null,'',location.pathname+location.search);renderDetails(null);render();fit();}
 function localPoint(e){const rect=$('map').getBoundingClientRect();return{x:e.clientX-rect.left,y:e.clientY-rect.top};}
-function exportSvg(){const clone=$('map').cloneNode(true);clone.removeAttribute('tabindex');clone.setAttribute('xmlns',NS);clone.setAttribute('role','img');clone.setAttribute('aria-label','DynaGraph architecture snapshot');const visibleNodes=DATA.nodes.filter(visible),minX=Math.min(...visibleNodes.map(n=>n.x))-45,minY=35,maxX=Math.max(...visibleNodes.map(n=>n.x+WIDTH))+45,maxY=Math.max(...visibleNodes.map(n=>n.y+HEIGHT))+50;clone.setAttribute('viewBox',`${minX} ${minY} ${maxX-minX} ${maxY-minY}`);clone.setAttribute('width',maxX-minX);clone.setAttribute('height',maxY-minY);clone.querySelector('#scene').removeAttribute('transform');clone.querySelector('#background').setAttribute('fill','#f3f6f7');const style=svg('style');style.textContent=Array.from(document.styleSheets[0].cssRules).filter(r=>r.selectorText&&r.selectorText.includes('svg .')).map(r=>r.cssText).join('\n');clone.prepend(style);for(const node of clone.querySelectorAll('[tabindex]'))node.removeAttribute('tabindex');const blob=new Blob([new XMLSerializer().serializeToString(clone)],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),a=html('a');a.href=url;a.download='dynagraph-architecture.svg';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);$('announcer').textContent='Architecture exported as SVG.';}
+function exportSvg(){
+ const clone=$('map').cloneNode(true);clone.removeAttribute('tabindex');clone.setAttribute('xmlns',NS);clone.setAttribute('role','img');clone.setAttribute('aria-label','DynaGraph architecture snapshot');
+ const {minX,minY,maxX,maxY}=boundsFor(DATA.nodes.filter(visible));
+ clone.setAttribute('viewBox',`${minX} ${minY} ${maxX-minX} ${maxY-minY}`);clone.setAttribute('width',maxX-minX);clone.setAttribute('height',maxY-minY);clone.querySelector('#scene').removeAttribute('transform');
+ clone.querySelector('#background').setAttribute('fill','var(--canvas)');for(const [name,value] of Object.entries({x:minX,y:minY,width:maxX-minX,height:maxY-minY}))clone.querySelector('#background').setAttribute(name,value);
+ const computed=getComputedStyle(document.documentElement);
+ for(const token of ['page','surface','surface-alt','canvas','caption','line','ink','muted','accent','accent-bg','card-border','planned-border','edge','edge-active','grid-dot','good','good-bg','planned','planned-bg','local-bg','note-bg','note-text','note-line','phase-brightness'])clone.style.setProperty('--'+token,computed.getPropertyValue('--'+token));
+ const style=svg('style');style.textContent=Array.from(document.styleSheets[0].cssRules).filter(r=>r.selectorText&&r.selectorText.includes('svg ')).map(r=>r.cssText).join('\n');clone.prepend(style);
+ for(const node of clone.querySelectorAll('[tabindex]'))node.removeAttribute('tabindex');
+ const blob=new Blob([new XMLSerializer().serializeToString(clone)],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),a=html('a');a.href=url;a.download='dynagraph-architecture.svg';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);$('announcer').textContent='Architecture exported as SVG.';
+}
 
 buildMap();
 for(const p of DATA.phases){const button=html('button','phase-btn');button.dataset.phase=p.id;button.style.setProperty('--phase',p.color);button.setAttribute('aria-pressed','false');button.append(html('span','phase-number',String(p.id).padStart(2,'0')),document.createTextNode(p.name));button.addEventListener('click',()=>{phaseFocus=phaseFocus===p.id?null:p.id;selected=null;query='';$('search').value='';route='system';$('route').value=route;if(phaseFocus&&status!=='all'){status='all';$('status').value=status;}renderDetails(null);render();fit();});$('phases').append(button);}
