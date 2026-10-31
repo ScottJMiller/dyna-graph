@@ -5,6 +5,7 @@ import pytest
 
 def pytest_addoption(parser):
     parser.addoption("--run-storage-benchmark", action="store_true", help="Measure committed storage inserts against the sub-millisecond target")
+    parser.addoption("--run-retrieval-benchmark", action="store_true", help="Measure warm graph-context assembly against the 5 ms target")
     parser.addoption("--run-lan", action="store_true", help="Run real two-node Ollama tests")
     parser.addoption(
         "--lan-node", choices=("both", "node1", "node2"), default="both",
@@ -18,6 +19,8 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "storage_benchmark" in item.keywords and not config.getoption("--run-storage-benchmark"):
             item.add_marker(pytest.mark.skip(reason="pass --run-storage-benchmark to verify the storage-host latency target"))
+        if "retrieval_benchmark" in item.keywords and not config.getoption("--run-retrieval-benchmark"):
+            item.add_marker(pytest.mark.skip(reason="pass --run-retrieval-benchmark to verify local retrieval latency"))
         if "lan" not in item.keywords:
             continue
         if not run_lan:

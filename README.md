@@ -51,8 +51,8 @@ can legitimately use several databases, so different objects do not automaticall
 indicate a contradiction.
 
 The underlying idea is **bounded context**: choose a limited amount of relevant
-memory for each request. The planned retrieval layer limits the graph-memory
-block to 1,000 tokens. A token is a unit of text processed by the model; this
+memory for each request. The retrieval layer limits the graph-memory
+block to 1,000 text tokens using a conservative bound or a supplied local tokenizer. A token is a unit of text processed by the model; this
 limit does not cover the entire task prompt or prove that total context stays
 constant. Selective forgetting considers recency, frequency, graph
 connectivity, and the number of turns since information was used.
@@ -115,11 +115,11 @@ benefit from persistent graph memory.
 
 | Status | Capabilities |
 | --- | --- |
-| Implemented: phases 1–4 | Validated local configuration; async Ollama health, model inventory, inference, latency metrics, and fallback; transactional SQLite entity/triple storage with prefix search; structured fact extraction with defensive parsing and bounded retry; configured single-valued supersession, deterministic retention scoring, and pin-protected soft-pruning. |
-| Planned: phases 5–6 | Bounded neighborhood retrieval and a cyclic planner/researcher/verifier workflow. |
+| Implemented: phases 1–5 | Validated local configuration; async Ollama health, model inventory, inference, latency metrics, and fallback; transactional SQLite entity/triple storage with prefix search; structured fact extraction with defensive parsing and bounded retry; configured single-valued supersession, deterministic retention scoring, and pin-protected soft-pruning; bounded SQL neighborhood recall and budgeted Markdown/JSON context. |
+| Planned: phase 6 | A cyclic planner/researcher/verifier workflow integrating the existing APIs. |
 | Planned: phases 7–8 | Turn-level telemetry, a terminal dashboard, CSV logging, and the controlled benchmark with analysis and figures. |
 
-Today you can call the extraction, storage, and governance Python APIs independently.
+Today you can call the extraction, storage, governance, and retrieval Python APIs independently.
 Extraction returns validated facts without automatically writing them to storage.
 There is no complete interactive task runner yet.
 
@@ -200,6 +200,8 @@ model tags. A tag identifies a particular model/version in Ollama.
 | `SINGLE_VALUED_PREDICATES` | JSON array of relationships that can have only one current value per subject; defaults to `[]`. |
 | `PRUNING_THRESHOLD`, `PRUNING_BATCH_SIZE`, `PRUNING_INTERVAL_SECONDS` | Retention cutoff and bounded maintenance scheduling. |
 | `DECAY_RECENCY_HALF_LIFE_SECONDS`, `DECAY_TURN_HALF_LIFE` | How quickly unused memory loses time-based and turn-based retention. |
+| `CONTEXT_TOKEN_BUDGET` | Maximum graph-context budget, restricted to 1–1,000. |
+| `RETRIEVAL_SEED_LIMIT`, `RETRIEVAL_HOPS`, `RETRIEVAL_MAX_NODES`, `RETRIEVAL_MAX_TRIPLES`, `RETRIEVAL_FANOUT` | Bounds on seed matching and one/two-hop SQL neighborhood discovery. |
 
 Follow the [Phase 1 setup and verification guide](docs/testing/phase1.md) to
 install/configure Ollama on both nodes, disable cloud features, install local
@@ -324,7 +326,47 @@ temporary-database example, scoring formulas, async lifecycle, and limitations.
 The default decay parameters are configurable engineering choices; they have
 not yet been calibrated by the planned experiment.
 
-### 7. Verify the installed components
+### 7. Recall a small current neighborhood
+
+A sub-goal can now retrieve active facts as Markdown or JSON. This example reads
+the configured graph without contacting either model:
+
+```bash
+python3 - <<'PY'
+from src.config import get_settings
+from src.retrieval import ContextAssembler
+from src.storage.database import Database
+from src.storage.graph_store import GraphStore
+
+settings = get_settings()
+with Database.from_settings(settings) as database:
+    assembler = ContextAssembler.from_settings(GraphStore(database), settings)
+    memory = assembler.assemble(
+        "Which database does the example project use?", format="json",
+    )
+    print(memory.text or "(no eligible memory fits)")
+    print(f"budget={memory.budget_used}/{memory.budget_limit} method={memory.budget_method}")
+PY
+```
+
+The result depends on stored data. Lexical prefix matching finds seeds, with
+recent active entities as fallback. SQL explores incoming/outgoing active facts
+up to two hops, using explicit node/fact/fan-out caps. Superseded/pruned facts and
+inactive endpoints cannot supply old values or bridge to other memory.
+
+The default budget counts an **upper bound from serialized bytes**, suitable
+for the baseline byte-level BPE tokenizers; it is not measured model-token usage.
+A correct local model-specific counter can be supplied for another tokenizer or
+fuller budget utilization. Entire facts are omitted when they cannot fit;
+labels are never cut, and nonempty JSON is always complete. The ceiling covers
+the graph block, while role/task prompts and chat formatting need separate space.
+
+Assembly is read-only. After actually supplying the block to an agent, call
+`assembler.mark_used(memory, turn=...)` to reinforce only the emitted entities.
+The [Phase 5 guide](docs/testing/phase5.md) explains usage lifecycle, async calls,
+selection limits, tokenizer assumptions, and the offline latency benchmark.
+
+### 8. Verify the installed components
 
 Run the functional suite without network access or Ollama:
 
@@ -332,8 +374,8 @@ Run the functional suite without network access or Ollama:
 python3 -m pytest -q
 ```
 
-Expected: **403 passed, 15 skipped**. The skips are checks that need physical LAN
-nodes or an explicitly requested storage benchmark. Run those separately:
+Expected: **510 passed, 16 skipped**. The skips are checks that need physical LAN
+nodes or explicitly requested storage/retrieval benchmarks. Run those separately:
 
 ```bash
 python3 -m pytest tests/test_phase1_network.py --run-lan -q
@@ -341,6 +383,16 @@ python3 -m pytest tests/test_phase3_extraction.py --run-lan -q
 mkdir -p .verification
 python3 -m pytest tests/test_phase2_storage.py --run-storage-benchmark --basetemp .verification/phase2 -v -s
 ```
+
+The Phase 5 retrieval benchmark is also local and offline:
+
+```bash
+python3 -m pytest tests/test_phase5_retrieval.py --run-retrieval-benchmark --basetemp .verification/phase5 -v -s
+```
+
+Expected: **108 passed** for retrieval; its four warm workloads require median
+and p95 below **5 ms**, with every block within budget. See the protocol for
+fixture size, warm-up, and measurement boundaries.
 
 Expected: **122 passed** for network checks, **111 passed** for extraction, and
 **83 passed** for storage. The storage benchmark checks a median below 1 ms for
@@ -354,9 +406,10 @@ the storage host and system load; this does not guarantee every insert is under
 | [Storage verification](docs/testing/phase2.md) | SQLite capabilities, transactions, graph operations, prefix search, and the insert benchmark. |
 | [Extraction verification](docs/testing/phase3.md) | Defensive parsing, live model checks, resource limits, and validation errors. |
 | [Governance verification](docs/testing/phase4.md) | Deterministic decay, atomic replacement, pinned memory, daemon lifecycle, migration, and a reproducible offline smoke check. |
+| [Retrieval verification](docs/testing/phase5.md) | Active one/two-hop recall, strict block budgets, explicit usage, snapshot consistency, and the warm retrieval benchmark. |
 | [Architecture atlas verification](docs/testing/architecture.md) | Optional checks for the documentation's themes, controls, SVG export, and connector geometry. |
 
-### 8. Troubleshoot and build on the APIs
+### 9. Troubleshoot and build on the APIs
 
 | Symptom | First check |
 | --- | --- |

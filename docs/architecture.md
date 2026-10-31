@@ -30,7 +30,7 @@ diagram of the current visible component set. Reset first for an unhighlighted
 whole-system export; enable Supporting files for the complete inventory.
 
 The map describes the **finished target design**, while its status labels reflect
-the current checkout: phases **1–4 exist** and phases **5–8 are planned**.
+the current checkout: phases **1–5 exist** and phases **6–8 are planned**.
 Components have wider gutters and connectors use distinct perimeter ports. An
 orthogonal router reserves separate tracks and keeps lines out of every card.
 Parallel line sections cannot overlap; perpendicular crossings use a background
@@ -145,8 +145,10 @@ centrality, and elapsed-turn decay. The pruner scans bounded pages and only
 considers nodes with at most one active incident fact in that pass. The daemon
 must be started explicitly and receives turns from its caller. See the
 [Phase 4 protocol](testing/phase4.md) for formulas, default parameters, pin
-semantics, access recording, and backup/upgrade instructions. Retrieval/token
-accounting remains Phase 5 work; controller integration remains Phase 6 work.
+semantics, access recording, and backup/upgrade instructions. Retrieval now selects bounded active neighborhoods in SQL and emits budgeted
+Markdown/JSON. The default count is a conservative byte-level BPE bound; a
+correct local model-specific counter can be injected. Usage recording is
+explicit after context is supplied. Controller integration remains Phase 6 work.
 
 ## How the experiment evaluates the system
 
@@ -175,7 +177,7 @@ experiment is intended to test those benefits rather than assume them.
 | JSON safety | Implemented bounded parsing with explicit errors; output is never evaluated as Python/code or silently converted to a successful empty graph. |
 | Semantic quality | Source-label checks help reject unrelated endpoints; schema validity does not establish relation truth or completeness. |
 | Governance | Implemented four-factor scoring, persisted usage, protected pins and active pinned facts, bounded soft-pruning, and atomic single-valued supersession with fact-level provenance. |
-| Retrieval | Planned 1–2 hop active traversal, ≤1,000 graph-context tokens, and a <5 ms benchmark target. |
+| Retrieval | Implemented FTS5 seeds/recent fallback, bounded 1–2 hop active SQL traversal, and ≤1,000-token graph blocks using an explicit budget method. The warm median/p95 target is <5 ms on the documented fixture. |
 | Insert latency | Existing storage protocol checks a <1 ms median for individually committed inserts on the storage host. Hardware/load affect results. |
 | Experiment | Planned comparison, not existing measurements or a proven complexity claim. |
 
@@ -231,10 +233,11 @@ metadata beyond the specified deliverables.
 
 | File | Status | Responsibility |
 | --- | --- | --- |
-| `src/retrieval/seed_matcher.py` | Planned | Match the current sub-goal to active entity names/descriptions using SQLite FTS5. Fall back to recent active entities when lexical lookup yields no useful seeds. |
-| `src/retrieval/traversal.py` | Planned | Expand seed entities one or two hops across active facts. Keep graph traversal inside SQLite queries rather than loading the entire graph into Python. |
-| `src/retrieval/context_assembler.py` | Planned | Select and format retrieved facts as concise Markdown or JSON for the active agent. Enforce the final graph-context token budget before dispatch. |
-| `tests/test_phase5_retrieval.py` | Planned | Planned retrieval latency and token-ceiling checks. |
+| [src/retrieval/seed_matcher.py](../src/retrieval/seed_matcher.py) | Implemented | Match the current sub-goal to active entity names/descriptions using SQLite FTS5. Fall back to recent active entities when lexical lookup yields no useful seeds. |
+| [src/retrieval/traversal.py](../src/retrieval/traversal.py) | Implemented | Expand seed entities one or two hops across active facts. Keep graph traversal inside SQLite queries rather than loading the entire graph into Python. |
+| [src/retrieval/context_assembler.py](../src/retrieval/context_assembler.py) | Implemented | Select and format retrieved facts as concise Markdown or JSON for the active agent. Enforce the final graph-context token budget before dispatch. |
+| [tests/test_phase5_retrieval.py](../tests/test_phase5_retrieval.py) | Implemented | Active topology, exact budget boundaries, concurrent snapshots, explicit usage, async APIs, and opt-in warm median/p95 latency checks. |
+| [src/retrieval/__init__.py](../src/retrieval/__init__.py) | Implemented | Export seed matching, bounded neighborhoods, context results, and assembler APIs. |
 
 ### Phase 6: Agent workflow
 
@@ -267,9 +270,9 @@ metadata beyond the specified deliverables.
 
 | File | Purpose |
 | --- | --- |
-| [tests/conftest.py](../tests/conftest.py) | Add --run-lan, --lan-node, and --run-storage-benchmark flags; skip external/hardware-dependent checks unless explicitly selected. |
-| [pytest.ini](../pytest.ini) | Set tests/ discovery, strict markers, and the LAN/storage benchmark marker declarations. |
-| [.env.example](../.env.example) | Provide illustrative private LAN addresses, per-node model/thread settings, local database settings, HTTP budgets, and governance defaults. Copy and edit as a private .env. |
+| [tests/conftest.py](../tests/conftest.py) | Add --run-lan, --lan-node, --run-storage-benchmark, and --run-retrieval-benchmark flags; skip external/hardware-dependent checks unless explicitly selected. |
+| [pytest.ini](../pytest.ini) | Set tests/ discovery, strict markers, and the LAN/storage/retrieval benchmark marker declarations. |
+| [.env.example](../.env.example) | Provide illustrative private LAN addresses, model/thread settings, storage/HTTP budgets, governance defaults, and bounded retrieval settings. Copy and edit as a private .env. |
 | [requirements.txt](../requirements.txt) | Pin Pydantic, pydantic-settings, HTTPX, pytest, Rich, and python-dotenv for reproducible installation. |
 | [.gitignore](../.gitignore) | Exclude private configuration, local databases and WAL sidecars, environments, test artifacts, and local reference notes. |
 | [README.md](../README.md) | Explain the public setup, current feature status, examples, and verification entry points. |
@@ -277,6 +280,7 @@ metadata beyond the specified deliverables.
 | [docs/testing/phase2.md](../docs/testing/phase2.md) | Document SQLite capability checks, isolated CRUD, durable-insert benchmarking, and lifecycle contracts. |
 | [docs/testing/phase3.md](../docs/testing/phase3.md) | Document parser smoke checks, six live extraction cases, resource limits, and error recovery. |
 | [docs/testing/phase4.md](../docs/testing/phase4.md) | Document governance formulas, offline tests, reproducible smoke output, daemon lifecycle, and safe schema upgrades. |
+| [docs/testing/phase5.md](../docs/testing/phase5.md) | Document recall, complete serialization, token-budget assumptions, explicit usage, and the warm latency benchmark. |
 | [dynagraph-logo.png](../dynagraph-logo.png) | The local image displayed by the project README; it has no runtime inference or storage role. |
 | [docs/architecture.html](../docs/architecture.html) | This standalone offline map: pan/zoom, search, phase focus, module details, connections, and SVG export. |
 | [docs/architecture.md](../docs/architecture.md) | A text and Mermaid companion covering the finished workflow, all specified source components, and current implementation boundaries. |

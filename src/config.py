@@ -72,6 +72,13 @@ class Settings(BaseSettings):
     decay_recency_half_life_seconds: float = Field(default=86400, gt=0, le=31536000)
     decay_turn_half_life: float = Field(default=10, gt=0, le=1_000_000)
 
+    context_token_budget: int = Field(default=1000, ge=1, le=1000)
+    retrieval_seed_limit: int = Field(default=5, ge=1, le=16)
+    retrieval_hops: int = Field(default=2, ge=1, le=2)
+    retrieval_max_nodes: int = Field(default=64, ge=1, le=256)
+    retrieval_max_triples: int = Field(default=128, ge=1, le=512)
+    retrieval_fanout: int = Field(default=16, ge=1, le=64)
+
     @field_validator("single_valued_predicates")
     @classmethod
     def normalize_single_valued_predicates(cls, value: tuple[str, ...]) -> tuple[str, ...]:
@@ -141,6 +148,8 @@ class Settings(BaseSettings):
             raise ValueError("Node 2 must use its remote private LAN IP, not loopback")
         if self.node1_ollama_url.host == self.node2_ollama_url.host:
             raise ValueError("Node 1 and Node 2 must use different host addresses")
+        if self.retrieval_seed_limit > self.retrieval_max_nodes:
+            raise ValueError("RETRIEVAL_MAX_NODES must accommodate RETRIEVAL_SEED_LIMIT")
         return self
 
     def node_url(self, node: NodeName) -> str:
