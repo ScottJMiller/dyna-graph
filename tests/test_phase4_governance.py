@@ -486,11 +486,11 @@ def test_additive_v1_migration_preserves_graph_fts_and_is_idempotent(tmp_path):
             assert graph.get_triple(1).predicate == "self"
             assert [e.id for e in graph.search_prefix("leg")] == [1]
             with database.connection() as connection:
-                assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+                assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
                 assert connection.execute("SELECT COUNT(*) FROM entity_memory").fetchone()[0] == 0
                 assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
                 assert not connection.execute("PRAGMA foreign_key_check").fetchall()
-    print("MIGRATION OK: version=2 legacy graph and FTS preserved")
+    print("MIGRATION OK: version=3 legacy graph and FTS preserved")
 
 
 def test_failed_v1_upgrade_is_atomic(tmp_path, monkeypatch):

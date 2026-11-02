@@ -1,5 +1,9 @@
 # Phase 3 Verification and Testing Protocol
 
+Whole-suite totals in this phase protocol reflect its completion checkpoint.
+See the [current workflow protocol](phase6.md) for current aggregate counts
+and schema migration guidance. Dedicated phase checks remain applicable.
+
 Verify bounded extraction from raw messages into validated semantic triples.
 The pipeline uses locally installed Ollama models and the existing LAN HTTP
 client. It returns a graph without initializing or modifying the database.

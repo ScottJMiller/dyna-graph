@@ -1,5 +1,9 @@
 # Phase 5: Subgraph retrieval and context assembly verification
 
+Whole-suite totals in this phase protocol reflect its completion checkpoint.
+See the [current workflow protocol](phase6.md) for current aggregate counts
+and schema migration guidance. Dedicated phase checks remain applicable.
+
 Phase 5 turns a task/sub-goal into a small, current graph-memory block. It finds
 lexical seeds, expands their active neighborhood inside SQLite, and emits whole
 facts as Markdown or JSON within a maximum 1,000-token text budget. No model

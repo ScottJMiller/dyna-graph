@@ -29,15 +29,15 @@ Stop the server with Ctrl+C when finished.
 | Click an incoming/outgoing connection | The connected component is revealed and inspected. |
 | Click a phase button | That subsystem is highlighted and fitted. |
 | Choose Implemented only | No planned component is displayed. Local current inference/storage resources remain visible. |
-| Enable Supporting files | The map shows all 60 components, including tests, package markers, setup, and documentation. |
+| Enable Supporting files | The map shows all 63 components, including tests, package markers, setup, and documentation. |
 | Choose Remember a fact / Recall context / The A/B experiment | The relevant connection path is highlighted and its explanation changes. |
 | Click Export SVG | A standalone `dynagraph-architecture.svg` is downloaded. Open it as a vector image. |
 | Click Reset | Restore the whole-system core map and clear filters/selection. |
 | Use a narrow/mobile viewport | Controls wrap; the inspector moves below the map without horizontal page overflow. |
 | Navigate cards with keyboard and press Enter | Component details open without requiring a pointer. |
 
-The initial diagram includes the 29 core components. Supporting files add 31
-nodes, for **60 components and 104 connections** in the complete atlas. Lines for
+The initial diagram includes the 29 core components. Supporting files add 34
+nodes, for **63 components and 114 connections** in the complete atlas. Lines for
 planned integration are dashed; observation/support relationships are dotted.
 Components have wider horizontal and vertical gutters. Every connector receives
 its own perimeter attachments. The router reserves tracks before drawing them:
@@ -64,7 +64,7 @@ ports on the actual rectangle perimeter, orthogonal nonzero segments, avoidance
 of every card interior, no shared collinear tracks, separated parallel lines,
 detours around an obstacle, and deterministic multiple/reverse connections.
 
-The tests include all 104 connectors, even those hidden by filters. Zoom, theme,
+The tests include all 114 connectors, even those hidden by filters. Zoom, theme,
 phase, and status changes keep the same routes. This avoids new line collisions
 when supporting files are revealed. Ordinary perpendicular crossings are allowed;
 these are different from two lines occupying the same section.
@@ -79,9 +79,10 @@ download is required. The browser console should show no JavaScript errors.
 Review these architectural distinctions:
 
 - All Python coordination and SQLite reside on Node 1; Node 2 serves Ollama only.
-- Phases 1–5 are implemented; phases 6–8 and their connecting integration paths
+- Phases 1–6 are implemented; phases 7–8 and their connecting integration paths
   remain planned.
-- Extraction returns validated facts without automatically writing them.
+- Standalone extraction does not write; the controller now persists accepted facts
+  atomically with usage, pruning, and the turn checkpoint.
 - Phase 4 governance is implemented; raw GraphStore CRUD bypasses its policy.
 - Fact-level SUPERSEDES events are distinct from semantic entity edges.
 - Phase 5 recall is active-only and budgeted; byte bounds are not measured tokens.

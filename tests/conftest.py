@@ -28,6 +28,9 @@ def pytest_collection_modifyitems(config, items):
             continue
         if selected == "both":
             continue
+        if "both_nodes" in item.keywords:
+            item.add_marker(pytest.mark.skip(reason="the role-cycle test requires both nodes; partial selection is insufficient"))
+            continue
         node = item.callspec.params.get("node")
         if node is None:
             failed = item.callspec.params["failed_node"]

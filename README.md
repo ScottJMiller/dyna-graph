@@ -115,21 +115,22 @@ benefit from persistent graph memory.
 
 | Status | Capabilities |
 | --- | --- |
-| Implemented: phases 1–5 | Validated local configuration; async Ollama health, model inventory, inference, latency metrics, and fallback; transactional SQLite entity/triple storage with prefix search; structured fact extraction with defensive parsing and bounded retry; configured single-valued supersession, deterministic retention scoring, and pin-protected soft-pruning; bounded SQL neighborhood recall and budgeted Markdown/JSON context. |
-| Planned: phase 6 | A cyclic planner/researcher/verifier workflow integrating the existing APIs. |
+| Implemented: phases 1–6 | Validated local configuration; async Ollama health, model inventory, inference, latency metrics, and fallback; transactional SQLite entity/triple storage with prefix search; structured fact extraction with defensive parsing and bounded retry; configured single-valued supersession, deterministic retention scoring, and pin-protected soft-pruning; bounded SQL neighborhood recall and budgeted Markdown/JSON context; sequential planner/researcher/verifier cycles with local tools and durable atomic checkpoints. |
 | Planned: phases 7–8 | Turn-level telemetry, a terminal dashboard, CSV logging, and the controlled benchmark with analysis and figures. |
 
-Today you can call the extraction, storage, governance, and retrieval Python APIs independently.
-Extraction returns validated facts without automatically writing them to storage.
-There is no complete interactive task runner yet.
+The programmatic workflow now connects extraction, storage, governance, and
+retrieval. The standalone APIs remain available; calling extraction alone does
+not write memory. Start a task with `StateMachine.start()` or `run()`; an
+interactive task-entry CLI is not included.
 
 Current configuration supports selecting installed model tags, endpoints, and
 CPU budgets for the two Ollama nodes. Python callers can provide their own messages
 and use the graph APIs in a larger application. Supplying a different `agent_id`
 labels a message; it does not create or schedule an agent.
 
-The planned shared `BaseAgent` contract will support additional roles through
-role prompts, permitted tools, and registration in the workflow controller.
+The shared `BaseAgent` contract supports additional roles through a concise
+role prompt, registered local read-only tools, and ordered registration in the
+workflow controller.
 A new role can reuse an existing model and computer. New tools, relationship
 policies, or different permissions require additional implementation and tests;
 automatic plugin discovery is not currently provided. More agent turns also
@@ -200,6 +201,8 @@ model tags. A tag identifies a particular model/version in Ollama.
 | `SINGLE_VALUED_PREDICATES` | JSON array of relationships that can have only one current value per subject; defaults to `[]`. |
 | `PRUNING_THRESHOLD`, `PRUNING_BATCH_SIZE`, `PRUNING_INTERVAL_SECONDS` | Retention cutoff and bounded maintenance scheduling. |
 | `DECAY_RECENCY_HALF_LIFE_SECONDS`, `DECAY_TURN_HALF_LIFE` | How quickly unused memory loses time-based and turn-based retention. |
+| `ORCHESTRATION_MAX_TURNS`, `ORCHESTRATION_ALLOW_FALLBACK`, `ORCHESTRATION_PRUNE_BETWEEN_TURNS` | Role-turn budget, local-node fallback, and bounded checkpoint maintenance. |
+| `AGENT_MAX_TOKENS`, `AGENT_MAX_RETRIES`, `AGENT_MAX_TOOL_ROUNDS`, `AGENT_TOOL_TIMEOUT_SECONDS` | Limits on role responses, JSON correction, and registered local tools. |
 | `CONTEXT_TOKEN_BUDGET` | Maximum graph-context budget, restricted to 1–1,000. |
 | `RETRIEVAL_SEED_LIMIT`, `RETRIEVAL_HOPS`, `RETRIEVAL_MAX_NODES`, `RETRIEVAL_MAX_TRIPLES`, `RETRIEVAL_FANOUT` | Bounds on seed matching and one/two-hop SQL neighborhood discovery. |
 
@@ -319,9 +322,10 @@ and elapsed turns. Pins protect entities and their active facts. Call
 use. The optional `PruningDaemon` requires explicit startup and a caller-supplied
 turn number. No maintenance starts on import.
 
-Opening an older graph adds schema version 2's usage and provenance tables.
-Before upgrading existing data, follow the consistent-backup command in the
-[Phase 4 guide](docs/testing/phase4.md). That guide also provides a complete,
+Schema version 3 preserves usage/provenance and adds durable workflow
+checkpoints. Before upgrading existing data, follow the consistent-backup
+command in the [Phase 6 guide](docs/testing/phase6.md). The
+[Phase 4 guide](docs/testing/phase4.md) also provides a complete,
 temporary-database example, scoring formulas, async lifecycle, and limitations.
 The default decay parameters are configurable engineering choices; they have
 not yet been calibrated by the planned experiment.
@@ -366,7 +370,56 @@ Assembly is read-only. After actually supplying the block to an agent, call
 The [Phase 5 guide](docs/testing/phase5.md) explains usage lifecycle, async calls,
 selection limits, tokenizer assumptions, and the offline latency benchmark.
 
-### 8. Verify the installed components
+### 8. Run a local role cycle
+
+The controller runs one role per turn: planner on Node 1, researcher on Node 2,
+then verifier on Node 1. Each role recalls current memory, generates a response,
+and sends it through extraction on Node 2. Accepted facts, usage, bounded pruning,
+and the turn checkpoint commit together. Model requests do not hold database
+write transactions. The default three turns make one complete role cycle.
+
+After backing up existing data, run this from the repository root:
+
+```bash
+python3 - <<'PY'
+import asyncio
+from src.config import get_settings
+from src.network.ollama_client import OllamaClient
+from src.orchestration import StateMachine
+from src.storage.database import Database
+from src.storage.graph_store import GraphStore
+
+async def main():
+    settings = get_settings()
+    async with OllamaClient(settings) as client:
+        async with Database.from_settings(settings) as database:
+            machine = StateMachine(client, GraphStore(database))
+            run = await machine.start(
+                "Project Cedar uses SQLite. Confirm the supplied relationship.",
+                initial_subgoal="Project Cedar", max_turns=3,
+            )
+            print("RUN_ID:", run.id, flush=True)
+            done = await machine.resume(run.id)
+            print(done.status, done.next_step, done.stop_reason)
+            print(done.last_response)
+
+asyncio.run(main())
+PY
+```
+
+Expect a run ID, `COMPLETED 3 turn_budget`, and the final model response. Keep
+the run ID for inspection/resume. An interrupted run resumes from its next
+uncommitted step; a completed run makes no further model requests. Completing
+its turn budget does not establish that a model's answer is correct.
+
+Custom roles subclass `BaseAgent` and are passed through the controller's
+`agents` argument. Tools require explicit registration, Pydantic argument
+validation, and local read-only callbacks; model-generated code is not executed.
+The controller keeps prompts bounded and stores history locally instead of
+resending a full transcript. The [Phase 6 guide](docs/testing/phase6.md) explains
+recovery, acceptance filtering, prompt limits, and direct two-node verification.
+
+### 9. Verify the installed components
 
 Run the functional suite without network access or Ollama:
 
@@ -374,12 +427,13 @@ Run the functional suite without network access or Ollama:
 python3 -m pytest -q
 ```
 
-Expected: **510 passed, 16 skipped**. The skips are checks that need physical LAN
+Expected: **586 passed, 17 skipped**. The skips are checks that need physical LAN
 nodes or explicitly requested storage/retrieval benchmarks. Run those separately:
 
 ```bash
 python3 -m pytest tests/test_phase1_network.py --run-lan -q
 python3 -m pytest tests/test_phase3_extraction.py --run-lan -q
+python3 -m pytest tests/test_phase6_orchestration.py --run-lan -q
 mkdir -p .verification
 python3 -m pytest tests/test_phase2_storage.py --run-storage-benchmark --basetemp .verification/phase2 -v -s
 ```
@@ -394,8 +448,8 @@ Expected: **108 passed** for retrieval; its four warm workloads require median
 and p95 below **5 ms**, with every block within budget. See the protocol for
 fixture size, warm-up, and measurement boundaries.
 
-Expected: **122 passed** for network checks, **111 passed** for extraction, and
-**83 passed** for storage. The storage benchmark checks a median below 1 ms for
+Expected: **122 passed** for network checks, **111 passed** for extraction,
+**77 passed** for orchestration, and **83 passed** for storage. The storage benchmark checks a median below 1 ms for
 200 individually committed inserts with FULL synchronization. Results depend on
 the storage host and system load; this does not guarantee every insert is under
 1 ms or establish a complete application performance result.
@@ -407,9 +461,10 @@ the storage host and system load; this does not guarantee every insert is under
 | [Extraction verification](docs/testing/phase3.md) | Defensive parsing, live model checks, resource limits, and validation errors. |
 | [Governance verification](docs/testing/phase4.md) | Deterministic decay, atomic replacement, pinned memory, daemon lifecycle, migration, and a reproducible offline smoke check. |
 | [Retrieval verification](docs/testing/phase5.md) | Active one/two-hop recall, strict block budgets, explicit usage, snapshot consistency, and the warm retrieval benchmark. |
+| [Orchestration verification](docs/testing/phase6.md) | Three-role LAN cycles, local tools, atomic checkpoints, restart/cancellation, migration, and complete workflow usage. |
 | [Architecture atlas verification](docs/testing/architecture.md) | Optional checks for the documentation's themes, controls, SVG export, and connector geometry. |
 
-### 9. Troubleshoot and build on the APIs
+### 10. Troubleshoot and build on the APIs
 
 | Symptom | First check |
 | --- | --- |

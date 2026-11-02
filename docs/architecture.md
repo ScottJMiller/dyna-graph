@@ -30,7 +30,7 @@ diagram of the current visible component set. Reset first for an unhighlighted
 whole-system export; enable Supporting files for the complete inventory.
 
 The map describes the **finished target design**, while its status labels reflect
-the current checkout: phases **1–5 exist** and phases **6–8 are planned**.
+the current checkout: phases **1–6 exist** and phases **7–8 are planned**.
 Components have wider gutters and connectors use distinct perimeter ports. An
 orthogonal router reserves separate tracks and keeps lines out of every card.
 Parallel line sections cannot overlap; perpendicular crossings use a background
@@ -69,20 +69,21 @@ model downloads are separate from offline/LAN operation.
 4. **Extract new facts.** The response becomes an `AgentMessage`. The extractor
    requests JSON, the parser repairs only supported syntax defects, and Pydantic
    validates semantic triples. Endpoint wording must occur in the source.
-5. **Accept and persist updates.** The future controller submits accepted facts
+5. **Accept and persist updates.** The controller submits accepted facts
    through supersession policy to transactional graph storage. Single-valued
    stale facts become `SUPERSEDED`, with traceable provenance.
-6. **Maintain memory.** A background pruning worker uses recency, frequency,
-   centrality, and turn-based decay to identify eligible low-value leaf memory.
-   Pinned entities are protected; pruning soft-inactivates records.
+6. **Maintain memory.** Each committed turn can include one bounded pruning
+   batch using recency, frequency, centrality, and turn decay. Pinned facts are
+   protected; an externally owned daemon remains optional.
 7. **Observe and repeat.** The profiler records the turn, the dashboard displays
    its state, the logger writes metrics, and the controller advances until the
    task or turn budget is complete.
 
-These are the intended responsibilities of the finished system. Currently the
-extractor returns an `ExtractedGraph` without opening a database. A caller can
-use `GraphStore` separately; automatic extraction → governed persistence → next
-turn orchestration is future integration work.
+The controller now executes steps 1–6 and saves durable checkpoints. Each turn's
+usage, governed graph updates, optional pruning, and checkpoint commit together.
+A restart resumes the next uncommitted role without replaying committed facts.
+The standalone extractor still returns data without persisting it; the controller
+owns that integration. Step 7's dashboard/telemetry remains Phase 7 work.
 
 ```mermaid
 flowchart TD
@@ -135,10 +136,12 @@ methods physically delete data; `Pruner` instead marks eligible entities and the
 active facts `PRUNED`. Pinned entities and the endpoints of their active facts are
 protected. Raw CRUD bypasses governance; use `GovernedWriter` for accepted facts.
 
-Schema version 2 adds `entity_memory` for access counts/time/turns and
+Schema version 2 introduced `entity_memory` for access counts/time/turns and
 `supersession_edges` for explicit fact-to-fact `SUPERSEDES` events. Reasserting
 an older SPO reuses its triple row, while ordered event IDs retain replacement
 history. These provenance edges are separate from semantic entity edges.
+Version 3 adds `workflow_runs` and `workflow_turns` for durable progress, actual
+node/role results, global governance turns, and guarded ownership recovery.
 
 Retention uses weighted recency, time-faded frequency, active incident-edge
 centrality, and elapsed-turn decay. The pruner scans bounded pages and only
@@ -148,7 +151,8 @@ must be started explicitly and receives turns from its caller. See the
 semantics, access recording, and backup/upgrade instructions. Retrieval now selects bounded active neighborhoods in SQL and emits budgeted
 Markdown/JSON. The default count is a conservative byte-level BPE bound; a
 correct local model-specific counter can be injected. Usage recording is
-explicit after context is supplied. Controller integration remains Phase 6 work.
+explicit after context is supplied by standalone callers. The Phase 6 controller
+records usage and facts at successful turn checkpoints.
 
 ## How the experiment evaluates the system
 
@@ -179,6 +183,7 @@ experiment is intended to test those benefits rather than assume them.
 | Governance | Implemented four-factor scoring, persisted usage, protected pins and active pinned facts, bounded soft-pruning, and atomic single-valued supersession with fact-level provenance. |
 | Retrieval | Implemented FTS5 seeds/recent fallback, bounded 1–2 hop active SQL traversal, and ≤1,000-token graph blocks using an explicit budget method. The warm median/p95 target is <5 ms on the documented fixture. |
 | Insert latency | Existing storage protocol checks a <1 ms median for individually committed inserts on the storage host. Hardware/load affect results. |
+| Orchestration | Implemented sequential roles, bounded local tool calling, atomic checkpoints, cancellation/restart, and explicit interrupted-run recovery. |
 | Experiment | Planned comparison, not existing measurements or a proven complexity claim. |
 
 ## Source modules and verification inventory
@@ -204,7 +209,7 @@ metadata beyond the specified deliverables.
 | --- | --- | --- |
 | [src/storage/graph_store.py](../src/storage/graph_store.py) | Implemented | Expose the property graph as Python CRUD operations. Canonicalize entity names and predicates, group mutations in transactions, provide literal prefix search, and queue atomic async writes. |
 | [src/storage/database.py](../src/storage/database.py) | Implemented | Initialize the schema and manage a bounded pool with WAL, foreign keys, busy timeouts, FULL synchronization, nested savepoints, and read snapshots. Queue short sync callbacks off the event loop. |
-| [src/storage/schema.sql](../src/storage/schema.sql) | Implemented | Define schema version 2: entities, directed triples, usage metadata, fact-level supersession events, constraints/indexes, FTS5, and synchronous FTS triggers. Preserve version 1 data with an additive upgrade. |
+| [src/storage/schema.sql](../src/storage/schema.sql) | Implemented | Define schema version 3: entities/triples, FTS5, usage/provenance, and durable workflow runs/turns. Preserve version 1/2 graph data through an additive upgrade. |
 | [tests/test_phase2_storage.py](../tests/test_phase2_storage.py) | Implemented | Schema/CRUD/transactions/FTS/concurrency, plus an opt-in durable-insert benchmark. |
 | [src/storage/__init__.py](../src/storage/__init__.py) | Implemented | Identify the embedded graph-storage package; importing this marker does not open a database. |
 
@@ -243,10 +248,12 @@ metadata beyond the specified deliverables.
 
 | File | Status | Responsibility |
 | --- | --- | --- |
-| `src/orchestration/state_machine.py` | Planned | Own the cyclic workflow: assemble context for the active sub-goal, dispatch an agent, receive its output, extract facts, apply governed persistence, and advance the turn. |
-| `src/agents/base_agent.py` | Planned | Abstract agent execution: combine role instructions, the active task, retrieved memory, and the local model client. Provide a common contract for specialized agents and tool-calling execution. |
-| `src/agents/personas.py` | Planned | Define a planner and verifier using Node 1 inference and a research role using Node 2 inference. These are logical roles controlled by the same orchestrator. |
-| `tests/test_phase6_orchestration.py` | Planned | Planned three-role cyclic integration across local models. |
+| [src/orchestration/state_machine.py](../src/orchestration/state_machine.py) | Implemented | Own the cyclic workflow: assemble context for the active sub-goal, dispatch an agent, receive its output, extract facts, apply governed persistence, and advance the turn. |
+| [src/agents/base_agent.py](../src/agents/base_agent.py) | Implemented | Abstract agent execution: combine role instructions, the active task, retrieved memory, and the local model client. Provide a common contract for specialized agents and tool-calling execution. |
+| [src/agents/personas.py](../src/agents/personas.py) | Implemented | Define a planner and verifier using Node 1 inference and a research role using Node 2 inference. These are logical roles controlled by the same orchestrator. |
+| [tests/test_phase6_orchestration.py](../tests/test_phase6_orchestration.py) | Implemented | Offline prompt/tool/ownership/rollback/resume checks and direct three-role acceptance across both local nodes. |
+| [src/agents/__init__.py](../src/agents/__init__.py) | Implemented | Export role contracts, local tools, and default personas. |
+| [src/orchestration/__init__.py](../src/orchestration/__init__.py) | Implemented | Export controller, stages, durable checkpoints, and turn results. |
 
 ### Phase 7: Observability
 
@@ -281,6 +288,7 @@ metadata beyond the specified deliverables.
 | [docs/testing/phase3.md](../docs/testing/phase3.md) | Document parser smoke checks, six live extraction cases, resource limits, and error recovery. |
 | [docs/testing/phase4.md](../docs/testing/phase4.md) | Document governance formulas, offline tests, reproducible smoke output, daemon lifecycle, and safe schema upgrades. |
 | [docs/testing/phase5.md](../docs/testing/phase5.md) | Document recall, complete serialization, token-budget assumptions, explicit usage, and the warm latency benchmark. |
+| [docs/testing/phase6.md](../docs/testing/phase6.md) | Document offline/live workflow verification, schema backup, checkpoints, local tools, and interruption recovery. |
 | [dynagraph-logo.png](../dynagraph-logo.png) | The local image displayed by the project README; it has no runtime inference or storage role. |
 | [docs/architecture.html](../docs/architecture.html) | This standalone offline map: pan/zoom, search, phase focus, module details, connections, and SVG export. |
 | [docs/architecture.md](../docs/architecture.md) | A text and Mermaid companion covering the finished workflow, all specified source components, and current implementation boundaries. |

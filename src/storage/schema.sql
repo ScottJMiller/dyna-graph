@@ -1,4 +1,4 @@
--- Schema version 2 (additive upgrade from version 1): local entities, directed triples, and synchronized FTS5.
+-- Schema version 3 (additive upgrade from versions 1 and 2): local entities, directed triples, and synchronized FTS5.
 CREATE TABLE IF NOT EXISTS entities (
     id INTEGER PRIMARY KEY AUTOINCREMENT CHECK (id > 0),
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
@@ -75,3 +75,35 @@ CREATE TABLE IF NOT EXISTS supersession_edges (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS idx_supersession_newer ON supersession_edges(newer_triple_id, id);
 CREATE INDEX IF NOT EXISTS idx_supersession_older ON supersession_edges(older_triple_id, id);
+
+-- Durable role-cycle checkpoints. A committed step and its graph mutations
+-- share one transaction; in-flight inference never holds a write transaction.
+CREATE TABLE IF NOT EXISTS workflow_runs (
+    id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 64),
+    task TEXT NOT NULL CHECK (length(task) BETWEEN 1 AND 500),
+    subgoal TEXT NOT NULL CHECK (length(subgoal) BETWEEN 1 AND 256),
+    agent_ids TEXT NOT NULL CHECK (json_valid(agent_ids) AND json_type(agent_ids)='array'),
+    config_hash TEXT NOT NULL CHECK (length(config_hash)=64),
+    max_turns INTEGER NOT NULL CHECK (max_turns BETWEEN 1 AND 1000),
+    next_step INTEGER NOT NULL DEFAULT 0 CHECK (next_step>=0 AND next_step<=max_turns),
+    status TEXT NOT NULL DEFAULT 'READY' CHECK (status IN ('READY','RUNNING','COMPLETED','FAILED','CANCELLED')),
+    stop_on_verified INTEGER NOT NULL DEFAULT 0 CHECK (stop_on_verified IN (0,1)),
+    stop_reason TEXT CHECK (stop_reason IN ('turn_budget','verified')),
+    last_response TEXT NOT NULL DEFAULT '',
+    error TEXT,
+    owner_token TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS workflow_turns (
+    run_id TEXT NOT NULL REFERENCES workflow_runs(id) ON DELETE CASCADE,
+    step INTEGER NOT NULL CHECK (step BETWEEN 1 AND 1000),
+    governance_turn INTEGER NOT NULL UNIQUE CHECK (governance_turn>0),
+    agent_id TEXT NOT NULL CHECK (length(agent_id) BETWEEN 1 AND 64),
+    node TEXT NOT NULL CHECK (node IN ('node1','node2')),
+    message TEXT NOT NULL CHECK (json_valid(message) AND json_type(message)='object'),
+    result TEXT NOT NULL CHECK (json_valid(result) AND json_type(result)='object'),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (run_id,step)
+) STRICT;

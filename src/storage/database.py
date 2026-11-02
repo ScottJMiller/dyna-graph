@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from src.config import Settings
 
 Result = TypeVar("Result")
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 
@@ -103,7 +103,7 @@ class Database:
 
     def _initialize(self, connection: sqlite3.Connection) -> None:
         version = connection.execute("PRAGMA user_version").fetchone()[0]
-        if version not in (0, 1, SCHEMA_VERSION):
+        if version not in (0, 1, 2, SCHEMA_VERSION):
             raise DatabaseError(f"Unsupported schema version {version}; expected {SCHEMA_VERSION}")
         schema = SCHEMA_PATH.read_text(encoding="utf-8")
         try:

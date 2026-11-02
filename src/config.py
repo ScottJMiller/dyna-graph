@@ -79,6 +79,14 @@ class Settings(BaseSettings):
     retrieval_max_triples: int = Field(default=128, ge=1, le=512)
     retrieval_fanout: int = Field(default=16, ge=1, le=64)
 
+    orchestration_max_turns: int = Field(default=3, ge=1, le=1000)
+    orchestration_allow_fallback: bool = True
+    orchestration_prune_between_turns: bool = True
+    agent_max_tokens: int = Field(default=256, ge=32, le=512)
+    agent_max_retries: int = Field(default=1, ge=0, le=1)
+    agent_max_tool_rounds: int = Field(default=1, ge=0, le=2)
+    agent_tool_timeout_seconds: float = Field(default=5, gt=0, le=60)
+
     @field_validator("single_valued_predicates")
     @classmethod
     def normalize_single_valued_predicates(cls, value: tuple[str, ...]) -> tuple[str, ...]:

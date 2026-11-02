@@ -90,7 +90,7 @@ svg #arrow-active path { fill: var(--edge-active); }
 <div class="app">
  <header class="top">
   <div class="brand"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M9 10L30 7L32 29L13 33L9 10L32 29M30 7L13 33" fill="none" stroke="currentColor" stroke-width="1.4"/><g fill="currentColor"><circle cx="9" cy="10" r="4"/><circle cx="30" cy="7" r="3"/><circle cx="32" cy="29" r="4"/><circle cx="13" cy="33" r="3"/></g></svg><div><p class="eyebrow">Architecture atlas / complete target system</p><h1>DynaGraph <span>explained.</span></h1></div></div>
-  <div class="top-note"><div class="status-key"><span><i class="dot"></i>Implemented · phases 1–5</span><span><i class="dot planned"></i>Planned · phases 6–8</span></div><span class="offline-note">Two local nodes. One persistent graph. No cloud APIs.</span></div>
+  <div class="top-note"><div class="status-key"><span><i class="dot"></i>Implemented · phases 1–6</span><span><i class="dot planned"></i>Planned · phases 7–8</span></div><span class="offline-note">Two local nodes. One persistent graph. No cloud APIs.</span></div>
  </header>
  <section class="controls" aria-label="Map controls">
   <div class="control-row">
@@ -128,11 +128,13 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "",
       "phase": 6,
       "summary": "A task and its evolving sub-goals",
-      "description": "The finished system accepts a task, cycles through specialized agents, and returns a verified result. This is a logical entry point; a user-facing CLI module is not specified yet.",
-      "interfaces": [],
+      "description": "Programmatic task entry through StateMachine.start()/run(), with initial sub-goal and turn budget. A future benchmark calls the same controller.",
+      "interfaces": [
+        "StateMachine.start(task, initial_subgoal=..., max_turns=...)"
+      ],
       "inputs": "A task, constraints, and a turn budget.",
       "outputs": "Work submitted to the state machine.",
-      "notes": "The entry interface belongs to the future orchestration phase.",
+      "notes": "A user-facing interactive CLI is not supplied; the callable entry point is implemented.",
       "kind": "resource",
       "label": "Task / sub-goal",
       "status": "resource",
@@ -145,16 +147,18 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "src/orchestration/state_machine.py",
       "phase": 6,
       "summary": "Coordinate turns and shared state",
-      "description": "Own the cyclic workflow: assemble context for the active sub-goal, dispatch an agent, receive its output, extract facts, apply governed persistence, and advance the turn.",
+      "description": "Run sequential role cycles: recall, generate, extract, accept, and atomically persist usage/facts/pruning with a durable turn checkpoint.",
       "interfaces": [
-        "Planned cyclic controller; method names not yet fixed"
+        "StateMachine.start() / step() / run() / resume()",
+        "get_checkpoint() / history()",
+        "RunCheckpoint / TurnCheckpoint / TurnResult / Stage"
       ],
       "inputs": "Task, agent roles, retrieved context, previous turn results.",
       "outputs": "Agent dispatches, accepted state updates, memory checkpoints, final answer.",
-      "notes": "The extraction-to-storage bridge is planned here; today extraction and storage are independent APIs.",
+      "notes": "Schema v3 checkpoints, ownership tokens, config fingerprints, monotonic governance turns, cancellation settlement, and explicit crash recovery. Default roles route node1/node2/node1; extraction uses node2.",
       "kind": "source",
       "label": "state_machine.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
       "x": 540,
       "y": 120
@@ -164,16 +168,18 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "src/agents/base_agent.py",
       "phase": 6,
       "summary": "Run one role with bounded context",
-      "description": "Abstract agent execution: combine role instructions, the active task, retrieved memory, and the local model client. Provide a common contract for specialized agents and tool-calling execution.",
+      "description": "Inject role/task/graph instructions, request strict JSON, correct once, and dispatch bounded registered local read-only tools with validated arguments.",
       "interfaces": [
-        "Planned BaseAgent abstraction"
+        "BaseAgent.role_prompt / execute()",
+        "AgentReply / AgentResult",
+        "Tool / ToolCall / ToolResult"
       ],
       "inputs": "Role instructions, sub-goal, bounded graph context.",
       "outputs": "An agent response and inference metadata.",
-      "notes": "Tool interfaces and error policies are future Phase 6 decisions. Node 2 hosts Ollama; Python agent coordination stays on Node 1.",
+      "notes": "Guard input/framing/output within 2048-token context using baseline byte bounds. At most 8 tools, 2 calls/request, 0–2 tool rounds. No model code execution. Node 2 serves inference; Python stays on Node 1.",
       "kind": "source",
       "label": "base_agent.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
       "x": 1020,
       "y": 120
@@ -185,14 +191,15 @@ svg #arrow-active path { fill: var(--edge-active); }
       "summary": "Planner · researcher · verifier",
       "description": "Define a planner and verifier using Node 1 inference and a research role using Node 2 inference. These are logical roles controlled by the same orchestrator.",
       "interfaces": [
-        "Planned role definitions"
+        "PlannerAgent / ResearchAgent / VerificationAgent",
+        "default_agents(client)"
       ],
       "inputs": "Shared agent contract and role prompts.",
       "outputs": "Configured planner, research, and verification agents.",
-      "notes": "A role is not a separate cloud service or a separate database owner.",
+      "notes": "Planner/verifier use Node 1, researcher Node 2. Only verifier can signal early completion when the caller enables it. Roles share a caller-owned client/database.",
       "kind": "source",
       "label": "personas.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
       "x": 1020,
       "y": 328
@@ -225,7 +232,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "src/config.py",
       "phase": 1,
       "summary": "Validate LAN and storage settings",
-      "description": "Load the repository-root .env and process environment, validate private node addresses and local model names, and resolve storage paths. Environment values override dotenv values. Validate single-valued predicate policy and bounded governance settings. Validate retrieval caps and the maximum graph-context budget.",
+      "description": "Load the repository-root .env and process environment, validate private node addresses and local model names, and resolve storage paths. Environment values override dotenv values. Validate single-valued predicate policy and bounded governance settings. Validate retrieval caps and the maximum graph-context budget. Validate role-cycle, tool, and response limits.",
       "interfaces": [
         "Settings",
         "get_settings()",
@@ -492,7 +499,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "src/storage/database.py",
       "phase": 2,
       "summary": "Pool connections; serialize writes",
-      "description": "Initialize the schema and manage a bounded pool with WAL, foreign keys, busy timeouts, FULL synchronization, nested savepoints, and read snapshots. Queue short sync callbacks off the event loop. Additively upgrade schema version 1 to version 2 in the initialization transaction.",
+      "description": "Initialize the schema and manage a bounded pool with WAL, foreign keys, busy timeouts, FULL synchronization, nested savepoints, and read snapshots. Queue short sync callbacks off the event loop. Additively upgrade schema versions 1/2 to version 3 in the initialization transaction.",
       "interfaces": [
         "Database.from_settings()",
         "connection() / transaction()",
@@ -514,15 +521,16 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "src/storage/schema.sql",
       "phase": 2,
       "summary": "Tables, constraints, indexes, triggers",
-      "description": "Define schema version 2: semantic entities/triples, FTS5, usage metadata, and explicit fact-level supersession events. Upgrade version 1 additively.",
+      "description": "Define schema version 3: graph/FTS5, usage/provenance, and atomic workflow runs/turns. Upgrade versions 1 and 2 additively.",
       "interfaces": [
         "entities / triples / fts_entities",
         "entity_memory / supersession_edges",
-        "FTS insert/update/delete triggers"
+        "workflow_runs / workflow_turns",
+        "FTS triggers"
       ],
       "inputs": "Initialization by Database.",
       "outputs": "Persistent relational structure and a synchronized lexical index.",
-      "notes": "Fact-level SUPERSEDES endpoints reference triples in a separate event table. Existing SPO uniqueness, rows, pins, and FTS are preserved during upgrade.",
+      "notes": "Workflow checkpoints and graph updates share a transaction. Existing graph rows, IDs, pins, FTS and provenance survive migration.",
       "kind": "source",
       "label": "schema.sql",
       "status": "implemented",
@@ -797,16 +805,16 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "tests/test_phase6_orchestration.py",
       "phase": 6,
       "summary": "Phase 6 verification",
-      "description": "Planned three-role cyclic integration across local models.",
+      "description": "Offline role/tools, checkpoint atomicity, restart/cancellation, competing ownership and migration tests; opt-in direct two-node cycle.",
       "interfaces": [
         "pytest"
       ],
       "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
       "outputs": "Assertions and diagnostic test output.",
-      "notes": "A specified future deliverable; this file does not exist yet.",
+      "notes": "76 offline checks plus one live three-role cycle. Live inference/extraction disables fallback and requires both configured Q4_K_M models.",
       "kind": "test",
       "label": "test_phase6_orchestration.py",
-      "status": "planned",
+      "status": "implemented",
       "support": true,
       "x": 2460,
       "y": 2368
@@ -1278,6 +1286,63 @@ svg #arrow-active path { fill: var(--edge-active); }
       "support": true,
       "x": 60,
       "y": 3488
+    },
+    {
+      "id": "agents-init",
+      "path": "src/agents/__init__.py",
+      "phase": 6,
+      "summary": "Agent public API",
+      "description": "Export abstract roles, strict replies, local tools, and default personas.",
+      "interfaces": [
+        "Public orchestration APIs"
+      ],
+      "inputs": "Local task, model client, graph and registered role policies.",
+      "outputs": "Bounded role cycles and documented, testable checkpoints.",
+      "notes": "No telemetry dashboard or experiment harness is implemented here.",
+      "kind": "support",
+      "label": "__init__.py",
+      "status": "implemented",
+      "support": true,
+      "x": 540,
+      "y": 3488
+    },
+    {
+      "id": "orchestration-init",
+      "path": "src/orchestration/__init__.py",
+      "phase": 6,
+      "summary": "Controller public API",
+      "description": "Export cyclic execution, durable checkpoints, ownership errors and turn results.",
+      "interfaces": [
+        "Public orchestration APIs"
+      ],
+      "inputs": "Local task, model client, graph and registered role policies.",
+      "outputs": "Bounded role cycles and documented, testable checkpoints.",
+      "notes": "No telemetry dashboard or experiment harness is implemented here.",
+      "kind": "support",
+      "label": "__init__.py",
+      "status": "implemented",
+      "support": true,
+      "x": 1020,
+      "y": 3488
+    },
+    {
+      "id": "phase6-doc",
+      "path": "docs/testing/phase6.md",
+      "phase": 6,
+      "summary": "Phase 6 verification protocol",
+      "description": "Offline and live workflow checks, schema backup, bounded tools, atomic checkpoints, and interruption recovery.",
+      "interfaces": [
+        "Phase 6 protocol"
+      ],
+      "inputs": "Local task, model client, graph and registered role policies.",
+      "outputs": "Bounded role cycles and documented, testable checkpoints.",
+      "notes": "No telemetry dashboard or experiment harness is implemented here.",
+      "kind": "support",
+      "label": "phase6.md",
+      "status": "implemented",
+      "support": true,
+      "x": 1500,
+      "y": 3488
     }
   ],
   "edges": [
@@ -1303,6 +1368,12 @@ svg #arrow-active path { fill: var(--edge-active); }
       "source": "state",
       "target": "personas",
       "label": "select planner / researcher / verifier",
+      "kind": "call"
+    },
+    {
+      "source": "state",
+      "target": "graph",
+      "label": "reuse canonical entities and persist graph state",
       "kind": "call"
     },
     {
@@ -1404,7 +1475,7 @@ svg #arrow-active path { fill: var(--edge-active); }
     {
       "source": "state",
       "target": "pruning",
-      "label": "schedule / own maintenance lifecycle",
+      "label": "include bounded pruning in turn checkpoint",
       "kind": "call"
     },
     {
@@ -1904,6 +1975,60 @@ svg #arrow-active path { fill: var(--edge-active); }
       "target": "phase5-doc",
       "label": "links to retrieval protocol",
       "kind": "support"
+    },
+    {
+      "source": "agents-init",
+      "target": "base",
+      "label": "exports role / tool APIs",
+      "kind": "support"
+    },
+    {
+      "source": "agents-init",
+      "target": "personas",
+      "label": "exports default personas",
+      "kind": "support"
+    },
+    {
+      "source": "orchestration-init",
+      "target": "state",
+      "label": "exports controller / checkpoints",
+      "kind": "support"
+    },
+    {
+      "source": "phase6-doc",
+      "target": "test6",
+      "label": "documents workflow acceptance",
+      "kind": "support"
+    },
+    {
+      "source": "readme",
+      "target": "phase6-doc",
+      "label": "links to orchestration guide",
+      "kind": "support"
+    },
+    {
+      "source": "state",
+      "target": "database",
+      "label": "atomic ownership / graph / turn checkpoints",
+      "kind": "call"
+    },
+    {
+      "source": "base",
+      "target": "schemas",
+      "label": "validate bounded agent messages",
+      "kind": "call"
+    },
+    {
+      "source": "state",
+      "target": "schemas",
+      "label": "validate accepted facts / source messages",
+      "kind": "call"
+    },
+    {
+      "source": "base",
+      "target": "config",
+      "label": "read per-role generation/tool limits",
+      "kind": "call"
     }
   ],
   "phases": [
@@ -2038,7 +2163,7 @@ svg #arrow-active path { fill: var(--edge-active); }
     },
     "turn": {
       "title": "One agent turn",
-      "text": "The controller retrieves memory, runs the selected role, extracts its new facts, applies governed persistence, records metrics, and advances the cycle. Integration through the controller is planned for Phase 6.",
+      "text": "The controller recalls bounded memory, runs a role, extracts accepted facts, and commits graph changes and its turn checkpoint atomically. Dashboard profiling remains planned.",
       "ids": [
         "task",
         "state",
@@ -2059,7 +2184,7 @@ svg #arrow-active path { fill: var(--edge-active); }
     },
     "remember": {
       "title": "Remember a fact",
-      "text": "The extractor requests JSON from a local model, the parser validates it, and the future controller submits accepted facts through supersession to transactional storage. Extraction currently returns graphs without writing them.",
+      "text": "The controller extracts the role response and applies acceptance policy. It commits canonical entities, governed facts, usage, pruning and the turn checkpoint together. Standalone extraction still does not write memory.",
       "ids": [
         "state",
         "extractor",
@@ -2076,7 +2201,7 @@ svg #arrow-active path { fill: var(--edge-active); }
     },
     "recall": {
       "title": "Recall relevant context",
-      "text": "The assembler finds lexical seeds, expands a bounded active 1–2 hop SQL neighborhood, and formats complete graph context under its explicit token-budget method. The future controller supplies it to an agent and records actual use.",
+      "text": "The assembler finds lexical seeds and a bounded active SQL neighborhood, returning complete budgeted context. The controller supplies it to the active role and records usage at a successful checkpoint.",
       "ids": [
         "state",
         "context",
@@ -2306,7 +2431,7 @@ function svg(tag,attrs={},text){const e=document.createElementNS(NS,tag);for(con
 function html(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;}
 function statusLabel(n){return n.status==='implemented'?'IMPLEMENTED':n.status==='planned'?'PLANNED':'SERVICE / ARTIFACT';}
 function isPlanned(e){return byId.get(e.source).status==='planned'||byId.get(e.target).status==='planned';}
-function resourceInStatus(n){return n.status==='resource'&&(status==='all'||(status==='implemented'?n.phase<=5:n.phase>=6));}
+function resourceInStatus(n){return n.status==='resource'&&(status==='all'||(status==='implemented'?n.phase<=6:n.phase>=7));}
 function visible(n){return (!n.support||showSupport)&&(status==='all'||n.status===status||resourceInStatus(n));}
 function matches(n){return !query||[n.label,n.path,n.summary,n.description,n.notes,...n.interfaces].join(' ').toLowerCase().includes(query);}
 function relatedIds(){if(selected){return new Set([selected,...DATA.edges.filter(e=>e.source===selected||e.target===selected).flatMap(e=>[e.source,e.target])]);}if(phaseFocus)return new Set(DATA.nodes.filter(n=>n.phase===phaseFocus).map(n=>n.id));const ids=DATA.routes[route].ids;return ids.length?new Set(ids):null;}
@@ -2321,7 +2446,7 @@ function boundsFor(items){
 }
 function buildMap(){
  const scene=$('scene');
- for(const group of DATA.groups){const g=svg('g',{class:'group'}),p=phases.get(group.phase);g.append(svg('rect',{x:group.x,y:group.y,width:group.w,height:group.h,rx:14,fill:p.color,'fill-opacity':.035,stroke:p.color,'stroke-opacity':.18,'stroke-dasharray':group.phase>=6?'6 5':'none'}));g.append(svg('text',{x:group.x+18,y:group.y+27,class:'group-title',fill:p.color},`${String(group.phase).padStart(2,'0')}  ${group.label}`));scene.append(g);groupEls.push({g,phase:group.phase});}
+ for(const group of DATA.groups){const g=svg('g',{class:'group'}),p=phases.get(group.phase);g.append(svg('rect',{x:group.x,y:group.y,width:group.w,height:group.h,rx:14,fill:p.color,'fill-opacity':.035,stroke:p.color,'stroke-opacity':.18,'stroke-dasharray':group.phase>=7?'6 5':'none'}));g.append(svg('text',{x:group.x+18,y:group.y+27,class:'group-title',fill:p.color},`${String(group.phase).padStart(2,'0')}  ${group.label}`));scene.append(g);groupEls.push({g,phase:group.phase});}
  const supportTitle=svg('g',{id:'support-title'});supportTitle.append(svg('text',{x:60,y:SUPPORT_Y,class:'support-title'},'SUPPORTING FILES & VERIFICATION'));supportTitle.append(svg('text',{x:60,y:SUPPORT_Y+26,class:'support-subtitle'},'Tests, package boundaries, configuration, and documentation. These are not steps in the runtime agent loop.'));scene.append(supportTitle);
  const edgeGroup=svg('g');scene.append(edgeGroup);
  DATA.edges.forEach((e,i)=>{const group=svg('g'),muted=['observe','support','test'].includes(e.kind),path=svg('path',{d:pathFor(e,i),class:'edge',fill:'none',stroke:'#8198a6','stroke-width':2.55,'stroke-dasharray':muted?'2 6':isPlanned(e)?'8 6':'none','marker-end':'url(#arrow)'});path.append(svg('title',{},`${byId.get(e.source).label} → ${byId.get(e.target).label}: ${e.label}${isPlanned(e)?' (planned integration)':''}`));const label=svg('text',{class:'edge-label',hidden:''},e.label);label.style.display='none';const halo=svg('path',{d:pathFor(e,i),class:'edge-halo','stroke-linejoin':'round'});
@@ -2363,7 +2488,7 @@ function focusNode(n){const c=center(n);camera.scale=Math.max(.85,Math.min(1.2,(
 function tab(name){const details=name==='details';$('details').hidden=!details;$('inventory').hidden=details;$('details-tab').setAttribute('aria-selected',String(details));$('inventory-tab').setAttribute('aria-selected',String(!details));}
 function section(parent,label,content){const box=html('section','detail-section');box.append(html('h3','',label));if(typeof content==='string')box.append(html('p','',content));else box.append(content);parent.append(box);}
 function renderDetails(n){const root=$('details');root.replaceChildren();if(!n){const kicker=html('div','detail-kicker','READ THE SYSTEM, THEN THE CODE');root.append(kicker,html('h2','','Local agents. Persistent memory.'),html('p','detail-description','DynaGraph is designed to replace repeated full-history context with a small, current graph of facts. The atlas shows the finished eight-phase design and the files that exist today.'));
- const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','Phases 1–5 are implemented. Future wiring is dashed. Planned performance targets and benefits are not measured results. Click any card, search a path, or explore All components.'));return;}
+ const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','Phases 1–6 are implemented. Future wiring is dashed. Planned performance targets and benefits are not measured results. Click any card, search a path, or explore All components.'));return;}
  const p=phases.get(n.phase),kicker=html('div','detail-kicker');kicker.append(html('span','',n.support?'SUPPORTING FILE':`PHASE ${n.phase} · ${p.name}`),html('span',`badge ${n.status}`,statusLabel(n)));root.append(kicker,html('h2','',n.label));
  if(n.path){const path=html('div','file-path',n.path);root.append(path);if(n.status==='implemented'){const source=html('a','file-path','Open source file ↗');source.href='../'+n.path;source.target='_blank';source.rel='noopener';root.append(source);}}
  root.append(html('p','detail-description',n.description));section(root,'Inputs',n.inputs);section(root,'Outputs',n.outputs);

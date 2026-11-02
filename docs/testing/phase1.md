@@ -1,5 +1,9 @@
 # Phase 1 Verification and Testing Protocol
 
+Whole-suite totals in this phase protocol reflect its completion checkpoint.
+See the [current workflow protocol](phase6.md) for current aggregate counts
+and schema migration guidance. Dedicated phase checks remain applicable.
+
 Verify environment validation, local Ollama inventories, HTTP health checks,
 short inference requests, timeouts, and node fallback. Run project commands from
 the repository root on Node 1. Node 1 needs Python 3.11+; Node 2 needs Ollama.

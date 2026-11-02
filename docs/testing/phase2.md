@@ -1,5 +1,9 @@
 # Phase 2 Verification and Testing Protocol
 
+Whole-suite totals in this phase protocol reflect its completion checkpoint.
+See the [current workflow protocol](phase6.md) for current aggregate counts
+and schema migration guidance. Dedicated phase checks remain applicable.
+
 Verify embedded SQLite storage on Node 1. The storage implementation
 uses Python's standard-library `sqlite3`, with no additional Python dependencies,
 services, or API calls. Tests use isolated databases and require no Ollama server.

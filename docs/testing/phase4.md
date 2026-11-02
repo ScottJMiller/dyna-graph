@@ -1,5 +1,9 @@
 # Phase 4: Memory governance verification
 
+Whole-suite totals in this phase protocol reflect its completion checkpoint.
+See the [current workflow protocol](phase6.md) for current aggregate counts
+and schema migration guidance. Dedicated phase checks remain applicable.
+
 Phase 4 implements deterministic four-factor retention scoring, atomic
 single-valued fact replacement, and bounded soft-pruning. Every check below is
 local and offline. No Ollama process, model download, Node 2 connection, or new
@@ -48,7 +52,7 @@ Expected: **102 passed**, no failures or skips. Diagnostic lines include:
 ```text
 SUPERSESSION OK: old=SUPERSEDED new=ACTIVE relation=SUPERSEDES
 PRUNING OK: stale leaves=PRUNED hub/fresh=ACTIVE history=SUPERSEDED
-MIGRATION OK: version=2 legacy graph and FTS preserved
+MIGRATION OK: version=3 legacy graph and FTS preserved
 102 passed in <seconds>s
 ```
 
@@ -263,11 +267,12 @@ database write completes atomically even if its caller stops waiting.
 
 ## 6. Optional upgrade of an existing project database
 
-New/opened databases use **schema version 2**. Opening a version 1 database
+Phase 4 introduced **schema version 2**; the current checkout uses **version 3**
+with Phase 6 workflow tables. Opening a version 1 database
 transactionally adds `entity_memory` and `supersession_edges` plus indexes;
 existing entities, triples, IDs, pins, FTS content, and uniqueness rules are
-preserved. A failed upgrade leaves version 1 intact. Future schema versions are
-rejected. Older application versions cannot open version 2 databases.
+preserved. A failed upgrade leaves the prior version intact. Future schema versions are
+rejected. Older application versions cannot open a newer schema; see the Phase 6 guide.
 
 Stop other application processes first. If you already have project data, the
 following optional command creates a consistent SQLite backup (including WAL
@@ -300,7 +305,7 @@ PY
 ```
 
 Expected: `BACKUP: .verification/pre-phase4-<timestamp>.db` if a database already
-existed, followed by `SCHEMA VERSION: 2` and `INTEGRITY: ok`. No backup line is
+existed, followed by `SCHEMA VERSION: 3` and `INTEGRITY: ok`. No backup line is
 printed for a new database. `.verification/` and `.env` stay ignored by Git.
 
 ## 7. Failure logs, acceptance, and commit message
