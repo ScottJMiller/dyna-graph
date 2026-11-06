@@ -90,7 +90,7 @@ svg #arrow-active path { fill: var(--edge-active); }
 <div class="app">
  <header class="top">
   <div class="brand"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M9 10L30 7L32 29L13 33L9 10L32 29M30 7L13 33" fill="none" stroke="currentColor" stroke-width="1.4"/><g fill="currentColor"><circle cx="9" cy="10" r="4"/><circle cx="30" cy="7" r="3"/><circle cx="32" cy="29" r="4"/><circle cx="13" cy="33" r="3"/></g></svg><div><p class="eyebrow">Architecture atlas / complete target system</p><h1>DynaGraph <span>explained.</span></h1></div></div>
-  <div class="top-note"><div class="status-key"><span><i class="dot"></i>Implemented · phases 1–6</span><span><i class="dot planned"></i>Planned · phases 7–8</span></div><span class="offline-note">Two local nodes. One persistent graph. No cloud APIs.</span></div>
+  <div class="top-note"><div class="status-key"><span><i class="dot"></i>Implemented · phases 1–7</span><span><i class="dot planned"></i>Planned · phase 8</span></div><span class="offline-note">Two local nodes. One persistent graph. No cloud APIs.</span></div>
  </header>
  <section class="controls" aria-label="Map controls">
   <div class="control-row">
@@ -121,7 +121,8 @@ svg #arrow-active path { fill: var(--edge-active); }
  <footer class="footer"><div class="legend"><span><i class="line-key"></i>Existing connection</span><span><i class="line-key planned"></i>Planned integration</span><span><i class="line-key observe"></i>Observation / support</span></div><div><a href="architecture.md">Written architecture</a> · <a href="testing/architecture.md">Verification</a> · Standalone / offline</div></footer>
 </div>
 <p class="sr-only" id="announcer" aria-live="polite"></p>
-<script id="architecture-data" type="application/json">{
+<script id="architecture-data" type="application/json">
+{
   "nodes": [
     {
       "id": "task",
@@ -561,17 +562,19 @@ svg #arrow-active path { fill: var(--edge-active); }
       "id": "profiler",
       "path": "src/telemetry/profiler.py",
       "phase": 7,
-      "summary": "Measure every turn",
-      "description": "Collect prompt-token counts, generation latencies, active entity/edge counts, and memory usage around the agent cycle.",
+      "summary": "Checkpoint measured turn usage",
+      "description": "Collect role/extraction prompt counts, inference latency, active semantic graph size and current coordinator Python RSS in the accepted turn transaction.",
       "interfaces": [
-        "Planned per-turn metric collector"
+        "TurnMetrics",
+        "TelemetryProfiler.capture()",
+        "TelemetryProfiler.from_checkpoint()"
       ],
-      "inputs": "Orchestration events, inference results, graph counts, process metrics.",
-      "outputs": "Per-turn metric snapshots.",
-      "notes": "Current GenerationResult exposes latency and generated-token metadata. Capturing prompt tokens and complete turn records remains Phase 7 work.",
+      "inputs": "Validated inference results, commit connection, context budget and process RSS sample.",
+      "outputs": "Immutable versioned telemetry inside the durable JSON turn checkpoint.",
+      "notes": "Missing counters stay unknown. Retrieval bytes are not measured tokens. Failed/uncommitted turns and Ollama process RAM are excluded.",
       "kind": "source",
       "label": "profiler.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
       "x": 60,
       "y": 1680
@@ -581,16 +584,18 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "src/telemetry/dashboard.py",
       "phase": 7,
       "summary": "Show live terminal state",
-      "description": "Display current swarm state and profiling metrics in a Rich/Curses terminal dashboard on Node 1.",
+      "description": "Run or resume a local task with a twice-per-second Rich view, pause/quit controls and automatic checkpoint-backed CSV export.",
       "interfaces": [
-        "Planned terminal dashboard"
+        "python3 -m src.telemetry.dashboard",
+        "Dashboard.record() / render()",
+        "observe()"
       ],
-      "inputs": "Metric snapshots and current workflow state.",
-      "outputs": "A live local terminal view.",
-      "notes": "This is the planned runtime dashboard. The HTML architecture map is documentation, not that dashboard.",
+      "inputs": "Current controller stage, durable checkpoints and terminal input.",
+      "outputs": "Bounded live view, final plain snapshot, and CSV export.",
+      "notes": "--demo is synthetic and offline. --export-only reads saved metrics without inference. The HTML atlas remains documentation.",
       "kind": "source",
       "label": "dashboard.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
       "x": 540,
       "y": 1680
@@ -599,17 +604,18 @@ svg #arrow-active path { fill: var(--edge-active); }
       "id": "logger",
       "path": "src/telemetry/logger.py",
       "phase": 7,
-      "summary": "Export an auditable metric history",
-      "description": "Write per-turn measurements to local CSV for inspection, regression analysis, and the controlled experiment.",
+      "summary": "Export recoverable per-run CSV",
+      "description": "Validate and flush one-run CSV measurements, skipping identical replay and rejecting damaged or conflicting history.",
       "interfaces": [
-        "Planned CSV metric logger"
+        "CSVLogger.append()",
+        "CSVLogger.export_run()"
       ],
-      "inputs": "Metric snapshots and experiment/condition identifiers.",
-      "outputs": "A local CSV history.",
-      "notes": "No hosted telemetry, analytics API, or cloud account is required.",
+      "inputs": "Committed TurnMetrics snapshots from bounded checkpoint pages.",
+      "outputs": "Local CSV with schema version, run/step identity, usage, timing, graph size and Python RSS.",
+      "notes": "One writer per file. SQLite checkpoints are authoritative. Flush per row; export to a new path after interrupted or incompatible CSV writes.",
       "kind": "source",
       "label": "logger.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
       "x": 1020,
       "y": 1680
@@ -675,12 +681,12 @@ svg #arrow-active path { fill: var(--edge-active); }
       "id": "csv",
       "path": "",
       "phase": 7,
-      "summary": "Local measurements · condition tagged",
-      "description": "Generated CSV records connect runtime observation to experiment analysis. The final file path and column contract will be defined with telemetry.",
+      "summary": "Local committed-turn measurements",
+      "description": "Versioned per-run CSV exported from durable workflow checkpoints, normally under ignored data/telemetry/.",
       "interfaces": [],
-      "inputs": "Per-turn measurements.",
-      "outputs": "Reproducible analysis input.",
-      "notes": "This node is an intended artifact, not a file already produced by the project.",
+      "inputs": "Committed TurnMetrics records.",
+      "outputs": "Local analysis input; controlled A/B condition tagging is Phase 8 work.",
+      "notes": "No task content or model response text. Empty counters mean unknown; synthetic demo output is labeled separately.",
       "kind": "resource",
       "label": "Metrics CSV",
       "status": "resource",
@@ -824,16 +830,16 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "tests/test_phase7_telemetry.py",
       "phase": 7,
       "summary": "Phase 7 verification",
-      "description": "Planned live metric and CSV integrity checks.",
+      "description": "Offline counters, corrections/fallback, snapshots, rollback, live output, cancellation, CSV recovery and a direct opt-in two-node telemetry check.",
       "interfaces": [
         "pytest"
       ],
       "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
       "outputs": "Assertions and diagnostic test output.",
-      "notes": "A specified future deliverable; this file does not exist yet.",
+      "notes": "82 offline tests and one explicit two-node test; isolated test databases.",
       "kind": "test",
       "label": "test_phase7_telemetry.py",
-      "status": "planned",
+      "status": "implemented",
       "support": true,
       "x": 60,
       "y": 2592
@@ -1342,6 +1348,44 @@ svg #arrow-active path { fill: var(--edge-active); }
       "status": "implemented",
       "support": true,
       "x": 1500,
+      "y": 3488
+    },
+    {
+      "id": "telemetry-init",
+      "path": "src/telemetry/__init__.py",
+      "phase": 7,
+      "summary": "Telemetry public API",
+      "description": "Export strict metric snapshots, the profiler and CSV projection without starting services.",
+      "interfaces": [
+        "Phase 7 public API"
+      ],
+      "inputs": "Local workflow and durable telemetry.",
+      "outputs": "Inspectable measurements and documented verification.",
+      "notes": "No external telemetry service or cloud account.",
+      "kind": "support",
+      "label": "__init__.py",
+      "status": "implemented",
+      "support": true,
+      "x": 1980,
+      "y": 3488
+    },
+    {
+      "id": "phase7-doc",
+      "path": "docs/testing/phase7.md",
+      "phase": 7,
+      "summary": "Phase 7 verification protocol",
+      "description": "Commands, metric semantics, terminal controls, CSV integrity and checkpoint recovery.",
+      "interfaces": [
+        "Phase 7 protocol"
+      ],
+      "inputs": "Local workflow and durable telemetry.",
+      "outputs": "Inspectable measurements and documented verification.",
+      "notes": "No external telemetry service or cloud account.",
+      "kind": "support",
+      "label": "phase7.md",
+      "status": "implemented",
+      "support": true,
+      "x": 2460,
       "y": 3488
     }
   ],
@@ -2029,6 +2073,42 @@ svg #arrow-active path { fill: var(--edge-active); }
       "target": "config",
       "label": "read per-role generation/tool limits",
       "kind": "call"
+    },
+    {
+      "source": "dashboard",
+      "target": "state",
+      "label": "start / resume and poll workflow stages",
+      "kind": "call"
+    },
+    {
+      "source": "dashboard",
+      "target": "logger",
+      "label": "export committed snapshots",
+      "kind": "call"
+    },
+    {
+      "source": "telemetry-init",
+      "target": "profiler",
+      "label": "export telemetry types",
+      "kind": "support"
+    },
+    {
+      "source": "telemetry-init",
+      "target": "logger",
+      "label": "export CSV logger",
+      "kind": "support"
+    },
+    {
+      "source": "phase7-doc",
+      "target": "test7",
+      "label": "document verification and acceptance",
+      "kind": "support"
+    },
+    {
+      "source": "readme",
+      "target": "phase7-doc",
+      "label": "link telemetry protocol",
+      "kind": "support"
     }
   ],
   "phases": [
@@ -2163,7 +2243,7 @@ svg #arrow-active path { fill: var(--edge-active); }
     },
     "turn": {
       "title": "One agent turn",
-      "text": "The controller recalls bounded memory, runs a role, extracts accepted facts, and commits graph changes and its turn checkpoint atomically. Dashboard profiling remains planned.",
+      "text": "The controller recalls bounded memory, runs a role, extracts facts, and commits accepted graph changes, telemetry and its turn checkpoint atomically. The Rich CLI exports committed measurements.",
       "ids": [
         "task",
         "state",
@@ -2179,7 +2259,10 @@ svg #arrow-active path { fill: var(--edge-active); }
         "supersession",
         "graph",
         "database",
-        "profiler"
+        "profiler",
+        "dashboard",
+        "logger",
+        "csv"
       ]
     },
     "remember": {
@@ -2229,7 +2312,8 @@ svg #arrow-active path { fill: var(--edge-active); }
       ]
     }
   }
-}</script>
+}
+</script>
 <script>
 'use strict';
 const DATA=JSON.parse(document.getElementById('architecture-data').textContent);
@@ -2431,7 +2515,7 @@ function svg(tag,attrs={},text){const e=document.createElementNS(NS,tag);for(con
 function html(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;}
 function statusLabel(n){return n.status==='implemented'?'IMPLEMENTED':n.status==='planned'?'PLANNED':'SERVICE / ARTIFACT';}
 function isPlanned(e){return byId.get(e.source).status==='planned'||byId.get(e.target).status==='planned';}
-function resourceInStatus(n){return n.status==='resource'&&(status==='all'||(status==='implemented'?n.phase<=6:n.phase>=7));}
+function resourceInStatus(n){return n.status==='resource'&&(status==='all'||(status==='implemented'?n.phase<=7:n.phase>=8));}
 function visible(n){return (!n.support||showSupport)&&(status==='all'||n.status===status||resourceInStatus(n));}
 function matches(n){return !query||[n.label,n.path,n.summary,n.description,n.notes,...n.interfaces].join(' ').toLowerCase().includes(query);}
 function relatedIds(){if(selected){return new Set([selected,...DATA.edges.filter(e=>e.source===selected||e.target===selected).flatMap(e=>[e.source,e.target])]);}if(phaseFocus)return new Set(DATA.nodes.filter(n=>n.phase===phaseFocus).map(n=>n.id));const ids=DATA.routes[route].ids;return ids.length?new Set(ids):null;}
@@ -2446,7 +2530,7 @@ function boundsFor(items){
 }
 function buildMap(){
  const scene=$('scene');
- for(const group of DATA.groups){const g=svg('g',{class:'group'}),p=phases.get(group.phase);g.append(svg('rect',{x:group.x,y:group.y,width:group.w,height:group.h,rx:14,fill:p.color,'fill-opacity':.035,stroke:p.color,'stroke-opacity':.18,'stroke-dasharray':group.phase>=7?'6 5':'none'}));g.append(svg('text',{x:group.x+18,y:group.y+27,class:'group-title',fill:p.color},`${String(group.phase).padStart(2,'0')}  ${group.label}`));scene.append(g);groupEls.push({g,phase:group.phase});}
+ for(const group of DATA.groups){const g=svg('g',{class:'group'}),p=phases.get(group.phase);g.append(svg('rect',{x:group.x,y:group.y,width:group.w,height:group.h,rx:14,fill:p.color,'fill-opacity':.035,stroke:p.color,'stroke-opacity':.18,'stroke-dasharray':group.phase>=8?'6 5':'none'}));g.append(svg('text',{x:group.x+18,y:group.y+27,class:'group-title',fill:p.color},`${String(group.phase).padStart(2,'0')}  ${group.label}`));scene.append(g);groupEls.push({g,phase:group.phase});}
  const supportTitle=svg('g',{id:'support-title'});supportTitle.append(svg('text',{x:60,y:SUPPORT_Y,class:'support-title'},'SUPPORTING FILES & VERIFICATION'));supportTitle.append(svg('text',{x:60,y:SUPPORT_Y+26,class:'support-subtitle'},'Tests, package boundaries, configuration, and documentation. These are not steps in the runtime agent loop.'));scene.append(supportTitle);
  const edgeGroup=svg('g');scene.append(edgeGroup);
  DATA.edges.forEach((e,i)=>{const group=svg('g'),muted=['observe','support','test'].includes(e.kind),path=svg('path',{d:pathFor(e,i),class:'edge',fill:'none',stroke:'#8198a6','stroke-width':2.55,'stroke-dasharray':muted?'2 6':isPlanned(e)?'8 6':'none','marker-end':'url(#arrow)'});path.append(svg('title',{},`${byId.get(e.source).label} → ${byId.get(e.target).label}: ${e.label}${isPlanned(e)?' (planned integration)':''}`));const label=svg('text',{class:'edge-label',hidden:''},e.label);label.style.display='none';const halo=svg('path',{d:pathFor(e,i),class:'edge-halo','stroke-linejoin':'round'});
@@ -2488,7 +2572,7 @@ function focusNode(n){const c=center(n);camera.scale=Math.max(.85,Math.min(1.2,(
 function tab(name){const details=name==='details';$('details').hidden=!details;$('inventory').hidden=details;$('details-tab').setAttribute('aria-selected',String(details));$('inventory-tab').setAttribute('aria-selected',String(!details));}
 function section(parent,label,content){const box=html('section','detail-section');box.append(html('h3','',label));if(typeof content==='string')box.append(html('p','',content));else box.append(content);parent.append(box);}
 function renderDetails(n){const root=$('details');root.replaceChildren();if(!n){const kicker=html('div','detail-kicker','READ THE SYSTEM, THEN THE CODE');root.append(kicker,html('h2','','Local agents. Persistent memory.'),html('p','detail-description','DynaGraph is designed to replace repeated full-history context with a small, current graph of facts. The atlas shows the finished eight-phase design and the files that exist today.'));
- const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','Phases 1–6 are implemented. Future wiring is dashed. Planned performance targets and benefits are not measured results. Click any card, search a path, or explore All components.'));return;}
+ const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','Phases 1–7 are implemented. Future wiring is dashed. Planned performance targets and benefits are not measured results. Click any card, search a path, or explore All components.'));return;}
  const p=phases.get(n.phase),kicker=html('div','detail-kicker');kicker.append(html('span','',n.support?'SUPPORTING FILE':`PHASE ${n.phase} · ${p.name}`),html('span',`badge ${n.status}`,statusLabel(n)));root.append(kicker,html('h2','',n.label));
  if(n.path){const path=html('div','file-path',n.path);root.append(path);if(n.status==='implemented'){const source=html('a','file-path','Open source file ↗');source.href='../'+n.path;source.target='_blank';source.rel='noopener';root.append(source);}}
  root.append(html('p','detail-description',n.description));section(root,'Inputs',n.inputs);section(root,'Outputs',n.outputs);

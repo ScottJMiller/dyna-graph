@@ -115,13 +115,13 @@ benefit from persistent graph memory.
 
 | Status | Capabilities |
 | --- | --- |
-| Implemented: phases 1–6 | Validated local configuration; async Ollama health, model inventory, inference, latency metrics, and fallback; transactional SQLite entity/triple storage with prefix search; structured fact extraction with defensive parsing and bounded retry; configured single-valued supersession, deterministic retention scoring, and pin-protected soft-pruning; bounded SQL neighborhood recall and budgeted Markdown/JSON context; sequential planner/researcher/verifier cycles with local tools and durable atomic checkpoints. |
-| Planned: phases 7–8 | Turn-level telemetry, a terminal dashboard, CSV logging, and the controlled benchmark with analysis and figures. |
+| Implemented: phases 1–7 | Validated local configuration; async Ollama health, model inventory, inference, latency metrics, and fallback; transactional SQLite entity/triple storage with prefix search; structured fact extraction with defensive parsing and bounded retry; configured single-valued supersession, deterministic retention scoring, and pin-protected soft-pruning; bounded SQL neighborhood recall and budgeted Markdown/JSON context; sequential planner/researcher/verifier cycles with local tools and durable atomic checkpoints; measured per-turn usage, graph/RSS snapshots, a live terminal dashboard, and recoverable CSV export. |
+| Planned: phase 8 | The controlled benchmark comparing linear history and graph memory, with analysis and figures. |
 
 The programmatic workflow now connects extraction, storage, governance, and
 retrieval. The standalone APIs remain available; calling extraction alone does
 not write memory. Start a task with `StateMachine.start()` or `run()`; an
-interactive task-entry CLI is not included.
+optional terminal dashboard can also start or resume tasks.
 
 Current configuration supports selecting installed model tags, endpoints, and
 CPU budgets for the two Ollama nodes. Python callers can provide their own messages
@@ -419,7 +419,60 @@ The controller keeps prompts bounded and stores history locally instead of
 resending a full transcript. The [Phase 6 guide](docs/testing/phase6.md) explains
 recovery, acceptance filtering, prompt limits, and direct two-node verification.
 
-### 9. Verify the installed components
+### 9. Watch execution and export measurements
+
+Preview the terminal dashboard with synthetic data, without Ollama or database
+access:
+
+```bash
+python3 -m src.telemetry.dashboard --demo --plain --csv .verification/phase7/demo.csv
+```
+
+Expect `SIMULATED DEMO OK: 3 turns; no model requests or database writes` and a
+CSV path. Omit `--plain` for live display; a redirected output stream prints the
+final snapshot. Demo numbers are illustrative, not experimental measurements.
+
+Run a real task using your configured models and local graph:
+
+```bash
+python3 -m src.telemetry.dashboard --task "Repeat this fact exactly: Project Cedar uses SQLite." --subgoal "Project Cedar" --turns 3
+```
+
+The dashboard refreshes twice per second, showing the current role, stage,
+committed prompt usage, inference latency, active graph size, and coordinator
+Python RAM. Press **p** to pause/resume the display, or **q** / **Ctrl+C** to stop
+execution. Keep the printed `RUN_ID`. Committed turns are retained; resume with
+`python3 -m src.telemetry.dashboard --resume RUN_ID`. A crashed process can leave
+a `RUNNING` row; use `--recover-interrupted` only after its former process has
+stopped, as explained in the Phase 6 recovery protocol.
+
+Each new turn saves telemetry with its graph checkpoint. The dashboard appends
+CSV rows under ignored `data/telemetry/`, or a path supplied with `--csv`.
+Programmatic workflows also save metrics automatically; use this command to
+export their checkpoints without contacting either model:
+
+```bash
+python3 -m src.telemetry.dashboard --resume RUN_ID --export-only
+```
+
+A file belongs to one run and one writer. Each new task gets a separate CSV by
+default; an incompatible explicit path is rejected before inference starts.
+Repeated export safely skips identical rows; damaged/incompatible CSV files
+require export to a new path. Export failure
+does not undo committed graph state. Older checkpoints without telemetry are
+reported as skipped; their historical measurements cannot be reconstructed.
+
+Prompt counts come from Ollama's `prompt_eval_count`, including role/extraction
+corrections. CSV keeps those stages separate and also reports their total.
+Missing counters produce blank cells, not zero or a retrieval-byte estimate.
+Failed fallback requests contribute latency, but their unknown token work cannot
+be counted. Failed/uncommitted turns are excluded from this committed-turn data.
+RAM is a sampled **Python process RSS**, excluding both Ollama processes and
+remote-node RAM. This is useful framework telemetry, not total cluster profiling
+or evidence of experimental benefit. See the [Phase 7 guide](docs/testing/phase7.md)
+for the column contract, timing boundaries, recovery, and verification.
+
+### 10. Verify the installed components
 
 Run the functional suite without network access or Ollama:
 
@@ -427,13 +480,14 @@ Run the functional suite without network access or Ollama:
 python3 -m pytest -q
 ```
 
-Expected: **586 passed, 17 skipped**. The skips are checks that need physical LAN
+Expected: **668 passed, 18 skipped**. The skips are checks that need physical LAN
 nodes or explicitly requested storage/retrieval benchmarks. Run those separately:
 
 ```bash
 python3 -m pytest tests/test_phase1_network.py --run-lan -q
 python3 -m pytest tests/test_phase3_extraction.py --run-lan -q
 python3 -m pytest tests/test_phase6_orchestration.py --run-lan -q
+python3 -m pytest tests/test_phase7_telemetry.py --run-lan -q
 mkdir -p .verification
 python3 -m pytest tests/test_phase2_storage.py --run-storage-benchmark --basetemp .verification/phase2 -v -s
 ```
@@ -449,7 +503,7 @@ and p95 below **5 ms**, with every block within budget. See the protocol for
 fixture size, warm-up, and measurement boundaries.
 
 Expected: **122 passed** for network checks, **111 passed** for extraction,
-**77 passed** for orchestration, and **83 passed** for storage. The storage benchmark checks a median below 1 ms for
+**77 passed** for orchestration, **83 passed** for telemetry, and **83 passed** for storage. The storage benchmark checks a median below 1 ms for
 200 individually committed inserts with FULL synchronization. Results depend on
 the storage host and system load; this does not guarantee every insert is under
 1 ms or establish a complete application performance result.
@@ -462,9 +516,10 @@ the storage host and system load; this does not guarantee every insert is under
 | [Governance verification](docs/testing/phase4.md) | Deterministic decay, atomic replacement, pinned memory, daemon lifecycle, migration, and a reproducible offline smoke check. |
 | [Retrieval verification](docs/testing/phase5.md) | Active one/two-hop recall, strict block budgets, explicit usage, snapshot consistency, and the warm retrieval benchmark. |
 | [Orchestration verification](docs/testing/phase6.md) | Three-role LAN cycles, local tools, atomic checkpoints, restart/cancellation, migration, and complete workflow usage. |
+| [Telemetry verification](docs/testing/phase7.md) | Measured usage, checkpoint snapshots, live controls, CSV integrity/recovery, and a direct two-node telemetry check. |
 | [Architecture atlas verification](docs/testing/architecture.md) | Optional checks for the documentation's themes, controls, SVG export, and connector geometry. |
 
-### 10. Troubleshoot and build on the APIs
+### 11. Troubleshoot and build on the APIs
 
 | Symptom | First check |
 | --- | --- |

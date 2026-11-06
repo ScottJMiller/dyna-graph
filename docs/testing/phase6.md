@@ -1,5 +1,8 @@
 # Phase 6: Multi-agent orchestration verification
 
+This protocol records Phase 6 acceptance. For current aggregate counts and
+telemetry verification, see [Phase 7](phase7.md).
+
 Phase 6 connects bounded recall, local role execution, extraction, governed
 persistence, and memory maintenance into a durable cyclic workflow. Python and
 SQLite stay on Node 1. Planner/verifier inference defaults to Node 1; researcher

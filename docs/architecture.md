@@ -30,7 +30,7 @@ diagram of the current visible component set. Reset first for an unhighlighted
 whole-system export; enable Supporting files for the complete inventory.
 
 The map describes the **finished target design**, while its status labels reflect
-the current checkout: phases **1–6 exist** and phases **7–8 are planned**.
+the current checkout: phases **1–7 exist** and phase **8 is planned**.
 Components have wider gutters and connectors use distinct perimeter ports. An
 orthogonal router reserves separate tracks and keeps lines out of every card.
 Parallel line sections cannot overlap; perpendicular crossings use a background
@@ -79,11 +79,12 @@ model downloads are separate from offline/LAN operation.
    its state, the logger writes metrics, and the controller advances until the
    task or turn budget is complete.
 
-The controller now executes steps 1–6 and saves durable checkpoints. Each turn's
+The controller now executes steps 1–7 and saves durable checkpoints and telemetry. Each turn's
 usage, governed graph updates, optional pruning, and checkpoint commit together.
 A restart resumes the next uncommitted role without replaying committed facts.
 The standalone extractor still returns data without persisting it; the controller
-owns that integration. Step 7's dashboard/telemetry remains Phase 7 work.
+owns that integration. The Rich CLI polls workflow state and exports committed
+metrics to CSV. Display/export errors cannot undo an accepted checkpoint.
 
 ```mermaid
 flowchart TD
@@ -259,10 +260,22 @@ metadata beyond the specified deliverables.
 
 | File | Status | Responsibility |
 | --- | --- | --- |
-| `src/telemetry/profiler.py` | Planned | Collect prompt-token counts, generation latencies, active entity/edge counts, and memory usage around the agent cycle. |
-| `src/telemetry/dashboard.py` | Planned | Display current swarm state and profiling metrics in a Rich/Curses terminal dashboard on Node 1. |
-| `src/telemetry/logger.py` | Planned | Write per-turn measurements to local CSV for inspection, regression analysis, and the controlled experiment. |
-| `tests/test_phase7_telemetry.py` | Planned | Planned live metric and CSV integrity checks. |
+| [src/telemetry/profiler.py](../src/telemetry/profiler.py) | Implemented | Define the versioned `TurnMetrics` contract; collect measured role/extraction prompt counts and latency, active graph counts in the commit transaction, and current coordinator Python RSS. |
+| [src/telemetry/dashboard.py](../src/telemetry/dashboard.py) | Implemented | Run/resume tasks with a 2 Hz Rich display, bounded 12-row history, pause/quit controls, offline synthetic preview, plain output, and export-only mode. |
+| [src/telemetry/logger.py](../src/telemetry/logger.py) | Implemented | Flush per-turn CSV rows; validate schema and identity on reopen; replay checkpoints idempotently in bounded pages without repeating inference. |
+| [src/telemetry/__init__.py](../src/telemetry/__init__.py) | Implemented | Export profiler, strict metrics, and CSV logger without starting a dashboard or service. |
+| [tests/test_phase7_telemetry.py](../tests/test_phase7_telemetry.py) | Implemented | Offline usage/rollback/recovery/live-output checks plus an opt-in direct two-node measured-usage test. |
+| [docs/testing/phase7.md](testing/phase7.md) | Implemented | Exact commands, expected diagnostics, timing/memory boundaries, CSV contract, and restart/export guidance. |
+
+Telemetry lives in each new turn's existing JSON checkpoint; the database remains
+schema version 3. Old records without telemetry stay unknown. Active edges are
+semantic triples with active endpoints; supersession provenance is excluded.
+Measured prompt tokens are distinct from the retrieval byte bound. Role and
+extraction calls, including corrective requests, contribute to committed-turn
+usage; failed fallback requests add latency with unknown tokens. Failed and
+uncommitted turns are absent. RSS samples cover the coordinator Python process,
+not either Ollama server. CSV is a recoverable projection, not the authoritative
+store; see the Phase 7 protocol for flush and recovery boundaries.
 
 ### Phase 8: Controlled experiment
 

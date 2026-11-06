@@ -7,6 +7,7 @@
 # Local database files and SQLite journal sidecars
 data/*.db
 data/*.db-*
+data/telemetry/
 .verification/
 
 # Local implementation/reference documents and tooling

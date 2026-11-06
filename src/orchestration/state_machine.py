@@ -19,6 +19,7 @@ from src.governance.decay import _number
 from src.models import AgentMessage, SemanticTriple
 from src.retrieval import ContextAssembler, ContextResult
 from src.storage.graph_store import GraphStore
+from src.telemetry.profiler import TelemetryProfiler
 
 
 class Stage(StrEnum):
@@ -97,7 +98,11 @@ def _turn(row):
 def _generation(generation):
     return {"node": generation.node, "model": generation.model, "latency_ms": generation.latency_ms,
             "generated_tokens": generation.generated_tokens, "used_fallback": generation.used_fallback,
-            "done_reason": generation.done_reason}
+            "done_reason": generation.done_reason, "prompt_tokens": generation.prompt_tokens,
+            "node_latency_ms": generation.node_latency_ms,
+            "server_duration_ms": generation.server_duration_ms,
+            "failed_attempts": [{"node": e.node, "kind": e.kind, "latency_ms": e.latency_ms}
+                                for e in generation.failed_attempts]}
 
 
 async def _settled(operation):
@@ -127,7 +132,7 @@ class StateMachine:
 
     def __init__(self, client, graph: GraphStore, *, agents=None, extractor=None,
                  accept_fact: Callable[[SemanticTriple, AgentMessage], bool] | None = None,
-                 clock: Callable[[], float] = time.time):
+                 clock: Callable[[], float] = time.time, profiler: TelemetryProfiler | None = None):
         self.client, self.graph, self.settings = client, graph, client.settings
         self.agents = tuple(default_agents(client) if agents is None else agents)
         if not 1 <= len(self.agents) <= 16 or any(not isinstance(a, BaseAgent) for a in self.agents):
@@ -142,6 +147,7 @@ class StateMachine:
         if self.extractor.client is not client:
             raise ValueError("extractor must share the caller-owned client")
         self.accept_fact, self.clock = accept_fact, clock
+        self.profiler = TelemetryProfiler() if profiler is None else profiler
         self.writer = GovernedWriter.from_settings(graph, self.settings)
         self.pruner = Pruner.from_settings(graph, self.settings)
         self.stage = Stage.IDLE
@@ -214,6 +220,7 @@ class StateMachine:
             step = checkpoint.next_step + 1
             claimed = False
             owner = uuid4().hex
+            started = self.profiler.timer()
             try:
                 def claim(_graph):
                     with self.graph.database.transaction() as connection:
@@ -279,6 +286,10 @@ class StateMachine:
                             "agent_generations": [_generation(g) for g in result.generations],
                             "extraction_attempts": [_generation(g) for g in extracted.attempts],
                             "tools": [asdict(t) for t in result.tools]}
+                        payload["telemetry"] = self.profiler.capture(connection, run_id=run_id, step=step,
+                            governance_turn=turn, agent_id=agent.agent_id, node=result.generation.node,
+                            observed_at=now, started=started, agent=result, extraction=extracted,
+                            context=context).model_dump(mode="json")
                         connection.execute("INSERT INTO workflow_turns(run_id,step,governance_turn,agent_id,node,message,result) VALUES(?,?,?,?,?,?,?)",
                             (run_id, step, turn, agent.agent_id, result.generation.node, result.message.model_dump_json(), encode(payload)))
                         connection.execute("UPDATE workflow_runs SET next_step=?,subgoal=?,status=?,stop_reason=?,last_response=?,error=NULL,owner_token=NULL,"

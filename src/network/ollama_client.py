@@ -42,6 +42,7 @@ class _GenerationPayload(BaseModel):
     done: bool
     total_duration: int | None = Field(default=None, ge=0)
     eval_count: int | None = Field(default=None, ge=0)
+    prompt_eval_count: int | None = Field(default=None, ge=0)
     done_reason: str | None = None
 
     @field_validator("done")
@@ -110,6 +111,7 @@ class GenerationResult:
     generated_tokens: int | None
     failed_attempts: tuple[OllamaError, ...]
     done_reason: str | None = None
+    prompt_tokens: int | None = None
 
     @property
     def used_fallback(self) -> bool:
@@ -273,5 +275,6 @@ class OllamaClient:
                 server_duration_ms=None if parsed.total_duration is None else parsed.total_duration / 1_000_000,
                 generated_tokens=parsed.eval_count, failed_attempts=tuple(failures),
                 done_reason=parsed.done_reason,
+                prompt_tokens=parsed.prompt_eval_count,
             )
         raise OllamaUnavailableError(tuple(failures))
