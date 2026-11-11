@@ -30,7 +30,9 @@ diagram of the current visible component set. Reset first for an unhighlighted
 whole-system export; enable Supporting files for the complete inventory.
 
 The map describes the **finished target design**, while its status labels reflect
-the current checkout: all **eight phases exist**; the controlled **experiment has not been run**.
+the current checkout: all **eight phases exist**; an initial **80-turn measured experiment is complete**.
+See the [case study and evidence](results/study-20261111-002/README.md) for the two paired
+repetitions, costs, accuracy, limitations, and disclosed unsuccessful first attempt.
 Components have wider gutters and connectors use distinct perimeter ports. An
 orthogonal router reserves separate tracks and keeps lines out of every card.
 Parallel line sections cannot overlap; perpendicular crossings use a background
@@ -157,12 +159,12 @@ records usage and facts at successful turn checkpoints.
 
 ## How the experiment evaluates the system
 
-The benchmark harness will run a shared 15–20 turn scenario with injected state
+The benchmark harness runs a shared 15–20 turn scenario with injected state
 changes under two conditions:
 
 | Condition | Context strategy | What is held comparable |
 | --- | --- | --- |
-| A: linear | Pass accumulated conversation history. | Scenario, node/model choices, hardware, generation settings, and task truth checks. |
+| A: linear | Pass prior task/answer turns in a bounded oldest-first window. | Scenario, node/model choices, hardware, generation settings, and task truth checks. |
 | B: graph | Extract/persist facts and retrieve bounded current graph context. | The same controls, with graph memory as the experimental difference. |
 
 Telemetry feeds local CSV records. Analysis compares prompt-token consumption,
@@ -288,7 +290,7 @@ store; see the Phase 7 protocol for flush and recovery boundaries.
 | [experiments/generate_plots.py](../experiments/generate_plots.py) | Implemented | Validate source evidence and export four figure sets as local SVG/PDF/PNG using headless Matplotlib; label all synthetic test figures. |
 | [experiments/__init__.py](../experiments/__init__.py) | Implemented | Establish the experiment package without running inference, analysis or plotting on import. |
 | [tests/test_phase8_benchmark.py](../tests/test_phase8_benchmark.py) | Implemented | Verify the comparison with simulated HTTP only, blocking real network access; cover planning gates, isolation, updates, missing counters, failed/cancelled evidence, analysis integrity and figure formats. |
-| [docs/testing/phase8.md](testing/phase8.md) | Implemented | Provide synthetic-only verification, methodology, artifact contracts and a clearly deferred execution reference. |
+| [docs/testing/phase8.md](testing/phase8.md) | Implemented | Provide synthetic-only verification, methodology, artifact contracts, explicit execution commands and the initial measured case study. |
 
 Condition A retains prior task/answer turns in a bounded oldest-first window.
 Condition B ingests the current observation through extraction and governed
@@ -304,8 +306,37 @@ Every measured bundle requires a new output directory. Imports and default CLI
 planning perform no model work. Failed or interrupted bundles retain partial
 evidence and are rejected by analysis; no automatic experimental resume is
 implemented. The default two repetitions provide descriptive AB/BA comparisons,
-not a significance claim. Actual experiment execution remains deferred. Synthetic
-verification does not establish the hypothesis or supply research results.
+not a significance claim. The [initial measured case study](results/study-20261111-002/README.md)
+contains the completed comparison and source evidence. The separate
+[controlled-time pruning probe](results/pruning-probe-001/README.md) exercises
+governance and active-only fact availability without models; it also records
+delayed-fact loss and non-leaf protection. Its [script](testing/pruning_probe.py)
+and [verification protocol](testing/pruning.md) are independent of the measured
+A/B harness. Synthetic verification does not establish the hypothesis or supply
+research results.
+
+### Integrated experiment extension
+
+The [protocol-2 verification guide](testing/phase8_integrated.md) documents a
+separate four-condition study: bounded history, graph without governance,
+graph with supersession, and graph with supersession plus pruning. Its default
+plan has 960 role turns across four workload variants and uses two simulated
+hours of memory age per actual scenario turn. Model-driven execution is gated
+and has not been run. The original A/B analysis remains available.
+
+| File | Responsibility |
+| --- | --- |
+| [experiments/integrated_scenario.py](../experiments/integrated_scenario.py) | Generate fixed seeded 60–80-turn workloads, actual prompt fingerprints, current-value/set oracles, source steps and operational scoring. |
+| [experiments/integrated_contracts.py](../experiments/integrated_contracts.py) | Declare protocol-2 plans, four policies, balanced order, strict diagnostic records and the CSV projection. |
+| [experiments/integrated_harness.py](../experiments/integrated_harness.py) | Execute isolated condition/variant runs with one governance clock, real observation timestamps, complete costs and before/after memory transitions. |
+| [experiments/integrated_analysis.py](../experiments/integrated_analysis.py) | Validate transition replay and durable evidence; calculate per-variant contrasts and category/lag outcomes; export six SVG/PDF/PNG figure sets. |
+| [tests/test_phase8_integrated.py](../tests/test_phase8_integrated.py) | Block real HTTP and verify gates, policy isolation, full workload execution, clocks, pruning loss, artifact consistency and legacy compatibility. |
+
+`StateMachine.step()` accepts an optional explicit governance turn. Incoming
+accesses may share that turn, but prior committed workflow turns must precede
+it. The default remains automatic global turn advancement. An optional separate
+observation clock keeps real telemetry timestamps independent of simulated age.
+No storage schema migration or new runtime dependency is required.
 
 ### Supporting repository files
 

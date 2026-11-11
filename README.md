@@ -22,8 +22,19 @@ time, while leaving the model to distinguish old facts from new ones.
 
 DynaGraph investigates whether a persistent, selectively retrieved graph can
 provide useful shared memory with less repeated context while preserving factual
-consistency. The framework and experiment tools are implemented. The controlled experiment
-has not been run; improved efficiency or accuracy remains a research hypothesis.
+consistency. The framework and experiment tools are implemented. An initial
+[measured A/B case study](docs/results/study-20261111-002/README.md) has completed
+80 scored turns across two paired repetitions. Its results describe one controlled
+scenario; broader efficiency and accuracy benefits remain research questions. In
+that case study, graph memory scored 40/40 correct answers versus 26/40 for
+bounded history and used 14.2% fewer role prompt tokens. Including extraction,
+it used 2.66 times the prompt tokens and averaged 22.47 seconds per turn versus
+10.88 seconds. This is a consistency/cost tradeoff on one scenario, not a general
+performance guarantee.
+
+A separate [deterministic pruning probe](docs/results/pruning-probe-001/README.md)
+uses simulated age to examine memory retirement, pin protection, and loss of a
+fact needed again later. It measures the mechanism rather than model performance.
 
 ### How graph memory works
 
@@ -67,7 +78,7 @@ information changes, under two conditions:
 | A: linear history | Supply prior task/answer turns, dropping oldest whole turns when the shared memory allowance is exceeded. |
 | B: graph memory | Extract and persist facts, then retrieve bounded relevant graph context. |
 
-The comparison will measure prompt-token consumption, latency, and factual
+The original comparison measures prompt-token consumption, latency, and factual
 consistency after updates. Models, hardware, scenario, and generation settings
 should remain comparable, and interpretation must include extraction and memory
 maintenance costs. Both strategies remain subject to the models' context limits;
@@ -91,8 +102,23 @@ checks a declared one-sentence answer contract against an independent oracle.
 [tests/test_phase8_benchmark.py](tests/test_phase8_benchmark.py) verifies the
 pipeline using simulated HTTP only. Analysis validates complete paired evidence
 and checksums before calculating descriptive comparisons. Plotting exports SVG,
-PDF, and PNG figures; synthetic test figures are visibly labeled. No measured
-research results or figures are claimed by the current implementation.
+PDF, and PNG figures; synthetic test figures are visibly labeled. The completed
+measured case study is linked above and kept separate from synthetic verification.
+
+A separate [integrated protocol](docs/testing/phase8_integrated.md) is implemented
+and awaits a model-driven run. It compares bounded history, graph memory alone,
+graph memory with supersession, and graph memory with supersession plus pruning.
+The default plan uses four counterbalanced workload variants, 60 turns per
+condition, and explicitly simulated memory aging: **960 scored role turns**.
+It records delayed recall, pruning losses, active conflicts, cross-node consumers
+and complete pipeline costs. Inspect it without contacting either node:
+
+```bash
+python3 -m experiments.integrated_harness
+```
+
+This extension preserves the original study; its offline tests do not supply
+new measured findings. See the protocol before explicitly starting a new run.
 
 ### Potential benefits and limitations
 
@@ -106,7 +132,7 @@ research results or figures are claimed by the current implementation.
 
 Triples preserve selected facts, not complete source documents or exact wording.
 Applications that need quotations, detailed evidence, or audit trails also need
-the original material and appropriate provenance. The experiment will assess
+the original material and appropriate provenance. The initial experiment assesses
 this design on a controlled scenario; broader application suitability requires
 additional evaluation.
 
@@ -131,7 +157,7 @@ benefit from persistent graph memory.
 | Status | Capabilities |
 | --- | --- |
 | Implemented: phases 1–8 | Validated local configuration; async Ollama health, model inventory, inference, latency metrics, and fallback; transactional SQLite entity/triple storage with prefix search; structured fact extraction with defensive parsing and bounded retry; configured single-valued supersession, deterministic retention scoring, and pin-protected soft-pruning; bounded SQL neighborhood recall and budgeted Markdown/JSON context; sequential planner/researcher/verifier cycles with local tools and durable atomic checkpoints; measured per-turn usage, graph/RSS snapshots, a live terminal dashboard, recoverable CSV export, and an explicitly gated paired benchmark with validated analysis and figure export. |
-| Pending research | Execute the controlled experiment after approval, inspect its evidence, and interpret the measured results. |
+| Initial measured case study | [80-turn paired comparison](docs/results/study-20261111-002/README.md), including role and complete-pipeline costs, strict answer accuracy, figures, reproducible evidence, and a disclosed unsuccessful first attempt. Broader evaluation remains open. |
 
 The programmatic workflow now connects extraction, storage, governance, and
 retrieval. The standalone APIs remain available; calling extraction alone does
@@ -501,7 +527,7 @@ PLAN ONLY: 4 condition runs; 80 scored turns; no model requests or experiment fi
 
 The command also prints its scenario hash and plan. Do not add `--execute` during
 implementation verification. The [Phase 8 protocol](docs/testing/phase8.md)
-explains synthetic tests, comparison boundaries, artifact integrity, and deferred
+explains synthetic tests, comparison boundaries, artifact integrity, and explicit
 execution. Existing application data and the private `.env` are preserved.
 Matplotlib is pinned for local, headless figure export; no plotting server or
 cloud account is needed.
@@ -514,7 +540,7 @@ Run the functional suite without network access or Ollama:
 python3 -m pytest -q
 ```
 
-Expected: **729 passed, 18 skipped**. The skips are checks that need physical LAN
+Expected: **791 passed, 18 skipped**. The skips are checks that need physical LAN
 nodes or explicitly requested storage/retrieval benchmarks. Run those separately:
 
 ```bash
@@ -552,6 +578,7 @@ the storage host and system load; this does not guarantee every insert is under
 | [Orchestration verification](docs/testing/phase6.md) | Three-role LAN cycles, local tools, atomic checkpoints, restart/cancellation, migration, and complete workflow usage. |
 | [Telemetry verification](docs/testing/phase7.md) | Measured usage, checkpoint snapshots, live controls, CSV integrity/recovery, and a direct two-node telemetry check. |
 | [Experiment implementation verification](docs/testing/phase8.md) | Synthetic-only A/B pipeline checks, plan-only CLI, oracle/scoring, artifact validation, paired analysis, and standalone figures. No experiment run. |
+| [Integrated experiment verification](docs/testing/phase8_integrated.md) | Synthetic-only four-condition checks, consistent simulated aging, delayed recall, transition/checkpoint validation and six figure sets. Model-driven execution is gated. |
 | [Architecture atlas verification](docs/testing/architecture.md) | Optional checks for the documentation's themes, controls, SVG export, and connector geometry. |
 
 ### 12. Troubleshoot and build on the APIs
@@ -576,5 +603,6 @@ the [Ollama client](src/network/ollama_client.py),
 the [extractor](src/extraction/extractor.py), and
 the [graph store](src/storage/graph_store.py). Keep their resource lifecycles
 explicit: callers own HTTP-client and database cleanup. The
-[architecture narrative](docs/architecture.md) explains the implemented integration and extension points. The experiment
-implementation is available; measured results await an explicit run.
+[architecture narrative](docs/architecture.md) explains the implemented integration and extension points. The
+[initial measured case study](docs/results/study-20261111-002/README.md) includes results,
+limitations, and commands to reproduce the analysis without running the models.

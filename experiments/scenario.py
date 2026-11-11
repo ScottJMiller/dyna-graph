@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 import hashlib
 import json
 
-SCENARIO_VERSION = "database-updates-v1"
+SCENARIO_VERSION = "database-updates-v2"
 # Each entry is (new subject, new database, queried subject). No oracle is sent
 # to a model: only the observation, question and answer-format instruction.
 SCHEDULE = (
@@ -34,8 +34,9 @@ class ScenarioTurn:
     def task(self):
         observation = self.observation or "No new observation."
         return (f"Observation: {observation}\nWhich database does {self.subject} use now? "
-                f"In content return exactly: {self.subject} uses <current database>. "
-                "Use the most recent supported value; do not add explanations.")
+                "In content, write one short sentence: start with the project name, "
+                "then the word uses, then the actual database name. Use the most recent "
+                "supported value. Do not add explanations or output placeholder text.")
 
 
 def scenario(turns=20) -> tuple[ScenarioTurn, ...]:
@@ -54,8 +55,13 @@ def scenario(turns=20) -> tuple[ScenarioTurn, ...]:
     return tuple(result)
 
 
+def scenario_records(turns=20):
+    """Retain actual rendered inputs, as well as the independently derived oracle."""
+    return [asdict(t) | {"task": t.task} for t in scenario(turns)]
+
+
 def scenario_hash(turns=20):
-    return hashlib.sha256(json.dumps([asdict(t) for t in scenario(turns)],
+    return hashlib.sha256(json.dumps({"version": SCENARIO_VERSION, "turns": scenario_records(turns)},
         sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 

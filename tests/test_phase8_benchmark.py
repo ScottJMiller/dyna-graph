@@ -16,7 +16,7 @@ import pytest
 from experiments import analyze_results, benchmark_harness, generate_plots
 from experiments.benchmark_harness import linear_context, run_experiment
 from experiments.contracts import BenchmarkPlan, BenchmarkRow, load_json, sha256, write_json
-from experiments.scenario import scenario, scenario_hash, score
+from experiments.scenario import ScenarioTurn, scenario, scenario_hash, scenario_records, score
 from src.config import Settings
 from src.network.ollama_client import OllamaClient
 from src.orchestration import StateMachine
@@ -161,6 +161,16 @@ def test_scenario_rejects_invalid_lengths(value):
     with pytest.raises(ValueError): scenario(value)
 
 
+def test_rendered_tasks_are_placeholder_free_and_part_of_fingerprint(monkeypatch):
+    items = scenario(20)
+    assert all("<current database>" not in t.task and "<" not in t.task and ">" not in t.task for t in items)
+    assert [record["task"] for record in scenario_records(20)] == [t.task for t in items]
+    original_hash = scenario_hash(20)
+    original = ScenarioTurn.task.fget
+    monkeypatch.setattr(ScenarioTurn, "task", property(lambda self: original(self) + " Revised framing."))
+    assert scenario_hash(20) != original_hash
+
+
 @pytest.mark.parametrize("answer,expected", [("Project Cedar uses SQLite.", True),
     ("  project cedar  uses sqlite ", True), ("It uses SQLite.", False),
     ("Project Cedar uses SQLite or PostgreSQL.", False),
@@ -222,6 +232,41 @@ def test_failed_or_changed_model_bundles_cannot_be_analyzed(tmp_path, options):
     assert manifest["status"] == "FAILED" and manifest["error_type"]
     with pytest.raises(ValueError, match="complete"):
         analyze_results.analyze_bundle(tmp_path / "bundle")
+
+
+@pytest.mark.parametrize("failure_stage", ["observation_extraction", "role_turn"])
+def test_extraction_failure_preserves_exact_source_and_raw_attempts(tmp_path, failure_stage):
+    settings = configured(tmp_path)
+    fake = SyntheticOllama(settings)
+    role_calls = 0
+    async def bad_extraction(request):
+        nonlocal role_calls
+        body = json.loads(request.content) if request.method == "POST" else {}
+        extraction = body.get("system", "").startswith("Extract explicitly")
+        if body.get("system") and not extraction:
+            role_calls += 1
+        response = await fake(request)
+        if extraction and (failure_stage == "observation_extraction" or role_calls > 15):
+            data = response.json()
+            data["response"] = json.dumps({"triples": [{"subject": "Project Cedar", "predicate": "uses", "object": "NotInSource"}]})
+            response = httpx.Response(200, json=data)
+        return response
+    output = tmp_path / "bundle"
+    with pytest.raises(Exception, match="source|verbatim|grounding"):
+        asyncio.run(run_experiment(BenchmarkPlan(turns=15, repetitions=1, warmups_per_node=0), settings,
+            output, execute=True, transport=httpx.MockTransport(bad_extraction)))
+    failure = load_json(output / "failure.json")
+    assert failure["stage"] == failure_stage and failure["step"] == 1
+    assert failure["condition"] == "B" and failure["repetition"] == 1
+    assert failure["source_message"]["content"] == "Project Cedar uses SQLite."
+    assert failure["source_message"]["agent_id"] == ("observation" if failure_stage == "observation_extraction" else "planner")
+    assert len(failure["generation_attempts"]) == 2
+    assert all("NotInSource" in g["response"] for g in failure["generation_attempts"])
+    assert all(e["kind"] == "grounding" for e in failure["validation_errors"])
+    manifest = load_json(output / "manifest.json")
+    assert manifest["status"] == "FAILED" and "failure.json" in manifest["artifacts"]
+    with pytest.raises(ValueError, match="complete"):
+        analyze_results.analyze_bundle(output)
 
 
 def test_fresh_output_and_application_database_are_protected(tmp_path):

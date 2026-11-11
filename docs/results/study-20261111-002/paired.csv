@@ -1,0 +1,3 @@
+repetition,role_prompt_savings_pct,total_prompt_savings_pct,wall_ms_delta_B_minus_A,accuracy_delta_B_minus_A
+1,14.23841059602649,-166.49006622516555,236401.81244799716,0.35
+2,14.23841059602649,-166.49006622516555,227106.7952809917,0.35

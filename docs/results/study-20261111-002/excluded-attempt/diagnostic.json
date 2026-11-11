@@ -1,0 +1,30 @@
+{
+  "failed_bundle": "study-20261111-001",
+  "checkpoint": {
+    "status": "FAILED",
+    "next_step": 10,
+    "task": "Observation: Project Cedar uses SQLite.\nWhich database does Project Cedar use now? In content return exactly: Project Cedar uses <current database>. Use the most recent supported value; do not add explanations.",
+    "subgoal": "Project Cedar",
+    "error": "EXTRACT: ExtractionError"
+  },
+  "diagnostic_only": true,
+  "counts_excluded_from_experiment": true,
+  "context": "## Graph memory\n- [t1] \"Project Cedar\" -- \"uses\" --> \"SQLite\"\n- [t4] \"Project Dune\" -- \"uses\" --> \"Neo4j\"\n- [t7] \"Project Aurora\" -- \"uses\" --> \"Valkey\"\n- [t8] \"Project Elm\" -- \"uses\" --> \"MongoDB\"\n- [t9] \"Project Birch\" -- \"uses\" --> \"DuckDB\"",
+  "agent_message": {
+    "agent_id": "researcher",
+    "content": "Project Cedar uses <current database<>",
+    "turn": 11
+  },
+  "agent_raw_responses": [
+    "{\"content\": \"Project Cedar uses \\u003ccurrent database\\u003c>\", \"next_subgoal\": null, \"complete\": false, \"tool_calls\": []}"
+  ],
+  "extraction_success": false,
+  "extraction_errors": [
+    "grounding: triples.0.object must appear verbatim in the message",
+    "grounding: triples.0.object must appear verbatim in the message"
+  ],
+  "extraction_raw_responses": [
+    "{\"triples\":[{\"subject\":\"Project Cedar\",\"predicate\":\"uses\",\"object\":\"<current database>\"}]}",
+    "{\"triples\":[{\"subject\":\"Project Cedar\",\"predicate\":\"uses\",\"object\":\"<current database>\"}]}"
+  ]
+}

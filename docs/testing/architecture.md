@@ -29,15 +29,15 @@ Stop the server with Ctrl+C when finished.
 | Click an incoming/outgoing connection | The connected component is revealed and inspected. |
 | Click a phase button | That subsystem is highlighted and fitted. |
 | Choose Implemented only | No planned component is displayed. Local current inference/storage resources remain visible. |
-| Enable Supporting files | The map shows all 69 components, including tests, package markers, setup, and documentation. |
+| Enable Supporting files | The map shows all 79 components, including tests, package markers, setup, and documentation. |
 | Choose Remember a fact / Recall context / The A/B experiment | The relevant connection path is highlighted and its explanation changes. |
 | Click Export SVG | A standalone `dynagraph-architecture.svg` is downloaded. Open it as a vector image. |
 | Click Reset | Restore the whole-system core map and clear filters/selection. |
 | Use a narrow/mobile viewport | Controls wrap; the inspector moves below the map without horizontal page overflow. |
 | Navigate cards with keyboard and press Enter | Component details open without requiring a pointer. |
 
-The initial diagram includes the 29 core components. Supporting files add 40
-nodes, for **69 components and 132 connections** in the complete atlas. Lines for
+The initial diagram includes the 31 core components. Supporting files add 48
+nodes, for **79 components and 154 connections** in the complete atlas. Lines for
 planned integration are dashed; observation/support relationships are dotted.
 Components have wider horizontal and vertical gutters. Every connector receives
 its own perimeter attachments. The router reserves tracks before drawing them:
@@ -56,7 +56,7 @@ Viewing the atlas requires only a browser. Optional development checks use Node.
 with built-in modules and require no npm packages. From the repository root:
 
 ```bash
-node --test docs/testing/architecture-routing.mjs
+node docs/testing/architecture-routing.mjs
 ```
 
 Expected: all seven geometry checks pass with no failures. They verify unique
@@ -64,7 +64,7 @@ ports on the actual rectangle perimeter, orthogonal nonzero segments, avoidance
 of every card interior, no shared collinear tracks, separated parallel lines,
 detours around an obstacle, and deterministic multiple/reverse connections.
 
-The tests include all 132 connectors, even those hidden by filters. Zoom, theme,
+The tests include all 154 connectors, even those hidden by filters. Zoom, theme,
 phase, and status changes keep the same routes. This avoids new line collisions
 when supporting files are revealed. Ordinary perpendicular crossings are allowed;
 these are different from two lines occupying the same section.
@@ -79,8 +79,9 @@ download is required. The browser console should show no JavaScript errors.
 Review these architectural distinctions:
 
 - All Python coordination and SQLite reside on Node 1; Node 2 serves Ollama only.
-- All eight phases are implemented; real experiment execution is deferred.
-  Synthetic tests and their figures do not supply measured research results.
+- All eight phases are implemented; the initial 80-turn measured case study is
+  complete. Select its card with supporting files enabled to open the evidence.
+  Synthetic tests and their figures remain separate from measured results.
 - Standalone extraction does not write; the controller now persists accepted facts
   atomically with usage, pruning, and the turn checkpoint.
 - Phase 4 governance is implemented; raw GraphStore CRUD bypasses its policy.

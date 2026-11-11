@@ -132,7 +132,8 @@ class StateMachine:
 
     def __init__(self, client, graph: GraphStore, *, agents=None, extractor=None,
                  accept_fact: Callable[[SemanticTriple, AgentMessage], bool] | None = None,
-                 clock: Callable[[], float] = time.time, profiler: TelemetryProfiler | None = None):
+                 clock: Callable[[], float] = time.time, profiler: TelemetryProfiler | None = None,
+                 observation_clock: Callable[[], float] | None = None):
         self.client, self.graph, self.settings = client, graph, client.settings
         self.agents = tuple(default_agents(client) if agents is None else agents)
         if not 1 <= len(self.agents) <= 16 or any(not isinstance(a, BaseAgent) for a in self.agents):
@@ -146,6 +147,9 @@ class StateMachine:
         self.extractor = Extractor(client) if extractor is None else extractor
         if self.extractor.client is not client:
             raise ValueError("extractor must share the caller-owned client")
+        if observation_clock is not None and not callable(observation_clock):
+            raise ValueError("observation_clock must be callable")
+        self.observation_clock = clock if observation_clock is None else observation_clock
         self.accept_fact, self.clock = accept_fact, clock
         self.profiler = TelemetryProfiler() if profiler is None else profiler
         self.writer = GovernedWriter.from_settings(graph, self.settings)
@@ -164,6 +168,8 @@ class StateMachine:
                 "orchestration_allow_fallback", "orchestration_prune_between_turns"}),
             "accept_fact": None if accept_fact is None else f"{getattr(accept_fact, '__module__', type(accept_fact).__module__)}.{getattr(accept_fact, '__qualname__', type(accept_fact).__qualname__)}",
         }
+        if observation_clock is not None:
+            configuration["separate_observation_clock"] = True
         self.config_hash = hashlib.sha256(encode(configuration).encode()).hexdigest()
 
     async def get_checkpoint(self, run_id: str) -> RunCheckpoint:
@@ -212,12 +218,16 @@ class StateMachine:
             raise WorkflowError("run configuration differs; resume with its original roles, routes and policy")
 
     async def step(self, run_id: str, *, task: str | None = None,
-                   subgoal: str | None = None) -> TurnResult:
+                   subgoal: str | None = None, governance_turn: int | None = None) -> TurnResult:
         """Advance one role, optionally accepting a new explicit task/sub-goal.
 
         Validate inputs before claiming. A claimed input survives interruption;
         each committed turn retains the exact input used for its generation.
+        An explicit governance_turn may equal incoming access turns, but must
+        exceed all committed workflow turns. Default behavior remains automatic.
         """
+        if governance_turn is not None and (type(governance_turn) is not int or governance_turn < 1):
+            raise ValueError("governance_turn must be a positive integer")
         async with self._lock:
             checkpoint = await self.get_checkpoint(run_id)
             self._compatible(checkpoint)
@@ -273,9 +283,14 @@ class StateMachine:
                         row = connection.execute("SELECT status,next_step,owner_token FROM workflow_runs WHERE id=?", (run_id,)).fetchone()
                         if row["status"] != "RUNNING" or row["next_step"] != checkpoint.next_step or row["owner_token"] != owner:
                             raise WorkflowError("checkpoint ownership changed before commit")
-                        turn = connection.execute("SELECT max(COALESCE((SELECT max(last_access_turn) FROM entity_memory),0),"
-                            "COALESCE((SELECT max(governance_turn) FROM workflow_turns),0))+1").fetchone()[0]
+                        latest_access, latest_commit = connection.execute(
+                            "SELECT COALESCE((SELECT max(last_access_turn) FROM entity_memory),0),"
+                            "COALESCE((SELECT max(governance_turn) FROM workflow_turns),0)").fetchone()
+                        turn = max(latest_access, latest_commit) + 1 if governance_turn is None else governance_turn
+                        if turn < latest_access or turn <= latest_commit:
+                            raise ValueError("governance_turn must follow committed turns and not precede accesses")
                         now = _number(self.clock(), "clock")
+                        observed_at = _number(self.observation_clock(), "observation_clock")
                         assembler.mark_used(context, turn=turn, now=now)
                         writes = []
                         for fact in accepted:
@@ -289,7 +304,7 @@ class StateMachine:
                         pruning = self.pruner.run_once(current_turn=turn, now=now) if self.settings.orchestration_prune_between_turns else None
                         verified = checkpoint.stop_on_verified and result.complete
                         done = step == checkpoint.max_turns or verified
-                        payload = {"task": checkpoint.task, "subgoal": checkpoint.subgoal,
+                        payload = {"governance_time": now, "task": checkpoint.task, "subgoal": checkpoint.subgoal,
                             "context": asdict(context), "next_subgoal": next_subgoal,
                             "complete": result.complete, "fact_ids": [w.triple.id for w in writes],
                             "superseded_ids": [value for w in writes for value in w.superseded_ids],
@@ -300,7 +315,7 @@ class StateMachine:
                             "tools": [asdict(t) for t in result.tools]}
                         payload["telemetry"] = self.profiler.capture(connection, run_id=run_id, step=step,
                             governance_turn=turn, agent_id=agent.agent_id, node=result.generation.node,
-                            observed_at=now, started=started, agent=result, extraction=extracted,
+                            observed_at=observed_at, started=started, agent=result, extraction=extracted,
                             context=context).model_dump(mode="json")
                         connection.execute("INSERT INTO workflow_turns(run_id,step,governance_turn,agent_id,node,message,result) VALUES(?,?,?,?,?,?,?)",
                             (run_id, step, turn, agent.agent_id, result.generation.node, result.message.model_dump_json(), encode(payload)))

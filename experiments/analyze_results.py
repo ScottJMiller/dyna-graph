@@ -1,7 +1,6 @@
 """Validate complete local bundles and compute descriptive paired comparisons."""
 
 import argparse
-from dataclasses import asdict
 import csv
 import math
 from pathlib import Path
@@ -9,7 +8,7 @@ import statistics
 import sys
 
 from experiments.contracts import BenchmarkPlan, BenchmarkRow, load_json, sha256, write_json
-from experiments.scenario import scenario, score
+from experiments.scenario import scenario, scenario_records, score
 
 
 def load_bundle(path):
@@ -21,7 +20,7 @@ def load_bundle(path):
     if type(manifest.get("version")) is not int or manifest.get("version") != 1 or manifest.get("status") != "COMPLETED":
         raise ValueError("analysis requires a complete version-1 bundle; partial runs are not results")
     plan = BenchmarkPlan.model_validate(manifest["plan"])
-    if manifest["scenario_sha256"] != plan.scenario_sha256 or manifest["scenario"] != [asdict(t) for t in scenario(plan.turns)]:
+    if manifest["scenario_sha256"] != plan.scenario_sha256 or manifest["scenario"] != scenario_records(plan.turns):
         raise ValueError("scenario or oracle differs from its versioned plan")
     artifacts = manifest["artifacts"]
     required = {"turns.jsonl", "metrics.csv", *(f"{c}-{r}.csv" for r, c in plan.order()),

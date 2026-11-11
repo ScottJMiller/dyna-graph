@@ -5,6 +5,11 @@ experiment during this protocol.** Verification uses simulated HTTP responses
 and temporary synthetic data. It does not contact either Ollama server, start
 the physical-node scenario, or produce measured research results.
 
+The [integrated protocol extension](phase8_integrated.md) adds four conditions and
+longer workloads. Its model-driven execution is separately gated. The commands
+below continue to verify the original A/B protocol; aggregate counts include the
+extension.
+
 ## 1. Setup and prerequisites
 
 From the repository root:
@@ -31,7 +36,7 @@ Do not replace the private `.env` with the illustrative example.
 python3 -m pytest tests/test_phase8_benchmark.py -v -s
 ```
 
-Expected: **61 passed**, without skips or real network access. Real HTTP is
+Expected: **64 passed**, without skips or real network access. Real HTTP is
 explicitly blocked in this test module; all model replies and token counts are
 invented fixtures. Temporary outputs are marked `source=synthetic` and figures
 carry `SYNTHETIC TEST DATA — NOT EXPERIMENT RESULTS`.
@@ -57,7 +62,7 @@ For the focused synthetic acceptance checks:
 python3 -m pytest tests/test_phase8_benchmark.py -k 'default_cli or synthetic_end_to_end or figures_are_standalone' -v -s
 ```
 
-Expected: **3 passed, 58 deselected**, including:
+Expected: **3 passed, 61 deselected**, including:
 
 ```text
 SYNTHETIC PIPELINE OK: 80 scored turns; AB/BA order; isolated graphs; no real model requests
@@ -81,7 +86,7 @@ PLAN ONLY: 4 condition runs; 80 scored turns; no model requests or experiment fi
 
 The JSON plan follows, with 20 turns, two repetitions, a 1,000-byte conservative
 memory allowance, 128 reply tokens, one warmup per node before each condition,
-scenario SHA-256, and this order:
+scenario SHA-256 (including rendered task text), and this order:
 
 ```text
 repetition 1: A, B
@@ -106,28 +111,35 @@ automatic experiment startup is registered in pytest.
 
 ```bash
 python3 -m pytest -q
-node --test docs/testing/architecture-routing.mjs
+node docs/testing/architecture-routing.mjs
 git diff --check
 git check-ignore .env .verification/ data/telemetry/ data/experiments/
 git status --short
 ```
 
-Expected: **729 passed, 18 skipped**, **7 geometry tests passed**, no whitespace
+Expected: **791 passed, 18 skipped**, **7 geometry tests passed**, no whitespace
 errors, and all four runtime/private paths ignored. The skips are 16 LAN tests
 from earlier phases and the two opt-in storage/retrieval benchmarks. Do not
 enable `--run-lan` or execute an experiment to verify this implementation.
 
-The atlas now describes 69 components and 132 connections. All eight phases are
-implemented, while actual experiment execution remains deferred. Connectors keep
+The atlas now describes 79 components and 154 connections. All eight phases are
+implemented, and the initial 80-turn measured case study is complete. Connectors keep
 distinct perimeter attachments, avoid card interiors, and share no collinear
 tracks. Source syntax, public links, component coverage and generic wording
 should be reviewed before committing.
 
 Earlier performance benchmarks remain available under their own protocols. With
-both enabled, the aggregate count would be **731 passed, 16 skipped**; running
+both enabled, the aggregate count would be **793 passed, 16 skipped**; running
 them is separate from this synthetic Phase 8 acceptance.
 
 ## 5. Comparison design and interpretation
+
+Scenario version 2 replaces a literal answer placeholder with plain-language
+format instructions. A first measured version-1 attempt stopped after 30 scored
+turns because a malformed copied placeholder led to a grounding failure. That
+attempt is preserved separately and cannot be combined with version-2 runs.
+The observation schedule, oracle answers, models, limits and scoring rule are
+unchanged. Rendered task text is now retained in the manifest and fingerprinted.
 
 This is a controlled developmental case study of a **bounded context window**.
 It is not a demonstration that an unbounded transcript can run on the baseline
@@ -135,7 +147,7 @@ hardware, or a proof of asymptotic complexity from 20 observations.
 
 | Design choice | Contract |
 | --- | --- |
-| Scenario | `database-updates-v1`: 20 fixed turns, or an explicitly selected 15–20 turn prefix. Several projects each have one current database. Observations introduce changes and reversions, interleaved with immediate and delayed questions. |
+| Scenario | `database-updates-v2`: 20 fixed turns, or an explicitly selected 15–20 turn prefix. Several projects each have one current database. Observations introduce changes and reversions, interleaved with immediate and delayed questions. |
 | Oracle | `experiments/scenario.py` independently derives current answers from scheduled observations. Expected answers are retained for scoring and never supplied as a prompt field or used to filter accepted graph facts. |
 | A: linear history | Supply prior task/answer turns in order. Drop oldest complete turns until serialized ASCII JSON fits the current memory allowance. Omitted turns are counted; no message is silently sliced. |
 | B: graph memory | Extract each new observation and commit its validated facts before recall. Run the ordinary controller for recall, role execution, response extraction, governed writes and pruning. Extraction errors or stale model assertions can affect memory; the oracle does not repair it. |
@@ -218,16 +230,22 @@ per-turn means, without implied confidence bands; missing counters appear as
 gaps. Synthetic input is prominently labeled in all figures. Matplotlib uses
 its local file backends; see the [official backend documentation](https://matplotlib.org/3.10.7/users/explain/figure/backends.html).
 
-Failed/cancelled bundles retain partial evidence. There is no automatic
+Failed/cancelled bundles retain partial evidence, including `failure.json` with
+the stage, exact extraction source message when available, raw generation
+attempts and validation errors. No invalid triple is accepted to continue a run. There is no automatic
 experimental resume; retry later in a **new directory**, preserving the failed
 attempt and documenting any exclusions. Existing output/analysis/figure
 directories are rejected rather than overwritten.
 
-## 8. Deferred execution reference — do not run during verification
+## 8. Explicit execution reference — do not run during verification
 
-The following commands are provided for **later, separately approved experiment
-execution**. They are not part of Phase 8 implementation acceptance and have not
-been run against physical models during implementation.
+The initial approved physical-node experiment has completed. See the
+[measured case study](../results/study-20261111-002/README.md) for all 80 scored turns,
+paired comparisons, figures, preserved evidence, and the excluded unsuccessful
+version-1 attempt. This verification protocol continues to run offline.
+
+The following commands start a **new measured experiment**, separate from
+implementation verification and from reproducing the saved analysis.
 
 After both configured models are installed, routing is verified, and the
 experiment is explicitly approved, choose a new directory:
@@ -236,11 +254,12 @@ experiment is explicitly approved, choose a new directory:
 python3 -m experiments.benchmark_harness --execute --output data/experiments/study-001 --turns 20 --repetitions 2
 ```
 
-Expected later: per-turn `TURN ...` progress, followed by
+Expected: per-turn `TURN ...` progress, followed by
 `EXPERIMENT COMPLETE: <bundle_id> (...)`. This plan scores 80 role turns plus
 graph extraction and warmup requests. It can take a substantial time on baseline
-hardware; no real-run duration has been measured. Do not extrapolate from fast
-synthetic tests. Ctrl+C marks partial evidence cancelled and returns exit code
+hardware; the case study records its observed duration for that configuration.
+Do not extrapolate from fast synthetic tests or treat one deployment as a baseline
+hardware benchmark. Ctrl+C marks partial evidence cancelled and returns exit code
 130. Ordinary errors return 1; completed runs return 0.
 
 Only after a complete measured bundle exists:
@@ -250,22 +269,25 @@ python3 -m experiments.analyze_results --input data/experiments/study-001 --outp
 python3 -m experiments.generate_plots --input data/experiments/study-001 --output data/experiments/study-001-figures
 ```
 
-Expected later: `ANALYSIS OK: source=measured paired_runs=2` and
-`FIGURES OK: 12 files (SVG, PDF, PNG)`. These outputs have not been created from
-real experiment measurements during implementation.
+Expected: `ANALYSIS OK: source=measured paired_runs=2` and
+`FIGURES OK: 12 files (SVG, PDF, PNG)`. The initial case study includes these
+measured outputs. To reproduce its analysis without inference, use a fresh output:
+
+```bash
+python3 -m experiments.analyze_results --input docs/results/study-20261111-002 --output .verification/study-20261111-002-analysis
+```
 
 ## 9. Commit message
 
 ```text
-feat(experiments): implement gated paired benchmark and validated analysis
+fix(experiments): remove answer placeholder and record initial measured study
 
-- add versioned update/reversion scenario with independent scoring oracle
-- compare bounded history and graph memory with isolated AB/BA condition runs
-- retain model digests, provenance, complete costs and failed-run evidence
-- validate paired artifacts before descriptive analysis and figure export
-- add synthetic-only end-to-end tests with real HTTP explicitly blocked
-- update generic setup, final architecture atlas and Phase 8 verification
+- version rendered task prompts and retain extraction failure diagnostics
+- preserve the excluded failed attempt and restart an isolated AB/BA cohort
+- retain all 80 measured turns, validated bundles, paired analysis and figures
+- report role-only and pipeline costs alongside strict accuracy and limits
+- update generic documentation and add prompt/failure regression coverage
 ```
 
-Commit and push after reviewing the implementation and completing the safe
-verification steps. Real experiment execution remains a separate action.
+Commit and push after reviewing the results, disclosure, implementation changes,
+and safe verification steps. Reproducing saved analysis does not run the models.

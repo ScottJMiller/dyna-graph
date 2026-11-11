@@ -90,7 +90,7 @@ svg #arrow-active path { fill: var(--edge-active); }
 <div class="app">
  <header class="top">
   <div class="brand"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M9 10L30 7L32 29L13 33L9 10L32 29M30 7L13 33" fill="none" stroke="currentColor" stroke-width="1.4"/><g fill="currentColor"><circle cx="9" cy="10" r="4"/><circle cx="30" cy="7" r="3"/><circle cx="32" cy="29" r="4"/><circle cx="13" cy="33" r="3"/></g></svg><div><p class="eyebrow">Architecture atlas / complete target system</p><h1>DynaGraph <span>explained.</span></h1></div></div>
-  <div class="top-note"><div class="status-key"><span><i class="dot"></i>Implemented · phases 1–8</span><span><i class="dot planned"></i>Experiment · execution deferred</span></div><span class="offline-note">Two local nodes. One persistent graph. No cloud APIs.</span></div>
+  <div class="top-note"><div class="status-key"><span><i class="dot"></i>Implemented · phases 1–8</span><span><i class="dot planned"></i>Experiment · initial case study complete</span></div><span class="offline-note">Two local nodes. One persistent graph. No cloud APIs.</span></div>
  </header>
  <section class="controls" aria-label="Map controls">
   <div class="control-row">
@@ -152,11 +152,13 @@ svg #arrow-active path { fill: var(--edge-active); }
       "interfaces": [
         "StateMachine.start() / step() / run() / resume()",
         "get_checkpoint() / history()",
-        "RunCheckpoint / TurnCheckpoint / TurnResult / Stage"
+        "RunCheckpoint / TurnCheckpoint / TurnResult / Stage",
+        "step(..., governance_turn=...)",
+        "StateMachine(..., observation_clock=...)"
       ],
       "inputs": "Task, agent roles, retrieved context, previous turn results.",
       "outputs": "Agent dispatches, accepted state updates, memory checkpoints, final answer.",
-      "notes": "Schema v3 checkpoints, ownership tokens, config fingerprints, monotonic governance turns, cancellation settlement, and explicit crash recovery. Default roles route node1/node2/node1; extraction uses node2.",
+      "notes": "Schema v3 checkpoints, ownership tokens, config fingerprints, monotonic governance turns, cancellation settlement, and explicit crash recovery. Default roles route node1/node2/node1; extraction uses node2. Optional explicit scenario turns and a separate observation clock support controlled aging without changing default automatic turns.",
       "kind": "source",
       "label": "state_machine.py",
       "status": "implemented",
@@ -177,7 +179,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       ],
       "inputs": "Role instructions, sub-goal, bounded graph context.",
       "outputs": "An agent response and inference metadata.",
-      "notes": "Guard input/framing/output within 2048-token context using baseline byte bounds. At most 8 tools, 2 calls/request, 0–2 tool rounds. No model code execution. Node 2 serves inference; Python stays on Node 1.",
+      "notes": "Guard input/framing/output within 2048-token context using baseline byte bounds. At most 8 tools, 2 calls/request, 0\u20132 tool rounds. No model code execution. Node 2 serves inference; Python stays on Node 1.",
       "kind": "source",
       "label": "base_agent.py",
       "status": "implemented",
@@ -189,7 +191,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "id": "personas",
       "path": "src/agents/personas.py",
       "phase": 6,
-      "summary": "Planner · researcher · verifier",
+      "summary": "Planner \u00b7 researcher \u00b7 verifier",
       "description": "Define a planner and verifier using Node 1 inference and a research role using Node 2 inference. These are logical roles controlled by the same orchestrator.",
       "interfaces": [
         "PlannerAgent / ResearchAgent / VerificationAgent",
@@ -253,7 +255,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "id": "ollama1",
       "path": "",
       "phase": 1,
-      "summary": "Node 1 · local HTTP inference",
+      "summary": "Node 1 \u00b7 local HTTP inference",
       "description": "The coordinator machine also runs a local quantized synthesis model. Planner/verifier inference uses this service; extraction may use it directly or as a fallback.",
       "interfaces": [
         "HTTP /api/version",
@@ -264,7 +266,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "outputs": "Generated text, model inventory, and timing counters.",
       "notes": "All storage and orchestration remain on Node 1. No external cloud inference is used.",
       "kind": "resource",
-      "label": "Ollama · primary",
+      "label": "Ollama \u00b7 primary",
       "status": "resource",
       "support": false,
       "x": 1980,
@@ -274,16 +276,16 @@ svg #arrow-active path { fill: var(--edge-active); }
       "id": "ollama2",
       "path": "",
       "phase": 1,
-      "summary": "Node 2 · LAN HTTP inference",
+      "summary": "Node 2 \u00b7 LAN HTTP inference",
       "description": "A secondary computer runs the smaller local model. It serves research/extraction requests over the private LAN; it does not open the SQLite file.",
       "interfaces": [
         "Same Ollama HTTP endpoints"
       ],
       "inputs": "Private LAN HTTP requests from Node 1.",
       "outputs": "Local worker generations and timing counters.",
-      "notes": "Baseline: an Intel N100-or-better computer with 8–16 GB RAM. Keep one loaded model and one concurrent generation for constrained hardware.",
+      "notes": "Baseline: an Intel N100-or-better computer with 8\u201316 GB RAM. Keep one loaded model and one concurrent generation for constrained hardware.",
       "kind": "resource",
-      "label": "Ollama · worker",
+      "label": "Ollama \u00b7 worker",
       "status": "resource",
       "support": false,
       "x": 2460,
@@ -403,7 +405,7 @@ svg #arrow-active path { fill: var(--edge-active); }
         "ExtractedGraph"
       ],
       "inputs": "Message fields or decoded JSON.",
-      "outputs": "Typed messages and subject–predicate–object facts.",
+      "outputs": "Typed messages and subject\u2013predicate\u2013object facts.",
       "notes": "Current bounds: 2,000 message characters; 16 triples; 256 characters per label; confidence in [0,1]. An explicit empty triples array is valid.",
       "kind": "source",
       "label": "schemas.py",
@@ -543,7 +545,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "id": "sqlite",
       "path": "data/dynagraph.db",
       "phase": 2,
-      "summary": "Node 1 · persistent graph file",
+      "summary": "Node 1 \u00b7 persistent graph file",
       "description": "The configured embedded SQLite database stores graph records and its FTS index. WAL sidecars support local concurrent readers and serialized writers.",
       "interfaces": [
         "Configured DATABASE_PATH"
@@ -552,7 +554,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "outputs": "Durable graph state across runs.",
       "notes": "This is a generated, ignored runtime artifact. Node 2 never mounts or opens this database.",
       "kind": "resource",
-      "label": "SQLite · local file",
+      "label": "SQLite \u00b7 local file",
       "status": "resource",
       "support": false,
       "x": 1980,
@@ -632,7 +634,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       ],
       "inputs": "Versioned plan, local model settings, fresh output directory; explicit execution.",
       "outputs": "Manifest, per-turn JSONL/CSV, isolated condition databases and telemetry.",
-      "notes": "The real experiment has not been run. No fallback or early stopping. Oracle answers are scoring data, never prompt instructions. Synthetic HTTP tests are labeled separately.",
+      "notes": "Initial 80-turn measured case study completed. No fallback or early stopping. Oracle answers are scoring data, never prompt instructions. Synthetic HTTP tests are labeled separately.",
       "kind": "source",
       "label": "benchmark_harness.py",
       "status": "implemented",
@@ -672,7 +674,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       ],
       "inputs": "Validated complete bundle and new output directory.",
       "outputs": "Twelve standalone figure files.",
-      "notes": "Headless Matplotlib; no hosted plotting service. Synthetic figures carry a prominent test-data label. No real result figures exist yet.",
+      "notes": "Headless Matplotlib; no hosted plotting service. Measured case-study figures are saved with their source evidence; synthetic test figures remain visibly labeled.",
       "kind": "source",
       "label": "generate_plots.py",
       "status": "implemented",
@@ -706,7 +708,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "interfaces": [],
       "inputs": "Analyzed measurements.",
       "outputs": "Report-ready visual results.",
-      "notes": "The real experiment is deferred. Test figures are verification evidence, not research findings.",
+      "notes": "The initial A/B study has measured figures. Integrated figures remain pending real execution. Synthetic test figures are visibly labeled.",
       "kind": "resource",
       "label": "Experiment figures",
       "status": "resource",
@@ -858,7 +860,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       ],
       "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
       "outputs": "Assertions and diagnostic test output.",
-      "notes": "61 automated checks; real HTTP is blocked. These tests never run the physical-node experiment.",
+      "notes": "64 automated checks; real HTTP is blocked. These tests never run the physical-node experiment.",
       "kind": "test",
       "label": "test_phase8_benchmark.py",
       "status": "implemented",
@@ -1453,7 +1455,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "docs/testing/phase8.md",
       "label": "phase8.md",
       "summary": "Phase 8 verification protocol",
-      "description": "Synthetic-only commands, comparison boundaries and deferred experiment execution.",
+      "description": "Synthetic-only verification commands, comparison boundaries, explicit execution reference and initial measured case study.",
       "phase": 8,
       "interfaces": [
         "Package / protocol"
@@ -1466,6 +1468,197 @@ svg #arrow-active path { fill: var(--edge-active); }
       "support": true,
       "x": 1500,
       "y": 3712
+    },
+    {
+      "id": "measured-study",
+      "path": "docs/results/study-20261111-002/README.md",
+      "label": "Measured case study",
+      "summary": "Initial 80-turn A/B evidence",
+      "description": "Two paired repetitions with complete evidence, costs, strict accuracy, figure exports and a disclosed unsuccessful first attempt.",
+      "phase": 8,
+      "interfaces": [
+        "Validated measured bundle",
+        "Analysis-only reproduction"
+      ],
+      "inputs": "Completed version-2 bundle and separately excluded version-1 diagnostic.",
+      "outputs": "Reviewable case study, source records, checksums and four figure sets.",
+      "notes": "One bounded local scenario with two pairs. No general performance or significance claim.",
+      "kind": "support",
+      "status": "implemented",
+      "support": true,
+      "x": 1980,
+      "y": 3712
+    },
+    {
+      "id": "pruning-probe",
+      "path": "docs/testing/pruning_probe.py",
+      "label": "pruning_probe.py",
+      "summary": "Controlled-time pruning check",
+      "phase": 8,
+      "description": "Separate deterministic pruning-on/off fixture with simulated age, unchanged policy and active-only fact probes.",
+      "interfaces": [
+        "Explicit offline verification"
+      ],
+      "inputs": "Fresh isolated graphs and declared time/turn checkpoints.",
+      "outputs": "Reproducible eligibility, scores, state transitions and fact availability.",
+      "notes": "Twelve mechanism checks; no model calls or performance claims. Delayed facts can be lost; non-leaf cycles survive.",
+      "kind": "test",
+      "status": "implemented",
+      "support": true,
+      "x": 2460,
+      "y": 3712
+    },
+    {
+      "id": "pruning-protocol",
+      "path": "docs/testing/pruning.md",
+      "label": "Pruning verification",
+      "summary": "Reproduce the offline mechanism probe",
+      "phase": 8,
+      "description": "Separate deterministic pruning-on/off fixture with simulated age, unchanged policy and active-only fact probes.",
+      "interfaces": [
+        "Explicit offline verification"
+      ],
+      "inputs": "Fresh isolated graphs and declared time/turn checkpoints.",
+      "outputs": "Reproducible eligibility, scores, state transitions and fact availability.",
+      "notes": "Twelve mechanism checks; no model calls or performance claims. Delayed facts can be lost; non-leaf cycles survive.",
+      "kind": "support",
+      "status": "implemented",
+      "support": true,
+      "x": 60,
+      "y": 3936
+    },
+    {
+      "id": "pruning-study",
+      "path": "docs/results/pruning-probe-001/README.md",
+      "label": "Pruning mechanism results",
+      "summary": "Retention and forgetting tradeoffs",
+      "phase": 8,
+      "description": "Separate deterministic pruning-on/off fixture with simulated age, unchanged policy and active-only fact probes.",
+      "interfaces": [
+        "Explicit offline verification"
+      ],
+      "inputs": "Fresh isolated graphs and declared time/turn checkpoints.",
+      "outputs": "Reproducible eligibility, scores, state transitions and fact availability.",
+      "notes": "Twelve mechanism checks; no model calls or performance claims. Delayed facts can be lost; non-leaf cycles survive.",
+      "kind": "support",
+      "status": "implemented",
+      "support": true,
+      "x": 540,
+      "y": 3936
+    },
+    {
+      "id": "integrated-harness",
+      "path": "experiments/integrated_harness.py",
+      "label": "integrated_harness.py",
+      "summary": "Four conditions with one governance clock",
+      "description": "Plan without configuration or inference by default. Explicitly execute independent A/B/C/D variants with declared simulated age and real telemetry.",
+      "phase": 8,
+      "interfaces": [
+        "Protocol 2: integrated-memory-v1"
+      ],
+      "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
+      "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
+      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "kind": "source",
+      "status": "implemented",
+      "support": false,
+      "x": 1500,
+      "y": 2080
+    },
+    {
+      "id": "integrated-analysis",
+      "path": "experiments/integrated_analysis.py",
+      "label": "integrated_analysis.py",
+      "summary": "Validate component comparisons",
+      "description": "Replay memory transitions and verify durable checkpoints before computing lag/category outcomes, per-variant contrasts and six figure sets.",
+      "phase": 8,
+      "interfaces": [
+        "Protocol 2: integrated-memory-v1"
+      ],
+      "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
+      "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
+      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "kind": "source",
+      "status": "implemented",
+      "support": false,
+      "x": 1980,
+      "y": 2080
+    },
+    {
+      "id": "integrated-scenario",
+      "path": "experiments/integrated_scenario.py",
+      "label": "integrated_scenario.py",
+      "summary": "Seed long-horizon observations and probes",
+      "description": "Version complete rendered prompts, current value/set oracles, critical metadata and source-role steps across 60\u201380 turns.",
+      "phase": 8,
+      "interfaces": [
+        "Protocol 2: integrated-memory-v1"
+      ],
+      "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
+      "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
+      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "kind": "source",
+      "status": "implemented",
+      "support": true,
+      "x": 1020,
+      "y": 3936
+    },
+    {
+      "id": "integrated-contracts",
+      "path": "experiments/integrated_contracts.py",
+      "label": "integrated_contracts.py",
+      "summary": "Protocol-2 plans and diagnostic records",
+      "description": "Declare four policies, balanced condition order, strict state/change records and the analysis CSV projection independently of legacy A/B contracts.",
+      "phase": 8,
+      "interfaces": [
+        "Protocol 2: integrated-memory-v1"
+      ],
+      "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
+      "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
+      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "kind": "source",
+      "status": "implemented",
+      "support": true,
+      "x": 1500,
+      "y": 3936
+    },
+    {
+      "id": "integrated-test",
+      "path": "tests/test_phase8_integrated.py",
+      "label": "test_phase8_integrated.py",
+      "summary": "59 offline integrated checks",
+      "description": "Block real HTTP and exercise full synthetic workloads, policy isolation, clock/turn consistency, evidence integrity, legacy compatibility and figures.",
+      "phase": 8,
+      "interfaces": [
+        "Protocol 2: integrated-memory-v1"
+      ],
+      "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
+      "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
+      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "kind": "test",
+      "status": "implemented",
+      "support": true,
+      "x": 1980,
+      "y": 3936
+    },
+    {
+      "id": "integrated-protocol",
+      "path": "docs/testing/phase8_integrated.md",
+      "label": "phase8_integrated.md",
+      "summary": "Integrated study verification",
+      "description": "Portable offline commands, expected output, scope, methodology, limitations and a separately gated model-driven execution reference.",
+      "phase": 8,
+      "interfaces": [
+        "Protocol 2: integrated-memory-v1"
+      ],
+      "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
+      "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
+      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "kind": "support",
+      "status": "implemented",
+      "support": true,
+      "x": 2460,
+      "y": 3936
     }
   ],
   "edges": [
@@ -2228,7 +2421,7 @@ svg #arrow-active path { fill: var(--edge-active); }
     {
       "source": "readme",
       "target": "phase8-doc",
-      "label": "link deferred experiment protocol",
+      "label": "link experiment verification protocol",
       "kind": "support"
     },
     {
@@ -2260,6 +2453,138 @@ svg #arrow-active path { fill: var(--edge-active); }
       "target": "client",
       "label": "check inventory and warm both local models",
       "kind": "call"
+    },
+    {
+      "source": "readme",
+      "target": "measured-study",
+      "label": "link measured case study",
+      "kind": "support"
+    },
+    {
+      "source": "phase8-doc",
+      "target": "measured-study",
+      "label": "inspect saved evidence without inference",
+      "kind": "support"
+    },
+    {
+      "source": "measured-study",
+      "target": "figures",
+      "label": "retain measured figure exports",
+      "kind": "support"
+    },
+    {
+      "source": "measured-study",
+      "target": "analysis",
+      "label": "reproduce validated comparisons",
+      "kind": "support"
+    },
+    {
+      "source": "pruning-protocol",
+      "target": "pruning-probe",
+      "label": "run controlled-time verification",
+      "kind": "support"
+    },
+    {
+      "source": "pruning-probe",
+      "target": "pruning",
+      "label": "exercise real pruning with declared age",
+      "kind": "test"
+    },
+    {
+      "source": "pruning-probe",
+      "target": "traversal",
+      "label": "check active-only fact availability",
+      "kind": "test"
+    },
+    {
+      "source": "readme",
+      "target": "pruning-study",
+      "label": "link mechanism findings",
+      "kind": "support"
+    },
+    {
+      "source": "pruning-study",
+      "target": "pruning-protocol",
+      "label": "reproduce the mechanism check",
+      "kind": "support"
+    },
+    {
+      "source": "readme",
+      "target": "integrated-protocol",
+      "label": "link integrated verification",
+      "kind": "support"
+    },
+    {
+      "source": "integrated-protocol",
+      "target": "integrated-test",
+      "label": "run synthetic-only checks",
+      "kind": "support"
+    },
+    {
+      "source": "integrated-protocol",
+      "target": "integrated-harness",
+      "label": "document explicit execution gate",
+      "kind": "support"
+    },
+    {
+      "source": "integrated-test",
+      "target": "integrated-harness",
+      "label": "verify all four conditions offline",
+      "kind": "test"
+    },
+    {
+      "source": "integrated-test",
+      "target": "integrated-analysis",
+      "label": "detect inconsistent or modified evidence",
+      "kind": "test"
+    },
+    {
+      "source": "integrated-harness",
+      "target": "integrated-scenario",
+      "label": "freeze workload, prompts and oracle",
+      "kind": "call"
+    },
+    {
+      "source": "integrated-harness",
+      "target": "integrated-contracts",
+      "label": "validate protocol-2 plan and rows",
+      "kind": "call"
+    },
+    {
+      "source": "integrated-harness",
+      "target": "state",
+      "label": "coordinate roles with explicit governance turns",
+      "kind": "call"
+    },
+    {
+      "source": "integrated-harness",
+      "target": "extractor",
+      "label": "extract observations and role responses",
+      "kind": "call"
+    },
+    {
+      "source": "integrated-harness",
+      "target": "harness",
+      "label": "reuse client guards and bounded-history helpers",
+      "kind": "call"
+    },
+    {
+      "source": "integrated-harness",
+      "target": "integrated-analysis",
+      "label": "write the bundle later consumed by analysis",
+      "kind": "data"
+    },
+    {
+      "source": "integrated-analysis",
+      "target": "integrated-contracts",
+      "label": "validate records and comparison projection",
+      "kind": "call"
+    },
+    {
+      "source": "integrated-analysis",
+      "target": "figures",
+      "label": "export six figure sets from validated evidence",
+      "kind": "data"
     }
   ],
   "phases": [
@@ -2339,7 +2664,7 @@ svg #arrow-active path { fill: var(--edge-active); }
     },
     {
       "phase": 5,
-      "label": "RELEVANT CONTEXT · TARGET ≤ 1,000 TOKENS",
+      "label": "RELEVANT CONTEXT \u00b7 TARGET \u2264 1,000 TOKENS",
       "x": 36,
       "y": 576,
       "w": 1288,
@@ -2379,11 +2704,11 @@ svg #arrow-active path { fill: var(--edge-active); }
     },
     {
       "phase": 8,
-      "label": "CONTROLLED A/B EXPERIMENT",
+      "label": "CONTROLLED MEMORY EXPERIMENTS",
       "x": 1476,
       "y": 1616,
       "w": 1288,
-      "h": 408
+      "h": 616
     }
   ],
   "routes": {
@@ -2449,7 +2774,7 @@ svg #arrow-active path { fill: var(--edge-active); }
     },
     "experiment": {
       "title": "Measure the hypothesis",
-      "text": "Plan by default; explicit execution compares windowed history and graph memory on identical inputs. Validate complete paired evidence before analysis and figure export. Real execution is deferred; synthetic tests do not establish results.",
+      "text": "The original A/B study is complete. Protocol 2 separately compares four memory conditions with simulated aging and remains plan-only until explicit execution. Validate complete evidence before analysis or figure export; synthetic tests do not supply measured findings.",
       "ids": [
         "harness",
         "state",
@@ -2461,7 +2786,9 @@ svg #arrow-active path { fill: var(--edge-active); }
         "figures",
         "dashboard",
         "scenario",
-        "contracts"
+        "contracts",
+        "integrated-harness",
+        "integrated-analysis"
       ]
     }
   }
@@ -2725,7 +3052,7 @@ function focusNode(n){const c=center(n);camera.scale=Math.max(.85,Math.min(1.2,(
 function tab(name){const details=name==='details';$('details').hidden=!details;$('inventory').hidden=details;$('details-tab').setAttribute('aria-selected',String(details));$('inventory-tab').setAttribute('aria-selected',String(!details));}
 function section(parent,label,content){const box=html('section','detail-section');box.append(html('h3','',label));if(typeof content==='string')box.append(html('p','',content));else box.append(content);parent.append(box);}
 function renderDetails(n){const root=$('details');root.replaceChildren();if(!n){const kicker=html('div','detail-kicker','READ THE SYSTEM, THEN THE CODE');root.append(kicker,html('h2','','Local agents. Persistent memory.'),html('p','detail-description','DynaGraph is designed to replace repeated full-history context with a small, current graph of facts. The atlas shows the finished eight-phase design and the files that exist today.'));
- const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','All eight phases are implemented. The experiment has not been run. Synthetic verification and hypotheses are not measured research results. Click any card, search a path, or explore All components.'));return;}
+ const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','All eight phases are implemented. The initial measured A/B study is complete. A separate four-condition integrated protocol is implemented and awaits model-driven execution. Select the relevant study or verification card for scope and limitations. Synthetic verification remains separate. Click any card, search a path, or explore All components.'));return;}
  const p=phases.get(n.phase),kicker=html('div','detail-kicker');kicker.append(html('span','',n.support?'SUPPORTING FILE':`PHASE ${n.phase} · ${p.name}`),html('span',`badge ${n.status}`,statusLabel(n)));root.append(kicker,html('h2','',n.label));
  if(n.path){const path=html('div','file-path',n.path);root.append(path);if(n.status==='implemented'){const source=html('a','file-path','Open source file ↗');source.href='../'+n.path;source.target='_blank';source.rel='noopener';root.append(source);}}
  root.append(html('p','detail-description',n.description));section(root,'Inputs',n.inputs);section(root,'Outputs',n.outputs);

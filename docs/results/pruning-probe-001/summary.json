@@ -1,0 +1,54 @@
+{
+  "checks": {
+    "abandoned_and_delayed_pruned": true,
+    "frequent_and_pinned_survive": true,
+    "identical_initial_facts": true,
+    "later_needed_fact_missing": true,
+    "no_early_pruning": true,
+    "observed_pruning_at_48_hours": true,
+    "off_retains_every_fact": true,
+    "pruning_matches_eligibility": true,
+    "repeatability": true,
+    "soft_deletion_preserves_rows": true,
+    "stale_cycle_below_threshold": true,
+    "unused_cycle_survives": true
+  },
+  "conditions": {
+    "off": {
+      "active_entities": 11,
+      "active_triples": 7,
+      "final_fact_availability": {
+        "abandoned": true,
+        "cycle_ab": true,
+        "cycle_bc": true,
+        "cycle_ca": true,
+        "delayed": true,
+        "frequent": true,
+        "pinned": true
+      },
+      "first_observed_triple_pruning_hour": null,
+      "pruned_entities": 0,
+      "pruned_triples": 0
+    },
+    "on": {
+      "active_entities": 7,
+      "active_triples": 5,
+      "final_fact_availability": {
+        "abandoned": false,
+        "cycle_ab": true,
+        "cycle_bc": true,
+        "cycle_ca": true,
+        "delayed": false,
+        "frequent": true,
+        "pinned": true
+      },
+      "first_observed_triple_pruning_hour": 48,
+      "pruned_entities": 4,
+      "pruned_triples": 2
+    }
+  },
+  "interpretation": "Mechanism and active-only fact availability only; no model accuracy, latency, token savings or disk savings measured.",
+  "repeatability_note": "Two executions per condition check reproducibility; they are not statistical repetitions.",
+  "source": "deterministic_simulated_time",
+  "version": "pruning-mechanism-v1"
+}

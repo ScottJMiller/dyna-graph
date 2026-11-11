@@ -17,11 +17,11 @@ from uuid import uuid4
 import httpx
 
 from experiments.contracts import BenchmarkPlan, BenchmarkRow, sha256, utc_now, write_json
-from experiments.scenario import scenario, score
+from experiments.scenario import scenario, scenario_records, score
 from src.agents import PlannerAgent, ResearchAgent, VerificationAgent
 from src.agents.base_agent import encode
 from src.config import Settings
-from src.extraction import Extractor
+from src.extraction import Extractor, ExtractionError
 from src.models import AgentMessage
 from src.network.ollama_client import OllamaClient
 from src.orchestration import StateMachine
@@ -40,6 +40,36 @@ class _ResearchRole(ResearchAgent):
 
 def _agents(client):
     return (PlannerAgent(client), _ResearchRole(client), VerificationAgent(client))
+
+
+class _RecordedExtractor(Extractor):
+    """Attach exact failed source text for diagnostics; validation is unchanged."""
+
+    async def extract(self, message, **kwargs):
+        try:
+            return await super().extract(message, **kwargs)
+        except ExtractionError as exc:
+            exc.source_message = message.model_dump(mode="json")
+            raise
+
+
+def _failure_record(exc, *, manifest, condition, repetition, step, stage, task):
+    errors = getattr(exc, "errors", ())
+    if callable(errors):
+        errors = errors()
+    errors = errors if isinstance(errors, (list, tuple)) else ()
+    details = [{"kind": e.get("type", "validation"), "detail": e.get("msg", "validation failed")}
+               if isinstance(e, dict) else {"kind": getattr(e, "kind", type(e).__name__),
+                   "detail": getattr(e, "detail", "validation failed")} for e in errors]
+    return {"version": 1, "bundle_id": manifest["bundle_id"], "source": manifest["source"],
+        "condition": condition, "repetition": repetition, "step": step,
+        "stage": stage, "task": task, "error_type": type(exc).__name__,
+        "source_message": getattr(exc, "source_message", None),
+        "validation_errors": details,
+        "generation_attempts": [{"node": g.node, "model": g.model, "response": g.response,
+            "prompt_tokens": g.prompt_tokens, "generated_tokens": g.generated_tokens,
+            "latency_ms": g.latency_ms, "done_reason": g.done_reason}
+            for g in getattr(exc, "attempts", ())]}
 
 
 def linear_context(history, budget):
@@ -179,7 +209,7 @@ async def run_experiment(plan: BenchmarkPlan, settings: Settings, output: Path, 
     manifest = {"version": 1, "bundle_id": bundle_id, "source": "synthetic" if synthetic else "measured",
         "status": "RUNNING", "started_at": utc_now(), "finished_at": None,
         "plan": plan.model_dump(), "scenario_sha256": plan.scenario_sha256,
-        "scenario": [asdict(item) for item in scenario(plan.turns)], "code_sha256": _provenance(),
+        "scenario": scenario_records(plan.turns), "code_sha256": _provenance(),
         "python": platform.python_version(), "os": platform.system(), "architecture": platform.machine(),
         "packages": _packages(), "policy": configured.model_dump(mode="json", exclude={
             "database_path", "node1_ollama_url", "node2_ollama_url", "coordinator_host"}),
@@ -189,6 +219,8 @@ async def run_experiment(plan: BenchmarkPlan, settings: Settings, output: Path, 
             "scoring": "normalized_exact_sentence_v1"},
         "inventory": {}, "warmups": [], "runs": [], "artifacts": {}}
     write_json(output / "manifest.json", manifest)
+    current_condition = current_repetition = current_step = current_task = None
+    stage = "inventory"
     try:
         async with OllamaClient(configured, transport=transport) as client:
             manifest["roles"] = [{"agent_id": a.agent_id, "node": a.node,
@@ -200,10 +232,14 @@ async def run_experiment(plan: BenchmarkPlan, settings: Settings, output: Path, 
                     csv_writer = csv.DictWriter(csv_file, fieldnames=CSV_COLUMNS)
                     csv_writer.writeheader()
                     for position, (rep, condition) in enumerate(plan.order(), 1):
+                        current_condition, current_repetition = condition, rep
+                        current_step = current_task = None
+                        stage = "inventory"
                         if await _inventory(client, synthetic=synthetic) != manifest["inventory"]:
                             raise ValueError("model inventory changed during the paired experiment")
                         run_id = f"{bundle_id}-{condition}-{rep}"
                         agents = _agents(client)
+                        stage = "warmup"
                         for node in ("node1", "node2"):
                             for _ in range(plan.warmups_per_node):
                                 g = await client.generate("Reply OK.", node=node, allow_fallback=False, max_tokens=8)
@@ -216,9 +252,11 @@ async def run_experiment(plan: BenchmarkPlan, settings: Settings, output: Path, 
                         manifest["runs"].append(run_meta)
                         # Even A has an isolated empty database lifetime, so
                         # infrastructure setup is outside both turn timings.
+                        stage = "setup"
                         async with Database(output / f"{condition}-{rep}.db",
                                 pool_size=configured.sqlite_pool_size, busy_timeout_ms=configured.sqlite_busy_timeout_ms) as database:
-                            machine = StateMachine(client, GraphStore(database), agents=agents)
+                            extractor = _RecordedExtractor(client)
+                            machine = StateMachine(client, GraphStore(database), agents=agents, extractor=extractor)
                             items = scenario(plan.turns)
                             if condition == "B":
                                 await machine.start(items[0].task, initial_subgoal=items[0].subject,
@@ -227,6 +265,8 @@ async def run_experiment(plan: BenchmarkPlan, settings: Settings, output: Path, 
                             with CSVLogger(output / f"{condition}-{rep}.csv") as logger:
                                 logger.bind_run(run_id)
                                 for item in items:
+                                    current_step, current_task = item.step, item.task
+                                    stage = "role_turn"
                                     started = perf_counter()
                                     role = agents[(item.step - 1) % len(agents)]
                                     budget = min(plan.memory_budget, role.context_capacity(item.task, item.subject))
@@ -238,7 +278,9 @@ async def run_experiment(plan: BenchmarkPlan, settings: Settings, output: Path, 
                                             turn=item.step, allow_fallback=False)
                                         metrics = _baseline_metrics(run_id, item, result, context, budget, started)
                                     else:
-                                        input_generations = await _observe_input(machine, item, Extractor(client))
+                                        stage = "observation_extraction"
+                                        input_generations = await _observe_input(machine, item, extractor)
+                                        stage = "role_turn"
                                         turn = await machine.step(run_id, task=item.task, subgoal=item.subject)
                                         result, context = turn.agent, turn.context.text
                                         metrics = TelemetryProfiler.from_checkpoint(turn.checkpoint)
@@ -276,6 +318,9 @@ async def run_experiment(plan: BenchmarkPlan, settings: Settings, output: Path, 
     except BaseException as exc:
         manifest["status"] = "CANCELLED" if isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt)) else "FAILED"
         manifest["error_type"] = type(exc).__name__
+        write_json(output / "failure.json", _failure_record(exc, manifest=manifest,
+            condition=current_condition, repetition=current_repetition, step=current_step,
+            stage=stage, task=current_task))
         raise
     finally:
         manifest["finished_at"] = utc_now()

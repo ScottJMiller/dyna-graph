@@ -1,0 +1,121 @@
+{
+  "batch_size": 100,
+  "checkpoints": [
+    {
+      "hour": 0,
+      "turn": 1
+    },
+    {
+      "hour": 0.5,
+      "turn": 20
+    },
+    {
+      "hour": 1,
+      "turn": 40
+    },
+    {
+      "hour": 12,
+      "turn": 60
+    },
+    {
+      "hour": 24,
+      "turn": 80
+    },
+    {
+      "hour": 36,
+      "turn": 100
+    },
+    {
+      "hour": 48,
+      "turn": 120
+    },
+    {
+      "hour": 60,
+      "turn": 140
+    },
+    {
+      "hour": 72,
+      "turn": 160
+    },
+    {
+      "hour": 96,
+      "turn": 200
+    }
+  ],
+  "conditions": [
+    "off",
+    "on"
+  ],
+  "decay_policy": {
+    "centrality_scale": 4.0,
+    "frequency_scale": 4.0,
+    "recency_half_life_seconds": 86400.0,
+    "turn_half_life": 10.0,
+    "weights": [
+      0.35,
+      0.2,
+      0.15,
+      0.3
+    ]
+  },
+  "executions_per_condition": 2,
+  "facts": [
+    {
+      "label": "frequent",
+      "object": "FrequentDatabase",
+      "predicate": "uses",
+      "subject": "FrequentProject"
+    },
+    {
+      "label": "abandoned",
+      "object": "TemporaryDatabase",
+      "predicate": "uses",
+      "subject": "TemporaryProject"
+    },
+    {
+      "label": "pinned",
+      "object": "CriticalConstraint",
+      "predicate": "requires",
+      "subject": "CriticalProject"
+    },
+    {
+      "label": "delayed",
+      "object": "DormantDatabase",
+      "predicate": "uses",
+      "subject": "DormantProject"
+    },
+    {
+      "label": "cycle_ab",
+      "object": "ArchiveBeta",
+      "predicate": "links",
+      "subject": "ArchiveAlpha"
+    },
+    {
+      "label": "cycle_bc",
+      "object": "ArchiveGamma",
+      "predicate": "links",
+      "subject": "ArchiveBeta"
+    },
+    {
+      "label": "cycle_ca",
+      "object": "ArchiveAlpha",
+      "predicate": "links",
+      "subject": "ArchiveGamma"
+    }
+  ],
+  "limitations": [
+    "hand-authored isolated fixture",
+    "simulated governance age, not elapsed execution time",
+    "SQLite audit timestamps remain real",
+    "no model calls or factual-answer scoring",
+    "no performance or disk-reclamation measurement"
+  ],
+  "logical_start_seconds": 0,
+  "probes": "At 96 simulated hours, inspect each subject through active-only Traversal; do not reinforce probes.",
+  "reference": "docs/results/study-20261111-002/manifest.json",
+  "reference_sha256": "9df4f2dad30c06d6d389dbc7119e42816a05ce8f6434adf4d7cc01c9c5d355f3",
+  "refresh": "Consume FrequentProject neighborhood before each checkpoint after initialization.",
+  "source": "deterministic_simulated_time",
+  "threshold": 0.15,
+  "version": "pruning-mechanism-v1"
+}
