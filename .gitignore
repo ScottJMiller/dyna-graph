@@ -8,6 +8,7 @@
 data/*.db
 data/*.db-*
 data/telemetry/
+data/experiments/
 .verification/
 
 # Local implementation/reference documents and tooling

@@ -28,6 +28,7 @@ class _ModelEntry(BaseModel):
     name: str = Field(min_length=1)
     size: int | None = Field(default=None, ge=0)
     details: _ModelDetails = Field(default_factory=_ModelDetails)
+    digest: str | None = None
 
 
 class _TagsPayload(BaseModel):
@@ -66,6 +67,7 @@ class InstalledModel:
     name: str
     quantization_level: str | None
     size_bytes: int | None
+    digest: str | None = None
 
 
 @dataclass(frozen=True)
@@ -207,7 +209,7 @@ class OllamaClient:
             timeout_seconds=self.settings.ollama_health_timeout_seconds,
         )
         models = tuple(
-            InstalledModel(model.name, model.details.quantization_level, model.size)
+            InstalledModel(model.name, model.details.quantization_level, model.size, model.digest)
             for model in parsed.models
         )
         return ModelInventory(node, self.settings.node_url(node), models, latency)

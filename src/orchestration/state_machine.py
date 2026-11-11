@@ -1,7 +1,7 @@
 """Sequential local role cycles with atomic graph/checkpoint synchronization."""
 
 import asyncio
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
 import hashlib
 import inspect
@@ -211,12 +211,23 @@ class StateMachine:
         if checkpoint.config_hash != self.config_hash:
             raise WorkflowError("run configuration differs; resume with its original roles, routes and policy")
 
-    async def step(self, run_id: str) -> TurnResult:
+    async def step(self, run_id: str, *, task: str | None = None,
+                   subgoal: str | None = None) -> TurnResult:
+        """Advance one role, optionally accepting a new explicit task/sub-goal.
+
+        Validate inputs before claiming. A claimed input survives interruption;
+        each committed turn retains the exact input used for its generation.
+        """
         async with self._lock:
             checkpoint = await self.get_checkpoint(run_id)
             self._compatible(checkpoint)
             if checkpoint.status != "READY":
                 raise WorkflowError(f"run is {checkpoint.status}; resume or recover it explicitly")
+            checkpoint = replace(checkpoint,
+                task=checkpoint.task if task is None else text(task, "task", 500),
+                subgoal=checkpoint.subgoal if subgoal is None else text(subgoal, "subgoal", 256))
+            agent = self.agents[checkpoint.next_step % len(self.agents)]
+            agent.context_capacity(checkpoint.task, checkpoint.subgoal)
             step = checkpoint.next_step + 1
             claimed = False
             owner = uuid4().hex
@@ -224,14 +235,14 @@ class StateMachine:
             try:
                 def claim(_graph):
                     with self.graph.database.transaction() as connection:
-                        changed = connection.execute("UPDATE workflow_runs SET status='RUNNING',error=NULL,owner_token=? "
-                            "WHERE id=? AND status='READY' AND next_step=?", (owner, run_id, checkpoint.next_step)).rowcount
+                        changed = connection.execute("UPDATE workflow_runs SET status='RUNNING',error=NULL,owner_token=?,task=?,subgoal=? "
+                            "WHERE id=? AND status='READY' AND next_step=?",
+                            (owner, checkpoint.task, checkpoint.subgoal, run_id, checkpoint.next_step)).rowcount
                         if changed != 1:
                             raise WorkflowError("run is already owned or its checkpoint changed")
                 # Set before awaiting: a cancelled claim still settles durably.
                 claimed = True
                 await _settled(self.graph.write_async(claim))
-                agent = self.agents[checkpoint.next_step % len(self.agents)]
                 self.stage = Stage.RECALL
                 capacity = min(self.settings.context_token_budget, agent.context_capacity(checkpoint.task, checkpoint.subgoal))
                 assembler = ContextAssembler(self.graph, token_budget=capacity,
@@ -278,7 +289,8 @@ class StateMachine:
                         pruning = self.pruner.run_once(current_turn=turn, now=now) if self.settings.orchestration_prune_between_turns else None
                         verified = checkpoint.stop_on_verified and result.complete
                         done = step == checkpoint.max_turns or verified
-                        payload = {"context": asdict(context), "next_subgoal": next_subgoal,
+                        payload = {"task": checkpoint.task, "subgoal": checkpoint.subgoal,
+                            "context": asdict(context), "next_subgoal": next_subgoal,
                             "complete": result.complete, "fact_ids": [w.triple.id for w in writes],
                             "superseded_ids": [value for w in writes for value in w.superseded_ids],
                             "pruned_ids": [] if pruning is None else list(pruning.pruned_ids),

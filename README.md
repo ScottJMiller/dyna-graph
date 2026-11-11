@@ -22,8 +22,8 @@ time, while leaving the model to distinguish old facts from new ones.
 
 DynaGraph investigates whether a persistent, selectively retrieved graph can
 provide useful shared memory with less repeated context while preserving factual
-consistency. The project is under development; improved efficiency or accuracy
-is a research hypothesis, not an established result.
+consistency. The framework and experiment tools are implemented. The controlled experiment
+has not been run; improved efficiency or accuracy remains a research hypothesis.
 
 ### How graph memory works
 
@@ -59,12 +59,12 @@ connectivity, and the number of turns since information was used.
 
 ### What the experiment compares
 
-The planned benchmark uses the same 15–20 turn scenario, including scheduled
+The implemented benchmark uses the same versioned 15–20 turn scenario, including scheduled
 information changes, under two conditions:
 
 | Condition | Context strategy |
 | --- | --- |
-| A: linear history | Supply accumulated conversation history to subsequent agent turns. |
+| A: linear history | Supply prior task/answer turns, dropping oldest whole turns when the shared memory allowance is exceeded. |
 | B: graph memory | Extract and persist facts, then retrieve bounded relevant graph context. |
 
 The comparison will measure prompt-token consumption, latency, and factual
@@ -73,11 +73,26 @@ should remain comparable, and interpretation must include extraction and memory
 maintenance costs. Both strategies remain subject to the models' context limits;
 the scenario and any history-truncation policy must be documented.
 
-The experiment will run programmatically through the planned
-`experiments/benchmark_harness.py`; it does not require an interactive task-entry
-screen. The planned `tests/test_phase8_benchmark.py` verifies the pipeline's
-behavior. Analysis and plotting tools will turn recorded measurements into
-comparisons and report-ready figures.
+The experiment is driven programmatically by
+[experiments/benchmark_harness.py](experiments/benchmark_harness.py). It defaults
+to **plan only**: it does not load deployment settings, contact models, or create
+experiment files. Execution requires an explicit `--execute` flag and a new output
+directory. The default plan has 20 turns, two repetitions, and alternating AB/BA
+condition order. Each repetition starts with an independent transcript/graph.
+
+Both conditions use the same role schedule, current observations, questions,
+output limit, 2,048-token model context, and at-most-1,000-byte conservative memory
+allowance. Graph memory adds input/response extraction, governed writes, recall,
+and pruning; analysis reports these costs separately from agent-only usage.
+The resulting comparison is a **bounded-window case study**, not proof of
+unbounded linear growth versus constant asymptotic cost. Exact-match scoring
+checks a declared one-sentence answer contract against an independent oracle.
+
+[tests/test_phase8_benchmark.py](tests/test_phase8_benchmark.py) verifies the
+pipeline using simulated HTTP only. Analysis validates complete paired evidence
+and checksums before calculating descriptive comparisons. Plotting exports SVG,
+PDF, and PNG figures; synthetic test figures are visibly labeled. No measured
+research results or figures are claimed by the current implementation.
 
 ### Potential benefits and limitations
 
@@ -115,8 +130,8 @@ benefit from persistent graph memory.
 
 | Status | Capabilities |
 | --- | --- |
-| Implemented: phases 1–7 | Validated local configuration; async Ollama health, model inventory, inference, latency metrics, and fallback; transactional SQLite entity/triple storage with prefix search; structured fact extraction with defensive parsing and bounded retry; configured single-valued supersession, deterministic retention scoring, and pin-protected soft-pruning; bounded SQL neighborhood recall and budgeted Markdown/JSON context; sequential planner/researcher/verifier cycles with local tools and durable atomic checkpoints; measured per-turn usage, graph/RSS snapshots, a live terminal dashboard, and recoverable CSV export. |
-| Planned: phase 8 | The controlled benchmark comparing linear history and graph memory, with analysis and figures. |
+| Implemented: phases 1–8 | Validated local configuration; async Ollama health, model inventory, inference, latency metrics, and fallback; transactional SQLite entity/triple storage with prefix search; structured fact extraction with defensive parsing and bounded retry; configured single-valued supersession, deterministic retention scoring, and pin-protected soft-pruning; bounded SQL neighborhood recall and budgeted Markdown/JSON context; sequential planner/researcher/verifier cycles with local tools and durable atomic checkpoints; measured per-turn usage, graph/RSS snapshots, a live terminal dashboard, recoverable CSV export, and an explicitly gated paired benchmark with validated analysis and figure export. |
+| Pending research | Execute the controlled experiment after approval, inspect its evidence, and interpret the measured results. |
 
 The programmatic workflow now connects extraction, storage, governance, and
 retrieval. The standalone APIs remain available; calling extraction alone does
@@ -140,7 +155,7 @@ require configuration and routing changes beyond the current two-node baseline.
 Explore the [interactive architecture atlas](docs/architecture.html) or read the
 [complete architecture](docs/architecture.md) for every specified component and
 its connections. The offline atlas supports pan/zoom, search, phase focus,
-light/dark themes, and SVG export, with implemented and planned components labeled.
+light/dark themes, and SVG export, with source components and local artifacts labeled.
 Open the HTML file directly in a browser; viewing the atlas needs no Ollama server.
 
 ## Getting started with DynaGraph
@@ -472,7 +487,26 @@ remote-node RAM. This is useful framework telemetry, not total cluster profiling
 or evidence of experimental benefit. See the [Phase 7 guide](docs/testing/phase7.md)
 for the column contract, timing boundaries, recovery, and verification.
 
-### 10. Verify the installed components
+### 10. Inspect the experiment plan without running it
+
+```bash
+python3 -m experiments.benchmark_harness
+```
+
+Expected:
+
+```text
+PLAN ONLY: 4 condition runs; 80 scored turns; no model requests or experiment files
+```
+
+The command also prints its scenario hash and plan. Do not add `--execute` during
+implementation verification. The [Phase 8 protocol](docs/testing/phase8.md)
+explains synthetic tests, comparison boundaries, artifact integrity, and deferred
+execution. Existing application data and the private `.env` are preserved.
+Matplotlib is pinned for local, headless figure export; no plotting server or
+cloud account is needed.
+
+### 11. Verify the installed components
 
 Run the functional suite without network access or Ollama:
 
@@ -480,7 +514,7 @@ Run the functional suite without network access or Ollama:
 python3 -m pytest -q
 ```
 
-Expected: **668 passed, 18 skipped**. The skips are checks that need physical LAN
+Expected: **729 passed, 18 skipped**. The skips are checks that need physical LAN
 nodes or explicitly requested storage/retrieval benchmarks. Run those separately:
 
 ```bash
@@ -517,9 +551,10 @@ the storage host and system load; this does not guarantee every insert is under
 | [Retrieval verification](docs/testing/phase5.md) | Active one/two-hop recall, strict block budgets, explicit usage, snapshot consistency, and the warm retrieval benchmark. |
 | [Orchestration verification](docs/testing/phase6.md) | Three-role LAN cycles, local tools, atomic checkpoints, restart/cancellation, migration, and complete workflow usage. |
 | [Telemetry verification](docs/testing/phase7.md) | Measured usage, checkpoint snapshots, live controls, CSV integrity/recovery, and a direct two-node telemetry check. |
+| [Experiment implementation verification](docs/testing/phase8.md) | Synthetic-only A/B pipeline checks, plan-only CLI, oracle/scoring, artifact validation, paired analysis, and standalone figures. No experiment run. |
 | [Architecture atlas verification](docs/testing/architecture.md) | Optional checks for the documentation's themes, controls, SVG export, and connector geometry. |
 
-### 11. Troubleshoot and build on the APIs
+### 12. Troubleshoot and build on the APIs
 
 | Symptom | First check |
 | --- | --- |
@@ -541,5 +576,5 @@ the [Ollama client](src/network/ollama_client.py),
 the [extractor](src/extraction/extractor.py), and
 the [graph store](src/storage/graph_store.py). Keep their resource lifecycles
 explicit: callers own HTTP-client and database cleanup. The
-[architecture narrative](docs/architecture.md) explains the planned integration
-and extension points without implying that future modules are available today.
+[architecture narrative](docs/architecture.md) explains the implemented integration and extension points. The experiment
+implementation is available; measured results await an explicit run.

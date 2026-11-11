@@ -1,5 +1,8 @@
 # Phase 7: Telemetry and terminal dashboard verification
 
+This protocol records Phase 7 acceptance. Current aggregate counts and the
+synthetic-only experiment implementation checks are in [Phase 8](phase8.md).
+
 Phase 7 adds measured turn usage, graph/RAM snapshots, a live Rich terminal
 view, and local CSV export. Everything runs on the coordinator using the existing
 dependencies. No hosted analytics, cloud API, additional service, model download,

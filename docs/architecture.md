@@ -30,7 +30,7 @@ diagram of the current visible component set. Reset first for an unhighlighted
 whole-system export; enable Supporting files for the complete inventory.
 
 The map describes the **finished target design**, while its status labels reflect
-the current checkout: phases **1–7 exist** and phase **8 is planned**.
+the current checkout: all **eight phases exist**; the controlled **experiment has not been run**.
 Components have wider gutters and connectors use distinct perimeter ports. An
 orthogonal router reserves separate tracks and keeps lines out of every card.
 Parallel line sections cannot overlap; perpendicular crossings use a background
@@ -281,10 +281,31 @@ store; see the Phase 7 protocol for flush and recovery boundaries.
 
 | File | Status | Responsibility |
 | --- | --- | --- |
-| `experiments/benchmark_harness.py` | Planned | Execute a shared 15–20 turn scenario with injected state changes. Condition A passes linear conversation history; Condition B uses the graph-memory loop. |
-| `experiments/analyze_results.py` | Planned | Read recorded runs and compare prompt-token consumption, latency by turn, and factual consistency after injected updates. |
-| `experiments/generate_plots.py` | Planned | Generate scientific plots from analyzed experiment results for sharing or the project report. |
-| `tests/test_phase8_benchmark.py` | Planned | Planned end-to-end condition A/B regression. |
+| [experiments/benchmark_harness.py](../experiments/benchmark_harness.py) | Implemented | Default to plan-only mode. On explicit execution, run fresh A/B conditions in AB/BA order, record inventories/digests/warmups, and export complete input, response, usage, timing and oracle evidence. |
+| [experiments/scenario.py](../experiments/scenario.py) | Implemented | Version the 20-turn observation/question schedule, selected prefix, independent oracle, update/reversion labels and strict answer-contract scoring. |
+| [experiments/contracts.py](../experiments/contracts.py) | Implemented | Define strict plan/row contracts, atomic manifest writes, finite JSON parsing and streaming artifact checksums. |
+| [experiments/analyze_results.py](../experiments/analyze_results.py) | Implemented | Reject incomplete/inconsistent bundles; report measured agent-only and pipeline costs, strict/update/delayed accuracy, history truncation, observed slopes and paired descriptive differences. |
+| [experiments/generate_plots.py](../experiments/generate_plots.py) | Implemented | Validate source evidence and export four figure sets as local SVG/PDF/PNG using headless Matplotlib; label all synthetic test figures. |
+| [experiments/__init__.py](../experiments/__init__.py) | Implemented | Establish the experiment package without running inference, analysis or plotting on import. |
+| [tests/test_phase8_benchmark.py](../tests/test_phase8_benchmark.py) | Implemented | Verify the comparison with simulated HTTP only, blocking real network access; cover planning gates, isolation, updates, missing counters, failed/cancelled evidence, analysis integrity and figure formats. |
+| [docs/testing/phase8.md](testing/phase8.md) | Implemented | Provide synthetic-only verification, methodology, artifact contracts and a clearly deferred execution reference. |
+
+Condition A retains prior task/answer turns in a bounded oldest-first window.
+Condition B ingests the current observation through extraction and governed
+writes before recalling graph context, then uses the ordinary state machine for
+role execution, response extraction and atomic persistence. Both receive the
+same current observation/question and shared memory allowance. Per-step explicit
+task/sub-goal inputs are validated before claiming a workflow and retained in
+the committed checkpoint. Expected answers never enter model prompts or filter
+accepted facts. Observation-ingestion cost is included in the benchmark's total
+usage/latency, separately from ordinary Phase 7 turn metrics.
+
+Every measured bundle requires a new output directory. Imports and default CLI
+planning perform no model work. Failed or interrupted bundles retain partial
+evidence and are rejected by analysis; no automatic experimental resume is
+implemented. The default two repetitions provide descriptive AB/BA comparisons,
+not a significance claim. Actual experiment execution remains deferred. Synthetic
+verification does not establish the hypothesis or supply research results.
 
 ### Supporting repository files
 
@@ -293,7 +314,7 @@ store; see the Phase 7 protocol for flush and recovery boundaries.
 | [tests/conftest.py](../tests/conftest.py) | Add --run-lan, --lan-node, --run-storage-benchmark, and --run-retrieval-benchmark flags; skip external/hardware-dependent checks unless explicitly selected. |
 | [pytest.ini](../pytest.ini) | Set tests/ discovery, strict markers, and the LAN/storage/retrieval benchmark marker declarations. |
 | [.env.example](../.env.example) | Provide illustrative private LAN addresses, model/thread settings, storage/HTTP budgets, governance defaults, and bounded retrieval settings. Copy and edit as a private .env. |
-| [requirements.txt](../requirements.txt) | Pin Pydantic, pydantic-settings, HTTPX, pytest, Rich, and python-dotenv for reproducible installation. |
+| [requirements.txt](../requirements.txt) | Pin Pydantic, pydantic-settings, HTTPX, pytest, Rich, python-dotenv, and Matplotlib for reproducible installation. |
 | [.gitignore](../.gitignore) | Exclude private configuration, local databases and WAL sidecars, environments, test artifacts, and local reference notes. |
 | [README.md](../README.md) | Explain the public setup, current feature status, examples, and verification entry points. |
 | [docs/testing/phase1.md](../docs/testing/phase1.md) | Document generic setup, live-node prerequisites, exact test commands, and expected diagnostics. |
@@ -310,7 +331,7 @@ store; see the Phase 7 protocol for flush and recovery boundaries.
 
 ## Keep the map accurate
 
-When implementing a future phase, update the embedded component data in
+When changing a component, update the embedded component data in
 `architecture.html`, the status summary, and this inventory together. Verify the
 actual APIs before changing a planned interface into an implemented one. The map
 is a versioned documentation snapshot; opening it does not scan the filesystem,

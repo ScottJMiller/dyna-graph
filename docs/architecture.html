@@ -90,13 +90,13 @@ svg #arrow-active path { fill: var(--edge-active); }
 <div class="app">
  <header class="top">
   <div class="brand"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M9 10L30 7L32 29L13 33L9 10L32 29M30 7L13 33" fill="none" stroke="currentColor" stroke-width="1.4"/><g fill="currentColor"><circle cx="9" cy="10" r="4"/><circle cx="30" cy="7" r="3"/><circle cx="32" cy="29" r="4"/><circle cx="13" cy="33" r="3"/></g></svg><div><p class="eyebrow">Architecture atlas / complete target system</p><h1>DynaGraph <span>explained.</span></h1></div></div>
-  <div class="top-note"><div class="status-key"><span><i class="dot"></i>Implemented · phases 1–7</span><span><i class="dot planned"></i>Planned · phase 8</span></div><span class="offline-note">Two local nodes. One persistent graph. No cloud APIs.</span></div>
+  <div class="top-note"><div class="status-key"><span><i class="dot"></i>Implemented · phases 1–8</span><span><i class="dot planned"></i>Experiment · execution deferred</span></div><span class="offline-note">Two local nodes. One persistent graph. No cloud APIs.</span></div>
  </header>
  <section class="controls" aria-label="Map controls">
   <div class="control-row">
    <label class="search"><span class="sr-only">Find a component</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg><input id="search" type="search" placeholder="Find a file, responsibility, or interface…" autocomplete="off" spellcheck="false"></label>
    <label class="select-wrap route-wrap">Explore <select id="route"><option value="system">Whole system</option><option value="turn">One agent turn</option><option value="remember">Remember a fact</option><option value="recall">Recall context</option><option value="experiment">The A/B experiment</option></select></label>
-   <label class="select-wrap"><span class="sr-only">Implementation status</span><select id="status"><option value="all">Built + planned</option><option value="implemented">Implemented only</option><option value="planned">Planned only</option></select></label>
+   <label class="select-wrap"><span class="sr-only">Implementation status</span><select id="status"><option value="all">All components</option><option value="implemented">Implemented only</option><option value="planned" disabled>Planned only (none)</option></select></label>
    <button id="support" class="pill" aria-pressed="false">Supporting files</button>
    <button id="theme" class="pill" type="button" aria-pressed="false"><span class="theme-glyph" aria-hidden="true">◐</span><span id="theme-label">Dark mode</span></button>
    <button id="export" class="pill">Export SVG</button>
@@ -625,16 +625,17 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "experiments/benchmark_harness.py",
       "phase": 8,
       "summary": "Run the same task under A and B",
-      "description": "Execute a shared 15–20 turn scenario with injected state changes. Condition A passes linear conversation history; Condition B uses the graph-memory loop.",
+      "description": "Plan without side effects by default. Explicit execution runs the same versioned scenario with bounded history (A) and graph memory (B), in alternating paired order.",
       "interfaces": [
-        "Planned controlled benchmark runner"
+        "python3 -m experiments.benchmark_harness",
+        "run_experiment(..., execute=True)"
       ],
-      "inputs": "A fixed scenario, node/model settings, two context strategies.",
-      "outputs": "Condition-tagged runs and collected measurements.",
-      "notes": "Keep models, scenario, hardware, and generation settings comparable. The finished experiment evaluates a hypothesis; it does not assume graph memory wins.",
+      "inputs": "Versioned plan, local model settings, fresh output directory; explicit execution.",
+      "outputs": "Manifest, per-turn JSONL/CSV, isolated condition databases and telemetry.",
+      "notes": "The real experiment has not been run. No fallback or early stopping. Oracle answers are scoring data, never prompt instructions. Synthetic HTTP tests are labeled separately.",
       "kind": "source",
       "label": "benchmark_harness.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
       "x": 1500,
       "y": 1680
@@ -644,16 +645,17 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "experiments/analyze_results.py",
       "phase": 8,
       "summary": "Compare cost, latency, consistency",
-      "description": "Read recorded runs and compare prompt-token consumption, latency by turn, and factual consistency after injected updates.",
+      "description": "Validate complete paired evidence, checksums, schedule, scoring, routes and CSV/JSONL agreement before computing descriptive comparisons.",
       "interfaces": [
-        "Planned experiment analysis"
+        "analyze_bundle()",
+        "python3 -m experiments.analyze_results"
       ],
-      "inputs": "Condition-tagged CSV records and scenario truth checks.",
-      "outputs": "Summaries and series for plotting.",
-      "notes": "No current result or asymptotic claim is established by the architecture. Report measured outcomes and their limits.",
+      "inputs": "A complete measured or explicitly synthetic bundle.",
+      "outputs": "Summary JSON, paired CSV and per-turn mean CSV.",
+      "notes": "Report both role-only and total pipeline prompt costs. Unknown counters stay unknown. A finite bounded-window slope is not an asymptotic proof.",
       "kind": "source",
       "label": "analyze_results.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
       "x": 1980,
       "y": 1680
@@ -663,16 +665,17 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "experiments/generate_plots.py",
       "phase": 8,
       "summary": "Produce publication-ready figures",
-      "description": "Generate scientific plots from analyzed experiment results for sharing or the project report.",
+      "description": "Export token, full-pipeline token, latency and strict-accuracy curves from validated evidence as standalone SVG/PDF/PNG.",
       "interfaces": [
-        "Planned figure generation"
+        "generate_plots()",
+        "python3 -m experiments.generate_plots"
       ],
-      "inputs": "Analyzed condition A/B measurements.",
-      "outputs": "Standalone exported figures.",
-      "notes": "Plotting dependencies and output locations are future Phase 8 choices.",
+      "inputs": "Validated complete bundle and new output directory.",
+      "outputs": "Twelve standalone figure files.",
+      "notes": "Headless Matplotlib; no hosted plotting service. Synthetic figures carry a prominent test-data label. No real result figures exist yet.",
       "kind": "source",
       "label": "generate_plots.py",
-      "status": "planned",
+      "status": "implemented",
       "support": false,
       "x": 2460,
       "y": 1680
@@ -699,11 +702,11 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "",
       "phase": 8,
       "summary": "Shareable experiment results",
-      "description": "Exported figures show token use, latency curves, and factual consistency for both conditions.",
+      "description": "Standalone SVG, PDF and PNG exports of measured comparisons, or visibly labeled synthetic test data.",
       "interfaces": [],
       "inputs": "Analyzed measurements.",
       "outputs": "Report-ready visual results.",
-      "notes": "The map contains no fabricated benchmark data.",
+      "notes": "The real experiment is deferred. Test figures are verification evidence, not research findings.",
       "kind": "resource",
       "label": "Experiment figures",
       "status": "resource",
@@ -849,16 +852,16 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "tests/test_phase8_benchmark.py",
       "phase": 8,
       "summary": "Phase 8 verification",
-      "description": "Planned end-to-end condition A/B regression.",
+      "description": "Synthetic-only checks of plan/execute gates, paired order, graph supersession, costs, missing counters, cancellation, evidence integrity and figures.",
       "interfaces": [
         "pytest"
       ],
       "inputs": "Fixtures, controlled inputs, and explicit live/benchmark opt-ins when applicable.",
       "outputs": "Assertions and diagnostic test output.",
-      "notes": "A specified future deliverable; this file does not exist yet.",
+      "notes": "61 automated checks; real HTTP is blocked. These tests never run the physical-node experiment.",
       "kind": "test",
       "label": "test_phase8_benchmark.py",
-      "status": "planned",
+      "status": "implemented",
       "support": true,
       "x": 540,
       "y": 2592
@@ -1387,6 +1390,82 @@ svg #arrow-active path { fill: var(--edge-active); }
       "support": true,
       "x": 2460,
       "y": 3488
+    },
+    {
+      "id": "experiments-init",
+      "path": "experiments/__init__.py",
+      "label": "__init__.py",
+      "summary": "Experiment package boundary",
+      "description": "Import without starting any work.",
+      "phase": 8,
+      "interfaces": [
+        "Package / protocol"
+      ],
+      "inputs": "Local plan and evidence.",
+      "outputs": "Reproducible implementation verification.",
+      "notes": "No model request or experiment occurs on import.",
+      "kind": "support",
+      "status": "implemented",
+      "support": true,
+      "x": 60,
+      "y": 3712
+    },
+    {
+      "id": "scenario",
+      "path": "experiments/scenario.py",
+      "label": "scenario.py",
+      "summary": "Version inputs and scoring oracle",
+      "description": "Define observations, updates, questions, expected answers and strict scoring separately from model prompts.",
+      "phase": 8,
+      "interfaces": [
+        "Versioned experiment API"
+      ],
+      "inputs": "Local plan and evidence.",
+      "outputs": "Reproducible implementation verification.",
+      "notes": "No model request or experiment occurs on import.",
+      "kind": "source",
+      "status": "implemented",
+      "support": true,
+      "x": 540,
+      "y": 3712
+    },
+    {
+      "id": "contracts",
+      "path": "experiments/contracts.py",
+      "label": "contracts.py",
+      "summary": "Validate plans and evidence",
+      "description": "Strict finite contracts, atomic manifests and bounded-memory checksums.",
+      "phase": 8,
+      "interfaces": [
+        "Versioned experiment API"
+      ],
+      "inputs": "Local plan and evidence.",
+      "outputs": "Reproducible implementation verification.",
+      "notes": "No model request or experiment occurs on import.",
+      "kind": "source",
+      "status": "implemented",
+      "support": true,
+      "x": 1020,
+      "y": 3712
+    },
+    {
+      "id": "phase8-doc",
+      "path": "docs/testing/phase8.md",
+      "label": "phase8.md",
+      "summary": "Phase 8 verification protocol",
+      "description": "Synthetic-only commands, comparison boundaries and deferred experiment execution.",
+      "phase": 8,
+      "interfaces": [
+        "Package / protocol"
+      ],
+      "inputs": "Local plan and evidence.",
+      "outputs": "Reproducible implementation verification.",
+      "notes": "No model request or experiment occurs on import.",
+      "kind": "support",
+      "status": "implemented",
+      "support": true,
+      "x": 1500,
+      "y": 3712
     }
   ],
   "edges": [
@@ -2109,6 +2188,78 @@ svg #arrow-active path { fill: var(--edge-active); }
       "target": "phase7-doc",
       "label": "link telemetry protocol",
       "kind": "support"
+    },
+    {
+      "source": "harness",
+      "target": "scenario",
+      "label": "load versioned observations and questions",
+      "kind": "call"
+    },
+    {
+      "source": "harness",
+      "target": "contracts",
+      "label": "validate plan and rows",
+      "kind": "call"
+    },
+    {
+      "source": "analysis",
+      "target": "contracts",
+      "label": "validate complete artifact evidence",
+      "kind": "call"
+    },
+    {
+      "source": "analysis",
+      "target": "scenario",
+      "label": "verify independent oracle and schedule",
+      "kind": "call"
+    },
+    {
+      "source": "experiments-init",
+      "target": "harness",
+      "label": "package boundary",
+      "kind": "support"
+    },
+    {
+      "source": "phase8-doc",
+      "target": "test8",
+      "label": "document synthetic verification",
+      "kind": "support"
+    },
+    {
+      "source": "readme",
+      "target": "phase8-doc",
+      "label": "link deferred experiment protocol",
+      "kind": "support"
+    },
+    {
+      "source": "harness",
+      "target": "base",
+      "label": "dispatch identical logical role schedule",
+      "kind": "call"
+    },
+    {
+      "source": "harness",
+      "target": "extractor",
+      "label": "ingest newly supplied observations for B",
+      "kind": "call"
+    },
+    {
+      "source": "contracts",
+      "target": "profiler",
+      "label": "reuse immutable turn telemetry",
+      "kind": "call"
+    },
+    {
+      "source": "contracts",
+      "target": "scenario",
+      "label": "hash the versioned scenario",
+      "kind": "call"
+    },
+    {
+      "source": "harness",
+      "target": "client",
+      "label": "check inventory and warm both local models",
+      "kind": "call"
     }
   ],
   "phases": [
@@ -2298,7 +2449,7 @@ svg #arrow-active path { fill: var(--edge-active); }
     },
     "experiment": {
       "title": "Measure the hypothesis",
-      "text": "Run the same 15–20 turn scenario under linear history (A) and graph memory (B), log the measurements, then compare tokens, latency, and factual consistency. Performance benefits remain an empirical question.",
+      "text": "Plan by default; explicit execution compares windowed history and graph memory on identical inputs. Validate complete paired evidence before analysis and figure export. Real execution is deferred; synthetic tests do not establish results.",
       "ids": [
         "harness",
         "state",
@@ -2308,7 +2459,9 @@ svg #arrow-active path { fill: var(--edge-active); }
         "analysis",
         "plots",
         "figures",
-        "dashboard"
+        "dashboard",
+        "scenario",
+        "contracts"
       ]
     }
   }
@@ -2515,7 +2668,7 @@ function svg(tag,attrs={},text){const e=document.createElementNS(NS,tag);for(con
 function html(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;}
 function statusLabel(n){return n.status==='implemented'?'IMPLEMENTED':n.status==='planned'?'PLANNED':'SERVICE / ARTIFACT';}
 function isPlanned(e){return byId.get(e.source).status==='planned'||byId.get(e.target).status==='planned';}
-function resourceInStatus(n){return n.status==='resource'&&(status==='all'||(status==='implemented'?n.phase<=7:n.phase>=8));}
+function resourceInStatus(n){return n.status==='resource'&&(status==='all'||(status==='implemented'?n.phase<=8:n.phase>=9));}
 function visible(n){return (!n.support||showSupport)&&(status==='all'||n.status===status||resourceInStatus(n));}
 function matches(n){return !query||[n.label,n.path,n.summary,n.description,n.notes,...n.interfaces].join(' ').toLowerCase().includes(query);}
 function relatedIds(){if(selected){return new Set([selected,...DATA.edges.filter(e=>e.source===selected||e.target===selected).flatMap(e=>[e.source,e.target])]);}if(phaseFocus)return new Set(DATA.nodes.filter(n=>n.phase===phaseFocus).map(n=>n.id));const ids=DATA.routes[route].ids;return ids.length?new Set(ids):null;}
@@ -2530,7 +2683,7 @@ function boundsFor(items){
 }
 function buildMap(){
  const scene=$('scene');
- for(const group of DATA.groups){const g=svg('g',{class:'group'}),p=phases.get(group.phase);g.append(svg('rect',{x:group.x,y:group.y,width:group.w,height:group.h,rx:14,fill:p.color,'fill-opacity':.035,stroke:p.color,'stroke-opacity':.18,'stroke-dasharray':group.phase>=8?'6 5':'none'}));g.append(svg('text',{x:group.x+18,y:group.y+27,class:'group-title',fill:p.color},`${String(group.phase).padStart(2,'0')}  ${group.label}`));scene.append(g);groupEls.push({g,phase:group.phase});}
+ for(const group of DATA.groups){const g=svg('g',{class:'group'}),p=phases.get(group.phase);g.append(svg('rect',{x:group.x,y:group.y,width:group.w,height:group.h,rx:14,fill:p.color,'fill-opacity':.035,stroke:p.color,'stroke-opacity':.18,'stroke-dasharray':group.phase>=9?'6 5':'none'}));g.append(svg('text',{x:group.x+18,y:group.y+27,class:'group-title',fill:p.color},`${String(group.phase).padStart(2,'0')}  ${group.label}`));scene.append(g);groupEls.push({g,phase:group.phase});}
  const supportTitle=svg('g',{id:'support-title'});supportTitle.append(svg('text',{x:60,y:SUPPORT_Y,class:'support-title'},'SUPPORTING FILES & VERIFICATION'));supportTitle.append(svg('text',{x:60,y:SUPPORT_Y+26,class:'support-subtitle'},'Tests, package boundaries, configuration, and documentation. These are not steps in the runtime agent loop.'));scene.append(supportTitle);
  const edgeGroup=svg('g');scene.append(edgeGroup);
  DATA.edges.forEach((e,i)=>{const group=svg('g'),muted=['observe','support','test'].includes(e.kind),path=svg('path',{d:pathFor(e,i),class:'edge',fill:'none',stroke:'#8198a6','stroke-width':2.55,'stroke-dasharray':muted?'2 6':isPlanned(e)?'8 6':'none','marker-end':'url(#arrow)'});path.append(svg('title',{},`${byId.get(e.source).label} → ${byId.get(e.target).label}: ${e.label}${isPlanned(e)?' (planned integration)':''}`));const label=svg('text',{class:'edge-label',hidden:''},e.label);label.style.display='none';const halo=svg('path',{d:pathFor(e,i),class:'edge-halo','stroke-linejoin':'round'});
@@ -2572,7 +2725,7 @@ function focusNode(n){const c=center(n);camera.scale=Math.max(.85,Math.min(1.2,(
 function tab(name){const details=name==='details';$('details').hidden=!details;$('inventory').hidden=details;$('details-tab').setAttribute('aria-selected',String(details));$('inventory-tab').setAttribute('aria-selected',String(!details));}
 function section(parent,label,content){const box=html('section','detail-section');box.append(html('h3','',label));if(typeof content==='string')box.append(html('p','',content));else box.append(content);parent.append(box);}
 function renderDetails(n){const root=$('details');root.replaceChildren();if(!n){const kicker=html('div','detail-kicker','READ THE SYSTEM, THEN THE CODE');root.append(kicker,html('h2','','Local agents. Persistent memory.'),html('p','detail-description','DynaGraph is designed to replace repeated full-history context with a small, current graph of facts. The atlas shows the finished eight-phase design and the files that exist today.'));
- const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','Phases 1–7 are implemented. Future wiring is dashed. Planned performance targets and benefits are not measured results. Click any card, search a path, or explore All components.'));return;}
+ const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','All eight phases are implemented. The experiment has not been run. Synthetic verification and hypotheses are not measured research results. Click any card, search a path, or explore All components.'));return;}
  const p=phases.get(n.phase),kicker=html('div','detail-kicker');kicker.append(html('span','',n.support?'SUPPORTING FILE':`PHASE ${n.phase} · ${p.name}`),html('span',`badge ${n.status}`,statusLabel(n)));root.append(kicker,html('h2','',n.label));
  if(n.path){const path=html('div','file-path',n.path);root.append(path);if(n.status==='implemented'){const source=html('a','file-path','Open source file ↗');source.href='../'+n.path;source.target='_blank';source.rel='noopener';root.append(source);}}
  root.append(html('p','detail-description',n.description));section(root,'Inputs',n.inputs);section(root,'Outputs',n.outputs);
