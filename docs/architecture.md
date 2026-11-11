@@ -322,7 +322,10 @@ separate four-condition study: bounded history, graph without governance,
 graph with supersession, and graph with supersession plus pruning. Its default
 plan has 960 role turns across four workload variants and uses two simulated
 hours of memory age per actual scenario turn. Model-driven execution is gated
-and has not been run. The original A/B analysis remains available.
+and the first model-driven attempt failed before cohort completion. Its
+[failure report](results/integrated-attempt-001/README.md) records excluded partial
+data, a versioned prompt revision and unscored diagnostics. A new full cohort
+is required; the original A/B analysis remains available.
 
 | File | Responsibility |
 | --- | --- |

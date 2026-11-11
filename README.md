@@ -106,7 +106,10 @@ PDF, and PNG figures; synthetic test figures are visibly labeled. The completed
 measured case study is linked above and kept separate from synthetic verification.
 
 A separate [integrated protocol](docs/testing/phase8_integrated.md) is implemented
-and awaits a model-driven run. It compares bounded history, graph memory alone,
+and awaits a completed model-driven cohort. Its [first attempt](docs/results/integrated-attempt-001/README.md)
+failed on truncated agent JSON; its partial rows are excluded. Revised task
+instructions remain subject to a fresh full run. It compares bounded history,
+graph memory alone,
 graph memory with supersession, and graph memory with supersession plus pruning.
 The default plan uses four counterbalanced workload variants, 60 turns per
 condition, and explicitly simulated memory aging: **960 scored role turns**.
@@ -540,7 +543,7 @@ Run the functional suite without network access or Ollama:
 python3 -m pytest -q
 ```
 
-Expected: **791 passed, 18 skipped**. The skips are checks that need physical LAN
+Expected: **796 passed, 18 skipped**. The skips are checks that need physical LAN
 nodes or explicitly requested storage/retrieval benchmarks. Run those separately:
 
 ```bash

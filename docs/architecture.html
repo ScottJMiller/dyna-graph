@@ -1554,11 +1554,11 @@ svg #arrow-active path { fill: var(--edge-active); }
       "description": "Plan without configuration or inference by default. Explicitly execute independent A/B/C/D variants with declared simulated age and real telemetry.",
       "phase": 8,
       "interfaces": [
-        "Protocol 2: integrated-memory-v1"
+        "Protocol 2; scenario: integrated-memory-v2"
       ],
       "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
       "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
-      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "notes": "Implemented; the first integrated attempt failed before cohort completion. Revised direct-fact task instructions await a fresh full run. Partial data and unscored diagnostics are excluded from comparisons. Original A/B and pruning results remain separate.",
       "kind": "source",
       "status": "implemented",
       "support": false,
@@ -1573,11 +1573,11 @@ svg #arrow-active path { fill: var(--edge-active); }
       "description": "Replay memory transitions and verify durable checkpoints before computing lag/category outcomes, per-variant contrasts and six figure sets.",
       "phase": 8,
       "interfaces": [
-        "Protocol 2: integrated-memory-v1"
+        "Protocol 2; scenario: integrated-memory-v2"
       ],
       "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
       "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
-      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "notes": "Implemented; the first integrated attempt failed before cohort completion. Revised direct-fact task instructions await a fresh full run. Partial data and unscored diagnostics are excluded from comparisons. Original A/B and pruning results remain separate.",
       "kind": "source",
       "status": "implemented",
       "support": false,
@@ -1592,11 +1592,11 @@ svg #arrow-active path { fill: var(--edge-active); }
       "description": "Version complete rendered prompts, current value/set oracles, critical metadata and source-role steps across 60\u201380 turns.",
       "phase": 8,
       "interfaces": [
-        "Protocol 2: integrated-memory-v1"
+        "Protocol 2; scenario: integrated-memory-v2"
       ],
       "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
       "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
-      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "notes": "Implemented; the first integrated attempt failed before cohort completion. Revised direct-fact task instructions await a fresh full run. Partial data and unscored diagnostics are excluded from comparisons. Original A/B and pruning results remain separate.",
       "kind": "source",
       "status": "implemented",
       "support": true,
@@ -1611,11 +1611,11 @@ svg #arrow-active path { fill: var(--edge-active); }
       "description": "Declare four policies, balanced condition order, strict state/change records and the analysis CSV projection independently of legacy A/B contracts.",
       "phase": 8,
       "interfaces": [
-        "Protocol 2: integrated-memory-v1"
+        "Protocol 2; scenario: integrated-memory-v2"
       ],
       "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
       "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
-      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "notes": "Implemented; the first integrated attempt failed before cohort completion. Revised direct-fact task instructions await a fresh full run. Partial data and unscored diagnostics are excluded from comparisons. Original A/B and pruning results remain separate.",
       "kind": "source",
       "status": "implemented",
       "support": true,
@@ -1630,11 +1630,11 @@ svg #arrow-active path { fill: var(--edge-active); }
       "description": "Block real HTTP and exercise full synthetic workloads, policy isolation, clock/turn consistency, evidence integrity, legacy compatibility and figures.",
       "phase": 8,
       "interfaces": [
-        "Protocol 2: integrated-memory-v1"
+        "Protocol 2; scenario: integrated-memory-v2"
       ],
       "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
       "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
-      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "notes": "Implemented; the first integrated attempt failed before cohort completion. Revised direct-fact task instructions await a fresh full run. Partial data and unscored diagnostics are excluded from comparisons. Original A/B and pruning results remain separate.",
       "kind": "test",
       "status": "implemented",
       "support": true,
@@ -1649,11 +1649,11 @@ svg #arrow-active path { fill: var(--edge-active); }
       "description": "Portable offline commands, expected output, scope, methodology, limitations and a separately gated model-driven execution reference.",
       "phase": 8,
       "interfaces": [
-        "Protocol 2: integrated-memory-v1"
+        "Protocol 2; scenario: integrated-memory-v2"
       ],
       "inputs": "Declared plan, local configuration on explicit execution, or synthetic-only test transport.",
       "outputs": "Validated experiment evidence or offline verification; no work occurs on import.",
-      "notes": "Implemented; the integrated model-driven experiment has not been run. Original measured A/B and pruning results remain separate.",
+      "notes": "Implemented; the first integrated attempt failed before cohort completion. Revised direct-fact task instructions await a fresh full run. Partial data and unscored diagnostics are excluded from comparisons. Original A/B and pruning results remain separate.",
       "kind": "support",
       "status": "implemented",
       "support": true,
@@ -3052,7 +3052,7 @@ function focusNode(n){const c=center(n);camera.scale=Math.max(.85,Math.min(1.2,(
 function tab(name){const details=name==='details';$('details').hidden=!details;$('inventory').hidden=details;$('details-tab').setAttribute('aria-selected',String(details));$('inventory-tab').setAttribute('aria-selected',String(!details));}
 function section(parent,label,content){const box=html('section','detail-section');box.append(html('h3','',label));if(typeof content==='string')box.append(html('p','',content));else box.append(content);parent.append(box);}
 function renderDetails(n){const root=$('details');root.replaceChildren();if(!n){const kicker=html('div','detail-kicker','READ THE SYSTEM, THEN THE CODE');root.append(kicker,html('h2','','Local agents. Persistent memory.'),html('p','detail-description','DynaGraph is designed to replace repeated full-history context with a small, current graph of facts. The atlas shows the finished eight-phase design and the files that exist today.'));
- const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','All eight phases are implemented. The initial measured A/B study is complete. A separate four-condition integrated protocol is implemented and awaits model-driven execution. Select the relevant study or verification card for scope and limitations. Synthetic verification remains separate. Click any card, search a path, or explore All components.'));return;}
+ const list=html('ol','intro-list');for(const text of ['Retrieve a relevant neighborhood for the active sub-goal.','Run a specialized agent against one of two local models.','Extract and validate new semantic facts.','Supersede stale values and persist accepted updates atomically.','Prune eligible low-value memory; repeat with bounded context.','Measure the same scenario with linear history and graph memory.'])list.append(html('li','',text));root.append(list);section(root,'Where execution lives','Node 1 owns all Python modules, orchestration, SQLite, and telemetry. Node 2 serves Ollama over the private LAN. Both use locally installed quantized models.');root.append(html('div','note','All eight phases are implemented. The initial measured A/B study is complete. A separate four-condition integrated protocol is implemented. Its first model-driven attempt failed before cohort completion; revised task instructions await a fresh full run. Select the relevant study or verification card for scope and limitations. Synthetic verification remains separate. Click any card, search a path, or explore All components.'));return;}
  const p=phases.get(n.phase),kicker=html('div','detail-kicker');kicker.append(html('span','',n.support?'SUPPORTING FILE':`PHASE ${n.phase} · ${p.name}`),html('span',`badge ${n.status}`,statusLabel(n)));root.append(kicker,html('h2','',n.label));
  if(n.path){const path=html('div','file-path',n.path);root.append(path);if(n.status==='implemented'){const source=html('a','file-path','Open source file ↗');source.href='../'+n.path;source.target='_blank';source.rel='noopener';root.append(source);}}
  root.append(html('p','detail-description',n.description));section(root,'Inputs',n.inputs);section(root,'Outputs',n.outputs);

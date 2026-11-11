@@ -6,7 +6,7 @@ import json
 import random
 import re
 
-VERSION = 'integrated-memory-v1'
+VERSION = 'integrated-memory-v2'
 
 
 @dataclass(frozen=True)
@@ -26,8 +26,10 @@ class Event:
         priority = '' if self.pin_subject is None else f' Critical: preserve {self.pin_subject}.'
         return (f'Observation: {self.observation or "none"}{priority}\n'
                 f'Question: current {self.predicate} values for {self.subject}? '
-                'In content write one sentence per value, using the subject name, predicate, '
-                'actual value, and a period. Write only Unknown. if unsupported.')
+                'In content answer only this subject and predicate using explicit direct facts. '
+                'Write one sentence per value with subject, predicate, value, and a period. '
+                'No repetitions, explanations, reverse or transitive inferences. '
+                'Write only Unknown. if unsupported.')
 
     @property
     def reference_answer(self):

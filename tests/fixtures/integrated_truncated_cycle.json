@@ -1,0 +1,20 @@
+[
+  {
+    "node": "node2",
+    "model": "llama3.2:3b",
+    "response": "{\"content\": \"CycleAXEZP links CycleBXEZP. CycleAXEZP links CycleCXEZP. CycleBXEZP is linked to CycleAXEZP. CycleCXEZP is linked to CycleAXEZP. CycleBXEZP links CycleCXEZP. CycleBXEZP is linked to CycleCXEZP. CycleBXEZP links UnknownXEZP. CycleCXEZP links UnknownXEZP. UnknownXEZP is linked to CycleBXEZP. UnknownXEZP is linked to CycleCXEZP. UnknownXEZP links CycleBXEZP. UnknownXEZP",
+    "prompt_tokens": 469,
+    "generated_tokens": 128,
+    "latency_ms": 65599.13227300058,
+    "done_reason": "length"
+  },
+  {
+    "node": "node2",
+    "model": "llama3.2:3b",
+    "response": "{\"content\": \"CycleAXEZP -- links -- Unknown. CycleAXEZP -- linked to -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- linked to -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP --",
+    "prompt_tokens": 481,
+    "generated_tokens": 128,
+    "latency_ms": 48061.812314001145,
+    "done_reason": "length"
+  }
+]

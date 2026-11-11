@@ -3,6 +3,7 @@
 import asyncio
 from collections import Counter
 import csv
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -19,6 +20,7 @@ from experiments.contracts import load_json,sha256,write_json
 from experiments.integrated_contracts import CONDITIONS,IntegratedPlan,IntegratedRow,project
 from experiments.integrated_scenario import Event,evaluate,fingerprint,records,role_at,workload
 from src.config import Settings
+from src.agents.base_agent import AgentError
 from src.network.ollama_client import OllamaClient
 from src.orchestration import StateMachine
 from src.storage.database import Database
@@ -154,6 +156,65 @@ def test_fingerprint_includes_actual_prompt(monkeypatch):
     original=Event.task.fget;before=fingerprint()
     monkeypatch.setattr(Event,'task',property(lambda self:original(self)+' Changed framing.'))
     assert fingerprint()!=before
+
+
+@pytest.mark.parametrize('variant,semantic_hash',[
+    (1,'fae33b36cc9fa50cd4af024ae8a32fa2d17f742d39198e83d11c3ee42715604a'),
+    (2,'1423aab125cccbf5e355f735a52cd65db683ce890eb0b86a9c900db67da61288'),
+    (3,'ee8ba1ab549e12dd3f06ce36e82835e3f1ed0947b8165a022f48ade1c190de6e'),
+    (4,'c666496b2e43856d2c9802fee3b20a3e65352296df78993e8b9af5c276d1cf40'),
+])
+def test_revised_answer_contract_preserves_observations_and_oracle(variant,semantic_hash):
+    """Frozen v1 schedules exclude task wording; no observations/oracles change."""
+    plan=IntegratedPlan()
+    assert plan.scenario_version=='integrated-memory-v2' and plan.max_tokens==128
+    entries=records(plan.turns,variant)
+    semantic=[{k:v for k,v in entry.items() if k!='task'} for entry in entries]
+    assert hashlib.sha256(json.dumps(semantic,sort_keys=True,separators=(',',':')).encode()).hexdigest()==semantic_hash
+    for entry in entries:
+        assert 'explicit direct facts' in entry['task']
+        assert 'No repetitions, explanations, reverse or transitive inferences.' in entry['task']
+        if entry['category']=='cycle':
+            assert all(value not in entry['task'] for value in entry['expected'])
+
+
+def test_replayed_cycle_truncation_retains_failed_cohort_and_both_attempts(tmp_path):
+    """Replay actual unscored failure text; a revised prompt never bypasses validation."""
+    attempts=load_json(Path(__file__).parent/'fixtures/integrated_truncated_cycle.json')
+    config=settings(tmp_path);fake=SyntheticServer(config);injected=[]
+    async def truncated(request):
+        response=await fake(request)
+        if request.method!='POST':return response
+        body=json.loads(request.content)
+        if body.get('system','').startswith('Extract explicitly') or not body.get('system'):
+            return response
+        task=json.JSONDecoder().raw_decode(body['prompt'].split('TASK\n',1)[1])[0]
+        if fake.inventories==6 and task==workload()[58].task:
+            attempt=attempts[len(injected)];injected.append(body)
+            data=response.json()
+            data.update(response=attempt['response'],done_reason=attempt['done_reason'],
+                eval_count=attempt['generated_tokens'])
+            return httpx.Response(200,json=data)
+        return response
+    output=tmp_path/'failed-cycle'
+    with pytest.raises(AgentError,match='invalid or truncated agent JSON'):
+        asyncio.run(harness.run_integrated(IntegratedPlan(variants=1,warmups_per_node=0),config,
+            output,execute=True,transport=httpx.MockTransport(truncated)))
+    failure=load_json(output/'failure.json');manifest=load_json(output/'manifest.json')
+    assert (failure['condition'],failure['repetition'],failure['step'],failure['stage'])==('D',1,59,'role_turn')
+    assert failure['task']==workload()[58].task and manifest['status']=='FAILED'
+    assert [a['response'] for a in failure['generation_attempts']]==[a['response'] for a in attempts]
+    assert all(a['done_reason']=='length' and a['generated_tokens']==128 for a in failure['generation_attempts'])
+    assert len(injected)==2 and all(b['options']['num_predict']==128 for b in injected)
+    rows=[json.loads(line) for line in (output/'turns.jsonl').read_text().splitlines()]
+    assert len(rows)==178 and rows[-1]['condition']=='D' and rows[-1]['step']==58
+    assert not (output/'C-1.db').exists()
+    with sqlite3.connect((output/'D-1.db').as_uri()+'?mode=ro&immutable=1',uri=True) as connection:
+        assert connection.execute('SELECT status,next_step FROM workflow_runs').fetchall()==[('FAILED',58)]
+        assert connection.execute('SELECT count(*) FROM workflow_turns').fetchone()[0]==58
+    assert all(sha256(output/name)==digest for name,digest in manifest['artifacts'].items())
+    with pytest.raises(ValueError,match='completed protocol-2 bundle'):
+        analysis.analyze_bundle(output)
 
 
 def test_scoring_sets_and_format_are_explicit():

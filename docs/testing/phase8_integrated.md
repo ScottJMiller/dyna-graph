@@ -3,7 +3,10 @@
 This implements a new protocol-2 study alongside the original A/B protocol.
 **Do not execute the model-driven study during implementation verification.**
 All dedicated tests use synthetic HTTP; real HTTP is explicitly blocked. Previous
-measured results and the deterministic pruning report remain unchanged.
+measured results and the deterministic pruning report remain unchanged. The first
+model-driven integrated attempt failed on truncated JSON; its partial rows are
+excluded. The revised `integrated-memory-v2` task framing awaits a fresh full run.
+See the [failure report](../results/integrated-attempt-001/README.md).
 
 ## 1. Setup
 
@@ -23,14 +26,17 @@ private configuration changes, or database migrations are required.
 python3 -m pytest tests/test_phase8_integrated.py -q
 ```
 
-Expected: **59 passed**. Tests cover gates, counterbalanced ordering, all four
+Expected: **64 passed**. Tests cover gates, counterbalanced ordering, all four
 policies, 60/70/80-turn workloads, actual prompt fingerprints, set-valued scoring,
 full offline execution including four variants at 80 turns, logical versus real
 clocks, explicit scenario turns, pin/multi-value preservation, pruning and delayed
 loss, missing counters, failed/cancelled cohorts, immutable output directories,
 artifact corruption, deliberately rewritten evidence checksums, SQLite agreement,
 legacy measured-bundle analysis, six figure sets and private-path exclusions.
-Synthetic fixture accuracy, token counts and timings are not research results.
+Checks also replay both original D1/59 truncated replies, retain the 178-row
+failed cohort and its durable 58-turn D1 checkpoint, and verify frozen semantic
+schedule hashes across four variants. Synthetic fixture accuracy, token counts
+and timings are not research results.
 
 ## 3. Inspect the declared plan without running it
 
@@ -62,7 +68,7 @@ git diff --check
 git check-ignore .env .verification/ data/experiments/
 ```
 
-Expected: **791 passed, 18 skipped**, **7 geometry checks passed**, no whitespace
+Expected: **796 passed, 18 skipped**, **7 geometry checks passed**, no whitespace
 errors, and the three private/runtime paths listed as ignored. The skipped checks
 are 16 earlier LAN tests and two opt-in storage/retrieval performance checks.
 Do not enable `--run-lan` as part of this offline extension acceptance.
@@ -127,7 +133,12 @@ This measures routed-input exposure and later consumers through a central graph;
 it does not claim autonomous information discovery, direct peer messaging,
 replicated storage, out-of-order event resolution or partition tolerance.
 
-The answer contract is one factual sentence per value, or `Unknown.`. Scoring
+The answer contract is one factual sentence per value, or `Unknown.`. Scenario
+`integrated-memory-v2` explicitly limits answers to direct facts for the requested
+subject/predicate and forbids repetition, explanations, reverse and transitive
+inferences. This applies to every condition. Prompt framing and fingerprints
+change; observations, oracle metadata, scoring and the output cap do not. Longer
+framing can reduce the actual shared memory allowance. Scoring
 compares normalized complete fact sets, accepting value order differences. Format
 validity is reported separately, but invalid-format answers remain incorrect in
 the primary score. This is a narrow operational contract, not semantic judging.
@@ -176,22 +187,24 @@ failure-source/raw-attempt diagnostics. Analysis rejects partial cohorts. There
 is no automatic experiment resume; use a fresh directory after investigating.
 Existing application data and earlier evidence are never overwritten.
 
-## 8. Later, separately approved execution
+## 8. Fresh, separately approved execution
 
-These commands are a reference for a later approved model-driven run. They are
-**not part of implementation verification and have not been run**:
+These commands reference a fresh approved model-driven cohort after the failed
+first attempt. They are **not part of implementation verification**; the revised
+scenario has not completed a full model-driven run. Do not resume the failed
+bundle or reuse its completed conditions. Choose fresh paths:
 
 ```bash
-python3 -m experiments.integrated_harness --execute --output data/experiments/integrated-001
-python3 -m experiments.integrated_analysis --input data/experiments/integrated-001 --output data/experiments/integrated-001-analysis
-python3 -m experiments.integrated_analysis --input data/experiments/integrated-001 --output data/experiments/integrated-001-figures --figures
+python3 -m experiments.integrated_harness --execute --output data/experiments/integrated-20261111-002
+python3 -m experiments.integrated_analysis --input data/experiments/integrated-20261111-002 --output data/experiments/integrated-20261111-002-analysis
+python3 -m experiments.integrated_analysis --input data/experiments/integrated-20261111-002 --output data/experiments/integrated-20261111-002-figures --figures
 ```
 
 Expected after a successful future run: progress through all 960 scored turns,
 `INTEGRATED EXPERIMENT COMPLETE: <bundle_id>`,
 `INTEGRATED ANALYSIS OK: source=measured variants=4 contrasts=12`, and
 `FIGURES OK: 18 files (SVG, PDF, PNG)`. Choose fresh output paths for every step.
-Actual run duration has not been measured. Figures distinguish simulated aging
+Full-cohort run duration has not been measured. Figures distinguish simulated aging
 from actual measured inference; synthetic test figures have a prominent label.
 
 The original commands under `experiments.benchmark_harness`,
@@ -200,15 +213,31 @@ entry points. Do not pass protocol-2 bundles to the original analyzer or mix row
 from the studies. The original [measured report](../results/study-20261111-002/README.md)
 and [pruning probe](../results/pruning-probe-001/README.md) remain historical evidence.
 
-## 9. Commit message
+## 9. Failure diagnosis and restart boundary
+
+The first attempt (`integrated-memory-v1`) failed in D1 turn 59 after 178 saved
+turns. Both node2 responses exhausted 128 tokens while repeating cycle links.
+The incomplete JSON was correctly rejected. The original bundle, raw attempts,
+checksums and earlier studies remain unchanged; partial rows are excluded.
+
+Three unscored diagnostic calls with the revised instructions completed JSON in
+one attempt each (63/48/31 tokens). None met the strict answer contract. The
+format-checking diagnostic consequently exited nonzero; that is not another
+failed experimental run. These checks do not guarantee future completion or
+factual fidelity. Existing unsupported response-derived facts remain visible;
+no oracle filtering or graph repair was used. The cap, retry count and parser
+remain unchanged. See the [selected evidence and limitations](../results/integrated-attempt-001/README.md).
+
+A fresh full run requires separate approval after this fix is verified. Imports,
+plan-only commands and tests never restart it automatically.
+
+## 10. Commit message
 
 ```text
-feat(experiments): add integrated four-condition memory study
+fix(experiments): narrow integrated recall instructions after truncation
 
-- preserve the original A/B protocol and historical result bundles
-- add counterbalanced long-horizon workloads and component comparisons
-- synchronize simulated governance time and explicit scenario turns
-- retain real timestamps, complete costs and staged memory diagnostics
-- validate transition replay, durable checkpoints and comparison artifacts
-- add offline regression, synthetic figure checks and generic documentation
+- version direct-fact task framing without changing observations or oracle
+- preserve the excluded attempt and all three unscored diagnostic outcomes
+- replay truncated replies and verify failed-cohort evidence integrity
+- retain the token cap, strict parser and fresh-cohort approval boundary
 ```

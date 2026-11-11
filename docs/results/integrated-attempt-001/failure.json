@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "bundle_id": "269d96eb49d14808bc27330e5f9259a5",
+  "source": "measured",
+  "condition": "D",
+  "repetition": 1,
+  "step": 59,
+  "stage": "role_turn",
+  "task": "Observation: NoiseXEZP59 uses Cache790749.\nQuestion: current links values for CycleAXEZP? In content write one sentence per value, using the subject name, predicate, actual value, and a period. Write only Unknown. if unsupported.",
+  "error_type": "AgentError",
+  "source_message": null,
+  "validation_errors": [],
+  "generation_attempts": [
+    {
+      "node": "node2",
+      "model": "llama3.2:3b",
+      "response": "{\"content\": \"CycleAXEZP links CycleBXEZP. CycleAXEZP links CycleCXEZP. CycleBXEZP is linked to CycleAXEZP. CycleCXEZP is linked to CycleAXEZP. CycleBXEZP links CycleCXEZP. CycleBXEZP is linked to CycleCXEZP. CycleBXEZP links UnknownXEZP. CycleCXEZP links UnknownXEZP. UnknownXEZP is linked to CycleBXEZP. UnknownXEZP is linked to CycleCXEZP. UnknownXEZP links CycleBXEZP. UnknownXEZP",
+      "prompt_tokens": 469,
+      "generated_tokens": 128,
+      "latency_ms": 65599.13227300058,
+      "done_reason": "length"
+    },
+    {
+      "node": "node2",
+      "model": "llama3.2:3b",
+      "response": "{\"content\": \"CycleAXEZP -- links -- Unknown. CycleAXEZP -- linked to -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- linked to -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP -- links -- Unknown. CycleAXEZP --",
+      "prompt_tokens": 481,
+      "generated_tokens": 128,
+      "latency_ms": 48061.812314001145,
+      "done_reason": "length"
+    }
+  ]
+}
