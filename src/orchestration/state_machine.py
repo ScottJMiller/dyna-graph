@@ -12,11 +12,11 @@ from typing import Callable
 from uuid import uuid4
 
 from src.agents import AgentResult, BaseAgent, default_agents
-from src.agents.base_agent import encode, text
+from src.agents.base_agent import AgentError, encode, rejected_reply, reply_failure_evidence, text
 from src.extraction import Extractor
 from src.governance import GovernedWriter, Pruner
 from src.governance.decay import _number
-from src.models import AgentMessage, SemanticTriple
+from src.models import AgentMessage, ExtractedGraph, SemanticTriple
 from src.retrieval import ContextAssembler, ContextResult
 from src.storage.graph_store import GraphStore
 from src.telemetry.profiler import TelemetryProfiler
@@ -75,6 +75,14 @@ class TurnResult:
     extraction: object
 
 
+@dataclass(frozen=True)
+class _SkippedExtraction:
+    """No request was made and no model fact was accepted."""
+    graph: ExtractedGraph
+    attempts: tuple = ()
+    skipped_reason: str = "invalid_agent_reply"
+
+
 def _run_id(value):
     if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", value):
         raise ValueError("run_id must have 1-64 ASCII letters, digits, underscores or hyphens")
@@ -128,12 +136,15 @@ class StateMachine:
     Failed/cancelled runs resume at their next uncommitted step. A RUNNING row
     requires explicit interrupted-process recovery; never recover a live owner.
     Accepted memory updates and the durable turn checkpoint commit together.
+    Tool-free callers may opt into recording bounded reply rejections as turns;
+    those turns accept no model answer or response facts. Other errors still fail.
     """
 
     def __init__(self, client, graph: GraphStore, *, agents=None, extractor=None,
                  accept_fact: Callable[[SemanticTriple, AgentMessage], bool] | None = None,
                  clock: Callable[[], float] = time.time, profiler: TelemetryProfiler | None = None,
-                 observation_clock: Callable[[], float] | None = None):
+                 observation_clock: Callable[[], float] | None = None,
+                 record_reply_errors: bool = False):
         self.client, self.graph, self.settings = client, graph, client.settings
         self.agents = tuple(default_agents(client) if agents is None else agents)
         if not 1 <= len(self.agents) <= 16 or any(not isinstance(a, BaseAgent) for a in self.agents):
@@ -149,6 +160,11 @@ class StateMachine:
             raise ValueError("extractor must share the caller-owned client")
         if observation_clock is not None and not callable(observation_clock):
             raise ValueError("observation_clock must be callable")
+        if type(record_reply_errors) is not bool:
+            raise ValueError("record_reply_errors must be boolean")
+        if record_reply_errors and any(a.tools or a.max_tool_rounds for a in self.agents):
+            raise ValueError("record_reply_errors requires tool-free roles with zero tool rounds")
+        self.record_reply_errors = record_reply_errors
         self.observation_clock = clock if observation_clock is None else observation_clock
         self.accept_fact, self.clock = accept_fact, clock
         self.profiler = TelemetryProfiler() if profiler is None else profiler
@@ -170,6 +186,8 @@ class StateMachine:
         }
         if observation_clock is not None:
             configuration["separate_observation_clock"] = True
+        if record_reply_errors:
+            configuration["reply_error_policy"] = "record_rejected_reply_v1"
         self.config_hash = hashlib.sha256(encode(configuration).encode()).hexdigest()
 
     async def get_checkpoint(self, run_id: str) -> RunCheckpoint:
@@ -261,11 +279,19 @@ class StateMachine:
                     fanout=self.settings.retrieval_fanout)
                 context = await assembler.assemble_async(checkpoint.subgoal)
                 self.stage = Stage.GENERATE
-                result = await agent.execute(checkpoint.task, checkpoint.subgoal, context.text, turn=step,
-                    allow_fallback=self.settings.orchestration_allow_fallback)
+                try:
+                    result = await agent.execute(checkpoint.task, checkpoint.subgoal, context.text, turn=step,
+                        allow_fallback=self.settings.orchestration_allow_fallback)
+                except AgentError as exc:
+                    if not self.record_reply_errors:
+                        raise
+                    result = rejected_reply(exc, agent_id=agent.agent_id, turn=step)
                 self.stage = Stage.EXTRACT
-                extracted = await self.extractor.extract(result.message, node="node2",
-                    allow_fallback=self.settings.orchestration_allow_fallback)
+                if result.reply_error is None:
+                    extracted = await self.extractor.extract(result.message, node="node2",
+                        allow_fallback=self.settings.orchestration_allow_fallback)
+                else:
+                    extracted = _SkippedExtraction(ExtractedGraph(triples=[]))
                 accepted = []
                 for fact in extracted.graph.triples:
                     decision = True if self.accept_fact is None else self.accept_fact(
@@ -313,6 +339,8 @@ class StateMachine:
                             "agent_generations": [_generation(g) for g in result.generations],
                             "extraction_attempts": [_generation(g) for g in extracted.attempts],
                             "tools": [asdict(t) for t in result.tools]}
+                        if self.record_reply_errors:
+                            payload["reply_failure"] = reply_failure_evidence(result)
                         payload["telemetry"] = self.profiler.capture(connection, run_id=run_id, step=step,
                             governance_turn=turn, agent_id=agent.agent_id, node=result.generation.node,
                             observed_at=observed_at, started=started, agent=result, extraction=extracted,

@@ -1,4 +1,4 @@
-"""Offline protocol-2 validation; synthetic HTTP is mandatory for these tests."""
+"""Offline protocol-3 validation; synthetic HTTP is mandatory for these tests."""
 
 import asyncio
 from collections import Counter
@@ -77,7 +77,7 @@ class SyntheticServer:
                     if p=='uses':known[(s,p)]={o}
                     else:known.setdefault((s,p),set()).add(o)
             if context.startswith('['):
-                for entry in json.loads(context):add(self.facts(entry['task']));add(self.facts(entry['answer']))
+                for entry in json.JSONDecoder().raw_decode(context)[0]:add(self.facts(entry['task']));add(self.facts(entry['answer'] or ''))
             else:add(re.findall(r'"([A-Za-z0-9]+)" -- "(uses|supports|links)" --> "([A-Za-z0-9]+)"',context))
             add(self.facts(task.split('\n')[0]))
             predicate,subject=re.search(r'Question: current (uses|supports|links) values for ([A-Za-z0-9]+)\?',task).groups()
@@ -178,10 +178,10 @@ def test_revised_answer_contract_preserves_observations_and_oracle(variant,seman
             assert all(value not in entry['task'] for value in entry['expected'])
 
 
-def test_replayed_cycle_truncation_retains_failed_cohort_and_both_attempts(tmp_path):
-    """Replay actual unscored failure text; a revised prompt never bypasses validation."""
-    attempts=load_json(Path(__file__).parent/'fixtures/integrated_truncated_cycle.json')
-    config=settings(tmp_path);fake=SyntheticServer(config);injected=[]
+def make_reply_rejections(tmp_path,condition='C',fixture='integrated_truncated_cycle_v2.json',*,missing=False):
+    attempts=load_json(Path(__file__).parent/'fixtures'/fixture)
+    config=settings(tmp_path);fake=SyntheticServer(config,missing=missing);injected=[]
+    inventory=2*('ABDC'.index(condition)+1)
     async def truncated(request):
         response=await fake(request)
         if request.method!='POST':return response
@@ -189,32 +189,153 @@ def test_replayed_cycle_truncation_retains_failed_cohort_and_both_attempts(tmp_p
         if body.get('system','').startswith('Extract explicitly') or not body.get('system'):
             return response
         task=json.JSONDecoder().raw_decode(body['prompt'].split('TASK\n',1)[1])[0]
-        if fake.inventories==6 and task==workload()[58].task:
+        if fake.inventories==inventory and task==workload()[58].task:
             attempt=attempts[len(injected)];injected.append(body)
             data=response.json()
-            data.update(response=attempt['response'],done_reason=attempt['done_reason'],
-                eval_count=attempt['generated_tokens'])
+            data.update(response=attempt['response'],done_reason=attempt['done_reason'])
+            if not missing:data['eval_count']=attempt['generated_tokens']
             return httpx.Response(200,json=data)
         return response
-    output=tmp_path/'failed-cycle'
-    with pytest.raises(AgentError,match='invalid or truncated agent JSON'):
-        asyncio.run(harness.run_integrated(IntegratedPlan(variants=1,warmups_per_node=0),config,
-            output,execute=True,transport=httpx.MockTransport(truncated)))
-    failure=load_json(output/'failure.json');manifest=load_json(output/'manifest.json')
-    assert (failure['condition'],failure['repetition'],failure['step'],failure['stage'])==('D',1,59,'role_turn')
-    assert failure['task']==workload()[58].task and manifest['status']=='FAILED'
-    assert [a['response'] for a in failure['generation_attempts']]==[a['response'] for a in attempts]
-    assert all(a['done_reason']=='length' and a['generated_tokens']==128 for a in failure['generation_attempts'])
+    output=tmp_path/'rejected-cycle'
+    manifest=asyncio.run(harness.run_integrated(IntegratedPlan(variants=1,warmups_per_node=0),config,
+        output,execute=True,transport=httpx.MockTransport(truncated)))
+    return output,manifest,injected,attempts
+
+
+@pytest.mark.parametrize('condition',list('ABCD'))
+@pytest.mark.parametrize('fixture',['integrated_truncated_cycle.json','integrated_truncated_cycle_v2.json'])
+def test_both_recorded_truncations_are_scored_and_checkpointed_in_every_condition(tmp_path,condition,fixture):
+    output,manifest,injected,attempts=make_reply_rejections(tmp_path,condition,fixture)
+    _,_,rows,_=analysis.load_bundle(output)
+    rejected=next(r for r in rows if r.condition==condition and r.step==59)
+    following=next(r for r in rows if r.condition==condition and r.step==60)
+    assert manifest['status']=='COMPLETED' and len(rows)==240 and not (output/'failure.json').exists()
+    assert rejected.answer is None and not rejected.correct and not rejected.format_valid
+    assert [a.response for a in rejected.reply_failure.attempts]==[a['response'] for a in attempts]
+    assert all(a.done_reason=='length' and a.generated_tokens==128 for a in rejected.reply_failure.attempts)
     assert len(injected)==2 and all(b['options']['num_predict']==128 for b in injected)
-    rows=[json.loads(line) for line in (output/'turns.jsonl').read_text().splitlines()]
-    assert len(rows)==178 and rows[-1]['condition']=='D' and rows[-1]['step']==58
-    assert not (output/'C-1.db').exists()
-    with sqlite3.connect((output/'D-1.db').as_uri()+'?mode=ro&immutable=1',uri=True) as connection:
-        assert connection.execute('SELECT status,next_step FROM workflow_runs').fetchall()==[('FAILED',58)]
-        assert connection.execute('SELECT count(*) FROM workflow_turns').fetchone()[0]==58
+    assert rejected.telemetry.agent_calls==2 and rejected.telemetry.generated_tokens==256
+    assert rejected.telemetry.extraction_calls==0 and not rejected.response_facts
+    assert rejected.telemetry.agent_prompt_tokens==sum(a.prompt_tokens for a in rejected.reply_failure.attempts)
+    assert following.step==60 and following.reply_failure is None
+    assert following.logical_time-rejected.logical_time==7200
+    if condition=='A':
+        assert any(e['task']==rejected.task and e['answer'] is None for e in json.loads(following.context))
+    else:
+        with sqlite3.connect((output/f'{condition}-1.db').as_uri()+'?mode=ro&immutable=1',uri=True) as c:
+            assert c.execute('SELECT status,next_step FROM workflow_runs').fetchall()==[('COMPLETED',60)]
+            payload=json.loads(c.execute('SELECT result FROM workflow_turns WHERE step=59').fetchone()[0])
+            assert payload['reply_failure']==rejected.reply_failure.model_dump(mode='json')
+            assert payload['extraction_attempts']==payload['fact_ids']==[]
+            assert len(payload['agent_generations'])==2
     assert all(sha256(output/name)==digest for name,digest in manifest['artifacts'].items())
-    with pytest.raises(ValueError,match='completed protocol-2 bundle'):
-        analysis.analyze_bundle(output)
+    report=analysis.analyze_bundle(output)
+    assert report['conditions'][condition]['invalid_reply_turns']==1
+    assert report['conditions'][condition]['invalid_reply_rate']==1/60
+    assert report['conditions'][condition]['turns']==60
+
+
+def test_rejected_reply_missing_counters_remain_unknown(tmp_path):
+    output,_,_,_=make_reply_rejections(tmp_path,missing=True)
+    row=next(r for r in analysis.load_bundle(output)[2] if r.condition=='C' and r.step==59)
+    assert row.telemetry.agent_prompt_tokens is row.telemetry.generated_tokens is row.total_prompt_tokens is None
+    assert row.telemetry.extraction_prompt_tokens==0
+
+
+@pytest.mark.parametrize('kind',['truncated','json','schema','duplicate','unknown_length'])
+def test_every_invalid_role_reply_counts_against_accuracy_without_aborting(tmp_path,kind):
+    config=settings(tmp_path);fake=SyntheticServer(config)
+    outputs={'truncated':'{"content":','json':'not json','schema':'{"content":7}',
+        'duplicate':'{"content":"Unknown.","content":"Unknown."}',
+        'unknown_length':'{"content":"Unknown."}'}
+    async def invalid(request):
+        response=await fake(request)
+        if request.method=='POST' and json.loads(request.content).get('system','').startswith('You are'):
+            data=response.json();data['response']=outputs[kind]
+            if kind in ('truncated','unknown_length'):data.update(done_reason='length',eval_count=128)
+            return httpx.Response(200,json=data)
+        return response
+    output=tmp_path/'all-invalid'
+    manifest=asyncio.run(harness.run_integrated(IntegratedPlan(variants=1,warmups_per_node=0),config,
+        output,execute=True,transport=httpx.MockTransport(invalid)))
+    _,_,rows,_=analysis.load_bundle(output)
+    assert manifest['status']=='COMPLETED' and len(rows)==240
+    assert all(r.answer is None and not r.correct and not r.format_valid and r.reply_failure for r in rows)
+    assert all(r.telemetry.agent_calls==2 and r.telemetry.extraction_calls==0 and not r.response_facts for r in rows)
+    report=analysis.analyze_bundle(output)
+    assert all(c['turns']==c['invalid_reply_turns']==60 and c['accuracy']==0 for c in report['conditions'].values())
+
+
+@pytest.mark.parametrize('kind',['tool','prompt_budget','oversized'])
+def test_non_reply_or_oversized_errors_are_never_converted_into_outcomes(kind):
+    from src.agents.base_agent import rejected_reply
+    from src.network.ollama_client import GenerationResult
+    attempt=GenerationResult(node='node1',model='local',response='x'*(16385 if kind=='oversized' else 1),
+        latency_ms=1.,node_latency_ms=1.,server_duration_ms=None,generated_tokens=None,failed_attempts=())
+    error=AgentError('reply' if kind=='oversized' else kind,'injected',(attempt,))
+    with pytest.raises(AgentError) as caught:rejected_reply(error,agent_id='planner',turn=1)
+    assert caught.value is error
+
+
+@pytest.mark.parametrize('attack',['score','answer','failure','cost','valid_attempt','sqlite'])
+def test_rejected_reply_evidence_cannot_be_rewritten_into_success(tmp_path,attack):
+    output,_,_,_=make_reply_rejections(tmp_path)
+    if attack=='sqlite':
+        db=output/'C-1.db'
+        with sqlite3.connect(db) as c:
+            payload=json.loads(c.execute('SELECT result FROM workflow_turns WHERE step=59').fetchone()[0])
+            payload['reply_failure']=None
+            c.execute('UPDATE workflow_turns SET result=? WHERE step=59',(json.dumps(payload),))
+        c.close()
+        m=load_json(output/'manifest.json');m['artifacts'][db.name]=sha256(db);write_json(output/'manifest.json',m)
+    else:
+        def change(rows):
+            row=next(r for r in rows if r['condition']=='C' and r['step']==59)
+            if attack=='score':row['correct']=row['format_valid']=True
+            elif attack=='answer':row['answer']='Unknown.'
+            elif attack=='failure':row['reply_failure']=None
+            elif attack=='cost':row['reply_failure']['attempts'][0]['prompt_tokens']+=1
+            elif attack=='valid_attempt':
+                row['reply_failure']['attempts'][0].update(response='{"content":"Unknown."}',done_reason='stop')
+        rewrite_rows(output,change)
+    with pytest.raises(ValueError):analysis.analyze_bundle(output)
+
+
+def test_ordinary_workflow_still_raises_on_invalid_agent_reply(tmp_path):
+    config=settings(tmp_path);fake=SyntheticServer(config)
+    async def truncated(request):
+        response=await fake(request)
+        if request.method=='POST' and json.loads(request.content).get('system','').startswith('You are'):
+            data=response.json();data.update(response='{"content":',done_reason='length')
+            return httpx.Response(200,json=data)
+        return response
+    async def run():
+        async with OllamaClient(config,transport=httpx.MockTransport(truncated)) as client:
+            async with Database(tmp_path/'ordinary.db') as database:
+                machine=StateMachine(client,GraphStore(database))
+                cp=await machine.start(workload()[0].task,initial_subgoal=workload()[0].subject,max_turns=1)
+                with pytest.raises(AgentError):await machine.step(cp.id)
+                assert (await machine.get_checkpoint(cp.id)).status=='FAILED'
+                assert not await machine.history(cp.id)
+                with pytest.raises(ValueError,match='boolean'):StateMachine(client,machine.graph,record_reply_errors=1)
+                with pytest.raises(ValueError,match='tool-free'):StateMachine(client,machine.graph,record_reply_errors=True)
+    asyncio.run(run())
+
+
+def test_reply_error_policy_is_part_of_workflow_compatibility(tmp_path):
+    config=harness.configure(settings(tmp_path),IntegratedPlan(),'C');fake=SyntheticServer(config)
+    async def run():
+        async with OllamaClient(config,transport=httpx.MockTransport(fake)) as client:
+            async with Database(tmp_path/'policy.db') as database:
+                graph=GraphStore(database);agents=harness._agents(client)
+                normal=StateMachine(client,graph,agents=agents)
+                recorded=StateMachine(client,graph,agents=agents,record_reply_errors=True)
+                assert normal.config_hash!=recorded.config_hash
+                cp=await normal.start(workload()[0].task,initial_subgoal=workload()[0].subject,max_turns=1)
+                with pytest.raises(Exception,match='configuration differs'):await recorded.step(cp.id)
+                assert not fake.posts
+    asyncio.run(run())
+
 
 
 def test_scoring_sets_and_format_are_explicit():

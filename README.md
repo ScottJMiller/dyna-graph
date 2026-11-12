@@ -106,11 +106,15 @@ PDF, and PNG figures; synthetic test figures are visibly labeled. The completed
 measured case study is linked above and kept separate from synthetic verification.
 
 A separate [integrated protocol](docs/testing/phase8_integrated.md) is implemented
-and awaits a completed model-driven cohort. Its [first attempt](docs/results/integrated-attempt-001/README.md)
-failed on truncated agent JSON; its partial rows are excluded. Revised task
-instructions remain subject to a fresh full run. It compares bounded history,
-graph memory alone,
-graph memory with supersession, and graph memory with supersession plus pruning.
+and awaits a completed model-driven cohort. Two attempts
+([first](docs/results/integrated-attempt-001/README.md),
+[second](docs/results/integrated-attempt-002/README.md)) aborted on truncated agent
+JSON; all partial rows are excluded. Protocol 3 records bounded invalid replies
+as incorrect turns, preserves their full attempt costs, and skips response
+extraction for those turns. All four conditions use that policy. Ordinary
+application workflows still raise on invalid replies by default. It compares
+bounded history, graph memory alone, graph with supersession, and graph with
+supersession plus pruning.
 The default plan uses four counterbalanced workload variants, 60 turns per
 condition, and explicitly simulated memory aging: **960 scored role turns**.
 It records delayed recall, pruning losses, active conflicts, cross-node consumers
@@ -543,7 +547,7 @@ Run the functional suite without network access or Ollama:
 python3 -m pytest -q
 ```
 
-Expected: **796 passed, 18 skipped**. The skips are checks that need physical LAN
+Expected: **820 passed, 18 skipped**. The skips are checks that need physical LAN
 nodes or explicitly requested storage/retrieval benchmarks. Run those separately:
 
 ```bash

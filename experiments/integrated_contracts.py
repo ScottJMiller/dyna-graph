@@ -1,4 +1,4 @@
-"""Protocol-2 contracts, independent of the original A/B schemas."""
+"""Protocol-3 contracts with explicit rejected-reply outcomes."""
 
 from typing import Literal
 from pydantic import Field, model_validator
@@ -15,6 +15,11 @@ CONDITIONS = {
 }
 ORDERS = ('ABDC','BCAD','CDBA','DACB')
 GENERATION_PROTOCOL = dict(context_tokens=2048,temperature=0,keep_alive='5m',extractor_max_tokens=512,extractor_max_retries=1)
+REPLY_ERROR_POLICY = dict(version=1,classification='bounded_invalid_agent_json_after_correction',
+    score='incorrect_and_format_invalid',answer=None,response_extraction='skipped',
+    graph_policy='mark_supplied_memory_used_then_normal_pruning_and_checkpoint',
+    baseline_history='retain_task_with_null_answer',costs='include_all_generation_attempts',
+    other_errors='abort_cohort',maximum_attempt_chars=16384)
 PRIMARY_OUTCOMES = ['delayed_answer_accuracy_by_variant','full_pipeline_prompt_tokens_by_variant',
     'single_value_conflicts','active_graph_size_and_missing_required_support']
 HYPOTHESES = {'supersession':'Compare C minus B for active single-value conflicts and answer accuracy.',
@@ -22,7 +27,7 @@ HYPOTHESES = {'supersession':'Compare C minus B for active single-value conflict
 
 
 class IntegratedPlan(Strict):
-    version: Literal[2] = 2
+    version: Literal[3] = 3
     scenario_version: Literal[VERSION] = VERSION
     turns: int = Field(default=60,ge=60,le=80)
     variants: int = Field(default=4,ge=1,le=8)
@@ -75,8 +80,32 @@ class Change(Strict):
     fact: FactState
 
 
+class ReplyAttempt(Strict):
+    node: Literal['node1','node2']
+    model: str = Field(min_length=1,max_length=256)
+    response: str = Field(max_length=16384)
+    prompt_tokens: int | None = Field(ge=0)
+    generated_tokens: int | None = Field(ge=0)
+    latency_ms: float = Field(ge=0)
+    done_reason: str | None = Field(max_length=256)
+
+    @model_validator(mode='after')
+    def rejected_by_original_parser(self):
+        from src.agents.base_agent import parse_reply
+        try:
+            parse_reply(self)
+        except (ValueError,RecursionError):
+            return self
+        raise ValueError('reply failure contains a valid accepted reply')
+
+
+class ReplyFailure(Strict):
+    kind: Literal['invalid_or_truncated_json']
+    attempts: tuple[ReplyAttempt,...] = Field(min_length=1,max_length=2)
+
+
 class IntegratedRow(Strict):
-    version: Literal[2] = 2
+    version: Literal[3] = 3
     source: Literal['measured','synthetic']
     bundle_id: str = Field(pattern=r'^[a-f0-9]{32}$')
     condition: Literal['A','B','C','D']
@@ -86,7 +115,8 @@ class IntegratedRow(Strict):
     scenario_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
     task: str = Field(max_length=500)
     observation: str = Field(max_length=2000)
-    answer: str = Field(min_length=1,max_length=2000)
+    answer: str | None = Field(min_length=1,max_length=2000)
+    reply_failure: ReplyFailure | None = None
     format_valid: bool
     correct: bool
     context: str = Field(max_length=1000)
@@ -123,6 +153,20 @@ class IntegratedRow(Strict):
             raise ValueError('context byte count mismatch')
         if self.correct and not self.format_valid:
             raise ValueError('invalid answer cannot be correct')
+        if self.reply_failure is None:
+            if self.answer is None:
+                raise ValueError('an accepted reply must contain an answer')
+        else:
+            if self.answer is not None or self.correct or self.format_valid or self.response_facts or self.telemetry.extraction_calls:
+                raise ValueError('a rejected reply has no accepted answer or response extraction')
+            attempts=self.reply_failure.attempts
+            def total(field):
+                values=[getattr(a,field) for a in attempts]
+                return None if any(v is None for v in values) else sum(values)
+            if (self.telemetry.agent_calls!=len(attempts) or self.telemetry.agent_prompt_tokens!=total('prompt_tokens') or
+                    self.telemetry.generated_tokens!=total('generated_tokens') or
+                    abs(self.telemetry.agent_latency_ms-sum(a.latency_ms for a in attempts))>1e-6):
+                raise ValueError('rejected reply cost differs from actual generation attempts')
         if self.condition == 'A' and (self.observation_calls or self.telemetry.extraction_calls or self.changes or
                 self.context_triple_ids or self.memory_before.active_nodes or self.memory_after.active_nodes):
             raise ValueError('linear baseline must not use graph memory')
@@ -156,7 +200,8 @@ def project(row, event):
     cross = any(role_at(s)[1] != row.telemetry.node for s in event.source_steps)
     return dict(condition=row.condition,variant=row.variant,step=row.step,category=event.category,
         lag=event.recall_gap,source_age=None if not event.source_steps else row.step-min(event.source_steps),cross_node=cross,
-        correct=row.correct,format_valid=row.format_valid,support_available=available,support_supplied=supplied,support_in_input=in_input,total_support_supplied=combined,
+        correct=row.correct,format_valid=row.format_valid,reply_failed=row.reply_failure is not None,
+        support_available=available,support_supplied=supplied,support_in_input=in_input,total_support_supplied=combined,
         missing_support_states="|".join(sorted(missing_states)),
         logical_time=row.logical_time,observed_at=row.telemetry.observed_at,
         memory_bytes=row.telemetry.context_budget_used,memory_allowance=row.telemetry.context_budget_limit,

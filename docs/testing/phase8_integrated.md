@@ -1,12 +1,14 @@
 # Phase 8 extension: Integrated memory experiment verification
 
-This implements a new protocol-2 study alongside the original A/B protocol.
+This implements a new protocol-3 study alongside the original A/B protocol.
 **Do not execute the model-driven study during implementation verification.**
 All dedicated tests use synthetic HTTP; real HTTP is explicitly blocked. Previous
-measured results and the deterministic pruning report remain unchanged. The first
-model-driven integrated attempt failed on truncated JSON; its partial rows are
-excluded. The revised `integrated-memory-v2` task framing awaits a fresh full run.
-See the [failure report](../results/integrated-attempt-001/README.md).
+measured results and the deterministic pruning report remain unchanged. Both
+model-driven integrated attempts aborted on truncated JSON. Their partial rows
+are excluded. Protocol 3 now records bounded invalid agent replies as incorrect
+turns under one common policy; a fresh complete cohort awaits approval. See the
+[first](../results/integrated-attempt-001/README.md) and
+[second failure report](../results/integrated-attempt-002/README.md).
 
 ## 1. Setup
 
@@ -26,17 +28,20 @@ private configuration changes, or database migrations are required.
 python3 -m pytest tests/test_phase8_integrated.py -q
 ```
 
-Expected: **64 passed**. Tests cover gates, counterbalanced ordering, all four
+Expected: **88 passed**. Tests cover gates, counterbalanced ordering, all four
 policies, 60/70/80-turn workloads, actual prompt fingerprints, set-valued scoring,
 full offline execution including four variants at 80 turns, logical versus real
 clocks, explicit scenario turns, pin/multi-value preservation, pruning and delayed
 loss, missing counters, failed/cancelled cohorts, immutable output directories,
 artifact corruption, deliberately rewritten evidence checksums, SQLite agreement,
 legacy measured-bundle analysis, six figure sets and private-path exclusions.
-Checks also replay both original D1/59 truncated replies, retain the 178-row
-failed cohort and its durable 58-turn D1 checkpoint, and verify frozen semantic
-schedule hashes across four variants. Synthetic fixture accuracy, token counts
-and timings are not research results.
+Checks replay both real truncation cases across A/B/C/D, commit rejected turns
+and the following scheduled turn, preserve attempt costs and unknown counters,
+and reject tampered success/cost/SQLite records. They also run entire synthetic
+cohorts with every role reply invalid (including valid-looking `Unknown.` stopped
+by length), and check default workflow exceptions, recording opt-in compatibility,
+oversized/non-reply error propagation and frozen four-variant schedule hashes.
+Synthetic accuracy, token counts and timings are not research findings.
 
 ## 3. Inspect the declared plan without running it
 
@@ -50,7 +55,7 @@ Expected first line:
 PLAN ONLY: 16 condition runs; 960 scored turns; no model requests or experiment files
 ```
 
-The printed JSON includes the policies' fixed parameters, scenario fingerprints,
+The printed JSON includes the declared reply-error policy, fixed parameters, scenario fingerprints,
 and condition order. This command does not load `.env`, contact models, create
 outputs or initialize databases. `--output` alone remains plan-only. A partial
 plan such as `--variants 1` has four conditions but is not fully counterbalanced.
@@ -68,7 +73,7 @@ git diff --check
 git check-ignore .env .verification/ data/experiments/
 ```
 
-Expected: **796 passed, 18 skipped**, **7 geometry checks passed**, no whitespace
+Expected: **820 passed, 18 skipped**, **7 geometry checks passed**, no whitespace
 errors, and the three private/runtime paths listed as ignored. The skipped checks
 are 16 earlier LAN tests and two opt-in storage/retrieval performance checks.
 Do not enable `--run-lan` as part of this offline extension acceptance.
@@ -136,12 +141,25 @@ replicated storage, out-of-order event resolution or partition tolerance.
 The answer contract is one factual sentence per value, or `Unknown.`. Scenario
 `integrated-memory-v2` explicitly limits answers to direct facts for the requested
 subject/predicate and forbids repetition, explanations, reverse and transitive
-inferences. This applies to every condition. Prompt framing and fingerprints
-change; observations, oracle metadata, scoring and the output cap do not. Longer
-framing can reduce the actual shared memory allowance. Scoring
+inferences. This applies to every condition. Compared with scenario v1, the task framing and
+fingerprints changed; observations, oracle metadata, scoring and the output cap
+did not. Longer framing can reduce the shared memory allowance. Protocol 3
+retains that v2 framing unchanged. Scoring
 compares normalized complete fact sets, accepting value order differences. Format
 validity is reported separately, but invalid-format answers remain incorrect in
-the primary score. This is a narrow operational contract, not semantic judging.
+the primary score. After exhausted validation of bounded role replies, protocol 3
+records `answer: null` plus `reply_failure`; the score and format flag are false
+regardless of the oracle, even for unknown probes. No reply text is repaired,
+backfilled, accepted or extracted. A baseline history entry retains the task and
+a null answer. Graph observation facts stay accepted; recalled memory is marked
+used and normal pruning/checkpointing advances the scheduled turn. SQLite's
+required message field holds an explicit rejection marker plus structured failure
+evidence; the marker is never an answer or extracted fact. The same policy applies
+to A–D. Ordinary workflows raise by default; tool-free benchmark workflows opt in
+with `StateMachine(..., record_reply_errors=True)`. The option is part of checkpoint
+compatibility. Retry limits, prompts, generation caps and scenario fingerprints
+are unchanged from `integrated-memory-v2`; the container protocol changes to 3. This is a narrow operational contract,
+not semantic judging.
 
 Both strategies have an explicit memory ceiling. A finite curve does not prove
 asymptotic complexity. The code's bound is conditional on bounded task/role
@@ -151,7 +169,7 @@ as a reference, without sending an oversized transcript to a model.
 
 ## 7. Evidence, costs and failure handling
 
-A new bundle contains a version-2 manifest, `turns.jsonl`, its exact `metrics.csv`
+A new bundle contains a version-3 manifest, `turns.jsonl`, its exact `metrics.csv`
 projection, and isolated per-condition/per-variant SQLite and telemetry CSV files.
 The manifest records the fixed plan, primary outcomes, hypotheses, policies,
 source hashes, complete rendered workload/oracle, model digests, software versions,
@@ -165,8 +183,12 @@ facts, inactive endpoints and reactivation remain visible. Pruning can lose a
 later-needed fact, and graph-only conditions can perform as well as the full
 framework; such findings are retained rather than treated as execution errors.
 
-Full-pipeline counters include observation extraction, the role and response
-extraction, including correction attempts. Role-only counters are separate.
+Full-pipeline counters include observation extraction, every attempted role call
+and any actual response extraction, including correction attempts. A rejected
+reply has zero response-extraction calls. Its role counters and latency are retained;
+missing counters stay unknown. Skipping extraction can lower costs, so summary
+reports include invalid-reply counts/rates and paired rate differences alongside
+accuracy and costs; primary accuracy retains every scheduled turn. Role-only counters are separate.
 Unknown counters stay null. Warmup, database setup and output export are excluded
 from turn timing. Diagnostic snapshots are included in turn wall timing in all
 conditions; graph-size-dependent diagnostic work is therefore part of this
@@ -181,23 +203,31 @@ errors with supplied support, active conflicts, pruning events, complete costs,
 and paired differences per workload variant. Descriptive contrast mean/SD uses
 variants rather than turns as repetitions; there are no significance claims.
 
-Missing servers, exhausted generation/extraction correction, changed models,
-invalid clocks and cancellation retain a failed/cancelled bundle plus available
-failure-source/raw-attempt diagnostics. Analysis rejects partial cohorts. There
-is no automatic experiment resume; use a fresh directory after investigating.
-Existing application data and earlier evidence are never overwritten.
+Exhausted bounded agent JSON validation is a recorded scored failure, not an
+aborted cohort. Each raw response is retained with its node/model, token counters,
+latency and stop reason, at most two attempts of at most 16,384 characters each.
+Analysis verifies the original parser rejects every attempt, exhausted retry
+counts, no accepted answer/response facts, exact cost totals, routing and SQLite
+agreement. Per-turn evidence remains bounded (300,000 characters per JSONL line).
+
+Missing servers, model changes, extraction failures, tools, cancellation,
+oversized failure evidence, storage errors and invalid evidence/clocks still
+abort and retain a FAILED/CANCELLED bundle. The analyzer rejects partial cohorts.
+There is no automatic experiment resume or restart. Existing application data and
+earlier evidence are never overwritten. Protocol-2 integrated attempts remain
+unchanged and are not combined with a protocol-3 cohort.
 
 ## 8. Fresh, separately approved execution
 
-These commands reference a fresh approved model-driven cohort after the failed
-first attempt. They are **not part of implementation verification**; the revised
-scenario has not completed a full model-driven run. Do not resume the failed
+These commands reference a fresh approved model-driven cohort after both failed
+attempts. They are **not part of implementation verification**; protocol 3
+has not completed a full model-driven run. Do not resume the failed
 bundle or reuse its completed conditions. Choose fresh paths:
 
 ```bash
-python3 -m experiments.integrated_harness --execute --output data/experiments/integrated-20261111-002
-python3 -m experiments.integrated_analysis --input data/experiments/integrated-20261111-002 --output data/experiments/integrated-20261111-002-analysis
-python3 -m experiments.integrated_analysis --input data/experiments/integrated-20261111-002 --output data/experiments/integrated-20261111-002-figures --figures
+python3 -m experiments.integrated_harness --execute --output data/experiments/integrated-003
+python3 -m experiments.integrated_analysis --input data/experiments/integrated-003 --output data/experiments/integrated-003-analysis
+python3 -m experiments.integrated_analysis --input data/experiments/integrated-003 --output data/experiments/integrated-003-figures --figures
 ```
 
 Expected after a successful future run: progress through all 960 scored turns,
@@ -209,35 +239,33 @@ from actual measured inference; synthetic test figures have a prominent label.
 
 The original commands under `experiments.benchmark_harness`,
 `experiments.analyze_results` and `experiments.generate_plots` remain protocol-1
-entry points. Do not pass protocol-2 bundles to the original analyzer or mix rows
+entry points. Do not pass protocol-3 bundles to the original analyzer or mix rows
 from the studies. The original [measured report](../results/study-20261111-002/README.md)
 and [pruning probe](../results/pruning-probe-001/README.md) remain historical evidence.
 
 ## 9. Failure diagnosis and restart boundary
 
-The first attempt (`integrated-memory-v1`) failed in D1 turn 59 after 178 saved
-turns. Both node2 responses exhausted 128 tokens while repeating cycle links.
-The incomplete JSON was correctly rejected. The original bundle, raw attempts,
-checksums and earlier studies remain unchanged; partial rows are excluded.
+Attempt 1 failed in D1/59 after 178 saved turns; attempt 2 failed in C1/59 after
+238 saved turns. Both original and corrective role responses reached 128 tokens
+while repeating cycle relationships. The prompt revision did not reliably
+prevent this. All partial rows remain excluded; both original bundles, raw
+attempts, checksums and earlier studies are preserved.
 
-Three unscored diagnostic calls with the revised instructions completed JSON in
-one attempt each (63/48/31 tokens). None met the strict answer contract. The
-format-checking diagnostic consequently exited nonzero; that is not another
-failed experimental run. These checks do not guarantee future completion or
-factual fidelity. Existing unsupported response-derived facts remain visible;
-no oracle filtering or graph repair was used. The cap, retry count and parser
-remain unchanged. See the [selected evidence and limitations](../results/integrated-attempt-001/README.md).
-
-A fresh full run requires separate approval after this fix is verified. Imports,
-plan-only commands and tests never restart it automatically.
+The new policy records these model-reply failures as research outcomes instead
+of discarding the rest of the planned schedule. Offline replay demonstrates
+scheduled continuation and honest failure accounting, not real-model accuracy
+or guaranteed completion. No model calls were made during this implementation.
+A fresh full protocol-3 cohort requires approval after verification. No partial
+conditions from either earlier attempt may be reused.
 
 ## 10. Commit message
 
 ```text
-fix(experiments): narrow integrated recall instructions after truncation
+fix(experiments): record invalid agent replies as scored outcomes
 
-- version direct-fact task framing without changing observations or oracle
-- preserve the excluded attempt and all three unscored diagnostic outcomes
-- replay truncated replies and verify failed-cohort evidence integrity
-- retain the token cap, strict parser and fresh-cohort approval boundary
+- preserve both failed integrated attempts without pooling partial rows
+- record bounded rejected replies with null answers and complete attempt costs
+- skip response extraction while retaining normal graph usage and checkpoints
+- apply one protocol-3 policy to all conditions with default workflows unchanged
+- replay both failures and validate corrupt evidence and all-invalid cohorts
 ```

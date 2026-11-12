@@ -18,6 +18,8 @@ class TurnMetrics(BaseModel):
     insert and SQLite COMMIT. Generation latency includes successful responses,
     corrective generations and failed fallback requests in this committed turn.
     Failed/uncommitted turns are absent; this is not a billing/work audit log.
+    An explicitly recorded reply rejection is a committed turn: its attempted
+    role usage is included and its skipped response extraction has zero calls.
     """
 
     model_config = ConfigDict(strict=True, frozen=True, extra="forbid", allow_inf_nan=False,

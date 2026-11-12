@@ -1,4 +1,4 @@
-"""Validate protocol-2 evidence and report descriptive component comparisons."""
+"""Validate protocol-3 evidence, including recorded rejected-reply outcomes."""
 
 import argparse
 from collections import Counter
@@ -11,10 +11,11 @@ import statistics
 import sys
 
 from experiments.contracts import load_json, sha256, write_json
-from experiments.integrated_contracts import CONDITIONS, GENERATION_PROTOCOL, PRIMARY_OUTCOMES, HYPOTHESES, FactState, IntegratedPlan, IntegratedRow, project
+from experiments.integrated_contracts import CONDITIONS, GENERATION_PROTOCOL, REPLY_ERROR_POLICY, PRIMARY_OUTCOMES, HYPOTHESES, FactState, IntegratedPlan, IntegratedRow, project
 from experiments.integrated_scenario import evaluate, records, role_at, workload
 from experiments.benchmark_harness import linear_context
 from src.retrieval.context_assembler import _quoted
+from src.agents.base_agent import REJECTED_REPLY_CONTENT
 
 
 def require(value,message):
@@ -53,12 +54,13 @@ def load_bundle(path):
     path=Path(path).expanduser().resolve()
     require((path/'manifest.json').stat().st_size<=2_000_000,'oversized manifest')
     m=load_json(path/'manifest.json')
-    require(type(m.get('version')) is int and m['version']==2 and m.get('protocol')=='integrated-memory-v1' and m.get('status')=='COMPLETED',
-        'integrated analysis requires a completed protocol-2 bundle')
+    require(type(m.get('version')) is int and m['version']==3 and m.get('protocol')=='integrated-memory-v2' and m.get('status')=='COMPLETED',
+        'integrated analysis requires a completed protocol-3 bundle')
     require(m.get('source') in ('measured','synthetic'),'invalid evidence source')
     plan=IntegratedPlan.model_validate(m['plan'])
     require(m['conditions']==json.loads(json.dumps(CONDITIONS)),'condition policies changed')
     require(m['generation_protocol']==GENERATION_PROTOCOL,'generation protocol differs')
+    require(m['reply_error_policy']==REPLY_ERROR_POLICY,'reply error policy differs')
     require(m['primary_outcomes']==PRIMARY_OUTCOMES and m['hypotheses']==HYPOTHESES,'declared outcomes differ')
     require(m['fully_counterbalanced']==(plan.variants%4==0),'balance declaration differs from plan')
     require(m['scenario_hashes']==plan.scenario_hashes(),'scenario fingerprint differs')
@@ -86,11 +88,11 @@ def load_bundle(path):
         target=(path/name).resolve()
         require(not Path(name).is_absolute() and target.is_relative_to(path),'unsafe artifact path')
         require(target.is_file() and sha256(target)==digest,f'artifact checksum mismatch: {name}')
-    require((path/'turns.jsonl').stat().st_size<=plan.row_count*100_000,'turn evidence exceeds bound')
+    require((path/'turns.jsonl').stat().st_size<=plan.row_count*300_000,'turn evidence exceeds bound')
     rows=[]
     with (path/'turns.jsonl').open() as stream:
         for line in stream:
-            require(len(line)<=100_000 and len(rows)<plan.row_count,'oversized or excess turn evidence')
+            require(len(line)<=300_000 and len(rows)<plan.row_count,'oversized or excess turn evidence')
             rows.append(IntegratedRow.model_validate_json(line))
     require(len(rows)==plan.row_count,'incomplete scored turns')
     expected_runs=[];flat=[];budgets={}
@@ -108,10 +110,15 @@ def load_bundle(path):
             require((row.source,row.bundle_id,row.condition,row.variant,row.position,row.step,row.scenario_sha256)==
                 (m['source'],m['bundle_id'],condition,variant,position,event.step,m['scenario_hashes'][str(variant)]),'turn identity/order differs')
             require((row.task,row.observation)==(event.task,event.observation),'input differs from frozen workload')
-            require((row.format_valid,row.correct)==evaluate(row.answer,event),'answer scoring differs')
+            require((row.format_valid,row.correct)==((False,False) if row.reply_failure else evaluate(row.answer,event)),'answer scoring differs')
             require((row.telemetry.agent_id,row.telemetry.node)==role_at(event.step),'role/node route differs')
             require(row.telemetry.run_id==run_id and row.telemetry.step==row.step and row.telemetry.governance_turn==row.step,'checkpoint identity differs')
             require(not row.telemetry.fallback_attempts,'fallback is prohibited')
+            if row.reply_failure:
+                role=next(r for r in m['roles'] if r['agent_id']==row.telemetry.agent_id)
+                require(len(row.reply_failure.attempts)==role['max_retries']+1,'reply correction attempts are incomplete')
+                require(all(a.node==row.telemetry.node and a.model==m['inventory'][a.node]['name']
+                    for a in row.reply_failure.attempts),'rejected reply route differs')
             require(row.logical_time==event.step*plan.hours_per_turn*3600,'logical time differs')
             require(start<=row.telemetry.observed_at<=end,'observation timestamp is not real run time')
             require(row.telemetry.context_budget_limit<=plan.memory_budget,'memory allowance exceeded')
@@ -142,10 +149,18 @@ def load_bundle(path):
                 require((row.context,row.history_full_bytes,row.history_dropped_turns)==(context,full,dropped),'baseline truncation differs')
             else:
                 require(row.observation_calls>0 if event.observation else row.observation_calls==0,'input extraction usage differs')
-                require(row.telemetry.extraction_calls>0,'response extraction is missing')
+                require(row.telemetry.extraction_calls==0 if row.reply_failure else row.telemetry.extraction_calls>0,'response extraction policy differs')
                 cp=checkpoints[event.step-1];payload=json.loads(cp[6]);message=json.loads(cp[5])
                 require(tuple(cp[:5])==(run_id,event.step,event.step,*role_at(event.step)),'SQLite checkpoint identity differs')
-                require(message['content']==row.answer and payload['task']==row.task,'SQLite answer/input differs')
+                require(message['content']==(REJECTED_REPLY_CONTENT if row.reply_failure else row.answer) and payload['task']==row.task,'SQLite answer/input differs')
+                require(payload['reply_failure']==(None if row.reply_failure is None else row.reply_failure.model_dump(mode='json')),'SQLite reply failure differs')
+                if row.reply_failure:
+                    require(not payload['fact_ids'] and not payload['extraction_attempts'] and not payload['tools'],
+                        'rejected reply wrote response facts or ran extraction/tools')
+                    require(len(payload['agent_generations'])==len(row.reply_failure.attempts),'SQLite failed generation count differs')
+                    for generation,attempt in zip(payload['agent_generations'],row.reply_failure.attempts):
+                        require(all(generation[k]==v for k,v in attempt.model_dump().items() if k!='response'),
+                            'SQLite rejected generation metrics differ')
                 require(payload['context']['text']==row.context and payload['context']['triple_ids']==list(row.context_triple_ids),'SQLite recalled context differs')
                 require(payload['telemetry']==row.telemetry.model_dump() and payload['governance_time']==row.logical_time,'SQLite timing/telemetry differs')
                 require(payload['pruned_ids']==list(row.pruned_entity_ids),'SQLite pruning event differs')
@@ -191,7 +206,9 @@ def describe(rows):
     lag_groups={label:[r for r in rows if r['lag'] is not None and low<=r['lag']<=high]
         for label,low,high in [('0',0,0),('1-9',1,9),('10-29',10,29),('30+',30,1000)]}
     return dict(turns=len(rows),correct=sum(r['correct'] for r in rows),accuracy=accuracy(rows),
-        format_valid=sum(r['format_valid'] for r in rows),role_prompt_tokens=complete_total([r['role_prompt_tokens'] for r in rows]),
+        format_valid=sum(r['format_valid'] for r in rows),invalid_reply_turns=sum(r['reply_failed'] for r in rows),
+        invalid_reply_rate=sum(r['reply_failed'] for r in rows)/len(rows),
+        role_prompt_tokens=complete_total([r['role_prompt_tokens'] for r in rows]),
         total_prompt_tokens=complete_total([r['total_prompt_tokens'] for r in rows]),
         total_generated_tokens=complete_total([r['total_generated_tokens'] for r in rows]),
         role_counter_coverage=sum(r['role_prompt_tokens'] is not None for r in rows),
@@ -224,6 +241,7 @@ def analyze_bundle(path):
             a,b=stats[left],stats[right]
             contrasts.append(dict(variant=v,left=left,right=right,purpose=purpose,
                 accuracy_delta=b['accuracy']-a['accuracy'],
+                invalid_reply_rate_delta=b['invalid_reply_rate']-a['invalid_reply_rate'],
                 delayed_accuracy_delta=None if a['delayed']['accuracy'] is None else b['delayed']['accuracy']-a['delayed']['accuracy'],
                 role_prompt_delta=None if a['role_prompt_tokens'] is None or b['role_prompt_tokens'] is None else b['role_prompt_tokens']-a['role_prompt_tokens'],
                 pipeline_prompt_delta=None if a['total_prompt_tokens'] is None or b['total_prompt_tokens'] is None else b['total_prompt_tokens']-a['total_prompt_tokens'],
@@ -242,11 +260,11 @@ def analyze_bundle(path):
     for purpose in ('complete framework','supersession','pruning'):
         selected=[c for c in contrasts if c['purpose']==purpose]
         contrast_summary[purpose]={}
-        for key in ('accuracy_delta','delayed_accuracy_delta','role_prompt_delta','pipeline_prompt_delta','mean_wall_ms_delta'):
+        for key in ('accuracy_delta','invalid_reply_rate_delta','delayed_accuracy_delta','role_prompt_delta','pipeline_prompt_delta','mean_wall_ms_delta'):
             values=[c[key] for c in selected];known=all(v is not None for v in values)
             contrast_summary[purpose][key]=dict(n_variants=len(values),known_variants=sum(v is not None for v in values),
                 mean=mean(values),sd=statistics.stdev(values) if known and len(values)>1 else None)
-    return dict(version=2,source=manifest['source'],bundle_id=manifest['bundle_id'],plan=plan.model_dump(),conditions=conditions,
+    return dict(version=3,source=manifest['source'],bundle_id=manifest['bundle_id'],plan=plan.model_dump(),conditions=conditions,
         contrasts=contrasts,contrast_summary=contrast_summary,curves=curves,checkpoints=checkpoints,
         interpretation='Descriptive workload-variant comparisons; simulated age and measured inference. '
             'Bounded history and graph prompts are both capped. No asymptotic proof, biological validation, '
@@ -284,7 +302,8 @@ def generate_plots(bundle,output):
             axes.set(xlabel='Recall distance (turns)' if key=='delayed_recall' else 'Scenario turn',ylabel=label)
             if key in ('accuracy','delayed_recall'):axes.set_ylim(-.05,1.05)
             axes.grid(axis='y',alpha=.2);axes.legend(loc='best',fontsize=7)
-            fig.suptitle(title+f'\n{report["plan"]["variants"]} workload variants; descriptive means; missing counters are gaps',fontsize=9)
+            fig.suptitle(title+f'\n{report["plan"]["variants"]} workload variants; descriptive means; missing counters are gaps'
+                '\nRejected replies count as incorrect; failed attempts are included in costs.',fontsize=9)
             for suffix in ('svg','pdf','png'):
                 path=output/f'{key}.{suffix}';fig.savefig(path,dpi=200);paths.append(path)
     return tuple(paths)

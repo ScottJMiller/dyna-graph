@@ -14,10 +14,11 @@ import httpx
 from experiments.benchmark_harness import (_RecordedExtractor, _add, _agents, _baseline_metrics,
     _failure_record, _inventory, _packages, _provenance, _routes, _sum, linear_context)
 from experiments.contracts import sha256, utc_now, write_json
-from experiments.integrated_contracts import (CONDITIONS, GENERATION_PROTOCOL, PRIMARY_OUTCOMES, HYPOTHESES, Change, FactState, IntegratedPlan,
+from experiments.integrated_contracts import (CONDITIONS, GENERATION_PROTOCOL, REPLY_ERROR_POLICY, PRIMARY_OUTCOMES, HYPOTHESES, Change, FactState, IntegratedPlan,
     IntegratedRow, MemoryState, project)
 from experiments.integrated_scenario import evaluate, records, role_at, workload
 from src.governance import record_access
+from src.agents.base_agent import AgentError, rejected_reply, reply_failure_evidence
 from src.models import AgentMessage
 from src.network.ollama_client import OllamaClient
 from src.orchestration import StateMachine
@@ -101,7 +102,7 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
         raise ValueError('experiment directory must not contain application database')
     output.mkdir(parents=True,exist_ok=False)
     bundle_id=uuid4().hex;source='synthetic' if transport is not None else 'measured'
-    manifest=dict(version=2,protocol='integrated-memory-v1',bundle_id=bundle_id,source=source,status='RUNNING',
+    manifest=dict(version=3,protocol='integrated-memory-v2',bundle_id=bundle_id,source=source,status='RUNNING',
         started_at=utc_now(),finished_at=None,plan=plan.model_dump(),conditions=CONDITIONS,
         scenario_hashes=plan.scenario_hashes(),scenarios={str(v):records(plan.turns,v) for v in range(1,plan.variants+1)},
         code_sha256=_provenance(),python=platform.python_version(),os=platform.system(),architecture=platform.machine(),
@@ -110,6 +111,7 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
         input_policy='Scripted observation is supplied to the routed role. Later cross-node probes use that role as source; no autonomous discovery is claimed.',
         fully_counterbalanced=plan.variants%4==0,
         primary_outcomes=PRIMARY_OUTCOMES,hypotheses=HYPOTHESES,generation_protocol=GENERATION_PROTOCOL,
+        reply_error_policy=REPLY_ERROR_POLICY,
         policies={c:configure(settings,plan,c).model_dump(mode='json',exclude={
             'database_path','node1_ollama_url','node2_ollama_url','coordinator_host'}) for c in CONDITIONS},
         measurement='Wall time includes diagnostic snapshots, observation extraction, role generation, response extraction and checkpoint work; excludes warmup/setup/exports.')
@@ -150,7 +152,7 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                         graph=GraphStore(database);extractor=_RecordedExtractor(client,
                             max_tokens=GENERATION_PROTOCOL['extractor_max_tokens'],max_retries=GENERATION_PROTOCOL['extractor_max_retries'])
                         machine=StateMachine(client,graph,agents=agents,extractor=extractor,
-                            clock=clock.now,observation_clock=time.time)
+                            clock=clock.now,observation_clock=time.time,record_reply_errors=True)
                         if condition!='A':
                             await machine.start(items[0].task,initial_subgoal=items[0].subject,max_turns=plan.turns,run_id=run_id)
                         history=[]
@@ -166,7 +168,10 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                                 full=dropped=0;pruned=();response_facts=();retrieved=();context_ids=()
                                 if condition=='A':
                                     context,full,dropped=linear_context(history,budget)
-                                    result=await role.execute(task,event.subject,context,turn=step,allow_fallback=False)
+                                    try:
+                                        result=await role.execute(task,event.subject,context,turn=step,allow_fallback=False)
+                                    except AgentError as exc:
+                                        result=rejected_reply(exc,agent_id=role.agent_id,turn=step)
                                     metrics=_baseline_metrics(run_id,event,result,context,budget,started)
                                 else:
                                     turn=await machine.step(run_id,task=task,subgoal=event.subject,governance_turn=step)
@@ -179,11 +184,13 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                                     response_facts=tuple(turn.extraction.graph.triples)
                                 _routes(result.generations,client,role.node)
                                 post=catalog(graph);after=snapshot(graph,event,post)
-                                valid,correct=evaluate(result.message.content,event)
+                                answer=result.message.content if result.reply_error is None else None
+                                valid,correct=evaluate(answer,event) if answer is not None else (False,False)
                                 observation_ms=_sum(incoming,'latency_ms')
                                 row=IntegratedRow(source=source,bundle_id=bundle_id,condition=condition,variant=variant,
                                     position=position,step=step,scenario_sha256=manifest['scenario_hashes'][str(variant)],
-                                    task=task,observation=event.observation,answer=result.message.content,format_valid=valid,correct=correct,
+                                    task=task,observation=event.observation,answer=answer,reply_failure=reply_failure_evidence(result),
+                                    format_valid=valid,correct=correct,
                                     context=context,context_triple_ids=context_ids,retrieved_facts=retrieved,logical_time=clock.now(),
                                     memory_before=before,memory_after=after,changes=changes(initial,pre,'observation')+changes(pre,post,'response'),
                                     pruned_entity_ids=pruned,observation_facts=observed,response_facts=response_facts,
@@ -198,7 +205,7 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                                     writer=csv.DictWriter(csv_file,fieldnames=tuple(flat));writer.writeheader()
                                 raw.write(row.model_dump_json()+'\n');raw.flush()
                                 writer.writerow(flat);csv_file.flush();logger.append(metrics)
-                                history.append(dict(task=task,answer=result.message.content));run['completed_turns']=step
+                                history.append(dict(task=task,answer=answer));run['completed_turns']=step
                                 if progress:progress(row)
                 write_json(output/'manifest.json',manifest)
         if _provenance()!=manifest['code_sha256']:
@@ -227,12 +234,13 @@ def main(argv=None):
         if not args.execute:
             print(f'PLAN ONLY: {len(plan.order())} condition runs; {plan.row_count} scored turns; no model requests or experiment files')
             print(json.dumps(plan.model_dump()|{'order':plan.order(),'scenario_hashes':plan.scenario_hashes(),
-                'fully_counterbalanced':plan.variants%4==0},indent=2))
+                'fully_counterbalanced':plan.variants%4==0,'reply_error_policy':REPLY_ERROR_POLICY},indent=2))
             return 0
         if args.output is None:parser.error('--execute requires --output with a new directory')
         from src.config import get_settings
         def progress(row):
-            print(f'TURN {row.condition} variant={row.variant} step={row.step}/{plan.turns} wall_ms={row.wall_ms:.1f}',flush=True)
+            outcome='rejected' if row.reply_failure else 'valid'
+            print(f'TURN {row.condition} variant={row.variant} step={row.step}/{plan.turns} reply_json={outcome} wall_ms={row.wall_ms:.1f}',flush=True)
         manifest=asyncio.run(run_integrated(plan,get_settings(),args.output,execute=True,progress=progress))
         print('INTEGRATED EXPERIMENT COMPLETE:',manifest['bundle_id'])
     except (KeyboardInterrupt,asyncio.CancelledError):

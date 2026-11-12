@@ -1,0 +1,20 @@
+[
+  {
+    "node": "node2",
+    "model": "llama3.2:3b",
+    "response": "{\"content\": \"CycleAXEZP -- links --> Unknown.\\nCycleAXEZP -- linked to --> Unknown.\\nCycleAXEZP -- links --> Unknown.\\nCycleAXEZP -- links --> Unknown.\\nCycleAXEZP -- links --> Unknown.\\nCycleAXEZP -- links --> Unknown.\\nCycleAXEZP -- links --> Unknown.\\nCycleAXEZP -- links --> Unknown.\\nCycleAXEZP -- links --> Unknown.\\nCycleAXEZP -- links --> Unknown.\\nCycleAXEZP -- links --> Unknown.\\nCycleAXEZP -- links --> Unknown.\\nCycleAXEZ",
+    "prompt_tokens": 399,
+    "generated_tokens": 128,
+    "latency_ms": 62752.74120099493,
+    "done_reason": "length"
+  },
+  {
+    "node": "node2",
+    "model": "llama3.2:3b",
+    "response": "{\"content\": \"Unknown. UnknownXEZP -- \\\"linked to\\\" --> Unknown. UnknownXEZP -- \\\"links\\\" --> Unknown. CycleAXEZP -- \\\"links\\\" --> CycleBXEZP. CycleAXEZP -- \\\"links\\\" --> CycleCXEZP. CycleBXEZP -- \\\"linked to\\\" --> CycleAXEZP. CycleBXEZP -- \\\"links\\\" --> CycleCXEZP. CycleCXEZP -- \\\"links\\\" --> Unknown. CycleCXEZP -- \\\"links\\\" --> Unknown. UnknownXEZP -- \\\"linked to\\\" --> CycleBXEZP. UnknownXEZP --",
+    "prompt_tokens": 411,
+    "generated_tokens": 128,
+    "latency_ms": 45376.84711899783,
+    "done_reason": "length"
+  }
+]

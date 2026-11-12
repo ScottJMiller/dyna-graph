@@ -19,6 +19,7 @@ from src.network.ollama_client import GenerationResult, OllamaClient
 MODEL_CONTEXT = 2048
 FRAMING_RESERVE = 128
 CORRECTION = '\nReturn a complete JSON reply matching the specified fields and limits.'
+REJECTED_REPLY_CONTENT = '[Agent reply rejected: invalid or truncated JSON.]'
 
 
 def text(value: str, name: str, maximum: int) -> str:
@@ -117,6 +118,7 @@ class AgentResult:
     complete: bool
     generations: tuple[GenerationResult, ...]
     tools: tuple[ToolResult, ...]
+    reply_error: str | None = None
 
     @property
     def generation(self):
@@ -140,6 +142,43 @@ def _pairs(items):
 
 def _constant(_value):
     raise ValueError("non-finite JSON number")
+
+
+def parse_reply(generation: GenerationResult) -> AgentReply:
+    """Validate a complete reply; a length stop is rejected even if JSON closes."""
+    raw = generation.response.strip()
+    if generation.done_reason == "length" or len(raw) > 16384:
+        raise ValueError("truncated or oversized response")
+    if raw.startswith("```json\n") and raw.endswith("\n```"):
+        raw = raw[8:-4]
+    return AgentReply.model_validate(json.loads(raw, object_pairs_hook=_pairs, parse_constant=_constant))
+
+
+def rejected_reply(error: AgentError, *, agent_id: str, turn: int) -> AgentResult:
+    """Represent a bounded reply rejection without accepting any model content.
+
+    Callers must explicitly opt in. Transport/tool errors and oversized evidence
+    still raise. The marker is a checkpoint record, never an answer or fact.
+    """
+    if error.kind != "reply" or not 1 <= len(error.attempts) <= 2 or any(
+            len(g.response) > 16384 for g in error.attempts):
+        raise error
+    for generation in error.attempts:
+        try:
+            parse_reply(generation)
+        except (ValueError, RecursionError):
+            continue
+        raise error
+    return AgentResult(AgentMessage(agent_id=agent_id, content=REJECTED_REPLY_CONTENT, turn=turn),
+                       None, False, error.attempts, (), "invalid_or_truncated_json")
+
+
+def reply_failure_evidence(result: AgentResult) -> dict | None:
+    if result.reply_error is None:
+        return None
+    return {"kind": result.reply_error, "attempts": tuple(
+        {name: getattr(g, name) for name in ("node", "model", "response", "prompt_tokens",
+            "generated_tokens", "latency_ms", "done_reason")} for g in result.generations)}
 
 
 class BaseAgent(ABC):
@@ -219,12 +258,7 @@ class BaseAgent(ABC):
                 allow_fallback=allow_fallback, max_tokens=self.max_tokens)
             attempts.append(generation)
             try:
-                raw = generation.response.strip()
-                if generation.done_reason == "length" or len(raw) > 16384:
-                    raise ValueError("truncated or oversized response")
-                if raw.startswith("```json\n") and raw.endswith("\n```"):
-                    raw = raw[8:-4]
-                reply = AgentReply.model_validate(json.loads(raw, object_pairs_hook=_pairs, parse_constant=_constant))
+                reply = parse_reply(generation)
             except (ValueError, RecursionError) as exc:
                 if corrections >= self.max_retries:
                     raise AgentError("reply", "invalid or truncated agent JSON", attempts) from exc
