@@ -66,9 +66,12 @@ def _failure_record(exc, *, manifest, condition, repetition, step, stage, task):
         "stage": stage, "task": task, "error_type": type(exc).__name__,
         "source_message": getattr(exc, "source_message", None),
         "validation_errors": details,
+        "http_failure": ({"node":exc.node,"kind":exc.kind,"status_code":exc.status_code,
+            "latency_ms":exc.latency_ms,"server_error":exc.server_error} if hasattr(exc,'server_error') else None),
         "generation_attempts": [{"node": g.node, "model": g.model, "response": g.response,
             "prompt_tokens": g.prompt_tokens, "generated_tokens": g.generated_tokens,
-            "latency_ms": g.latency_ms, "done_reason": g.done_reason}
+            "latency_ms": g.latency_ms, "done_reason": g.done_reason,
+            "error": g.error, "http_status": g.http_status}
             for g in getattr(exc, "attempts", ())]}
 
 

@@ -1,14 +1,16 @@
 # Phase 8 extension: Integrated memory experiment verification
 
-This implements a new protocol-3 study alongside the original A/B protocol.
+This implements a new protocol-4 study alongside the original A/B protocol.
 **Do not execute the model-driven study during implementation verification.**
 All dedicated tests use synthetic HTTP; real HTTP is explicitly blocked. Previous
-measured results and the deterministic pruning report remain unchanged. Both
-model-driven integrated attempts aborted on truncated JSON. Their partial rows
-are excluded. Protocol 3 now records bounded invalid agent replies as incorrect
-turns under one common policy; a fresh complete cohort awaits approval. See the
-[first](../results/integrated-attempt-001/README.md) and
-[second failure report](../results/integrated-attempt-002/README.md).
+measured results and the deterministic pruning report remain unchanged. Three
+integrated attempts remain excluded as partial cohorts. Protocol 4 records
+invalid role replies, exact server repetition aborts and failed extraction as
+explicit outcomes, retaining unknown counters and independent answer scoring.
+A fresh full cohort awaits approval. See the
+[first](../results/integrated-attempt-001/README.md),
+[second](../results/integrated-attempt-002/README.md) and
+[third failure report](../results/integrated-attempt-003/README.md).
 
 ## 1. Setup
 
@@ -28,7 +30,7 @@ private configuration changes, or database migrations are required.
 python3 -m pytest tests/test_phase8_integrated.py -q
 ```
 
-Expected: **88 passed**. Tests cover gates, counterbalanced ordering, all four
+Expected: **116 passed**. Tests cover gates, counterbalanced ordering, all four
 policies, 60/70/80-turn workloads, actual prompt fingerprints, set-valued scoring,
 full offline execution including four variants at 80 turns, logical versus real
 clocks, explicit scenario turns, pin/multi-value preservation, pruning and delayed
@@ -41,7 +43,11 @@ and reject tampered success/cost/SQLite records. They also run entire synthetic
 cohorts with every role reply invalid (including valid-looking `Unknown.` stopped
 by length), and check default workflow exceptions, recording opt-in compatibility,
 oversized/non-reply error propagation and frozen four-variant schedule hashes.
-Synthetic accuracy, token counts and timings are not research findings.
+Tests also inject the exact known HTTP 500 event at observation, role and
+response stages with recovered/exhausted correction; preserve null counters and
+independent answer scoring; reject fabricated zero costs/text/source/facts/SQLite;
+and check unrelated HTTP errors still abort at every stage. Synthetic accuracy,
+token counts and timings are not research findings.
 
 ## 3. Inspect the declared plan without running it
 
@@ -55,7 +61,7 @@ Expected first line:
 PLAN ONLY: 16 condition runs; 960 scored turns; no model requests or experiment files
 ```
 
-The printed JSON includes the declared reply-error policy, fixed parameters, scenario fingerprints,
+The printed JSON includes both declared error policies, fixed parameters, scenario fingerprints,
 and condition order. This command does not load `.env`, contact models, create
 outputs or initialize databases. `--output` alone remains plan-only. A partial
 plan such as `--variants 1` has four conditions but is not fully counterbalanced.
@@ -73,7 +79,7 @@ git diff --check
 git check-ignore .env .verification/ data/experiments/
 ```
 
-Expected: **820 passed, 18 skipped**, **7 geometry checks passed**, no whitespace
+Expected: **848 passed, 18 skipped**, **7 geometry checks passed**, no whitespace
 errors, and the three private/runtime paths listed as ignored. The skipped checks
 are 16 earlier LAN tests and two opt-in storage/retrieval performance checks.
 Do not enable `--run-lan` as part of this offline extension acceptance.
@@ -141,13 +147,14 @@ replicated storage, out-of-order event resolution or partition tolerance.
 The answer contract is one factual sentence per value, or `Unknown.`. Scenario
 `integrated-memory-v2` explicitly limits answers to direct facts for the requested
 subject/predicate and forbids repetition, explanations, reverse and transitive
-inferences. This applies to every condition. Compared with scenario v1, the task framing and
+inferences. This applies to every condition. Compared with scenario v1, the task framing
+and
 fingerprints changed; observations, oracle metadata, scoring and the output cap
-did not. Longer framing can reduce the shared memory allowance. Protocol 3
+did not. Longer framing can reduce the shared memory allowance. Protocol 4
 retains that v2 framing unchanged. Scoring
 compares normalized complete fact sets, accepting value order differences. Format
 validity is reported separately, but invalid-format answers remain incorrect in
-the primary score. After exhausted validation of bounded role replies, protocol 3
+the primary score. After exhausted validation of bounded role replies, protocol 4
 records `answer: null` plus `reply_failure`; the score and format flag are false
 regardless of the oracle, even for unknown probes. No reply text is repaired,
 backfilled, accepted or extracted. A baseline history entry retains the task and
@@ -158,7 +165,7 @@ evidence; the marker is never an answer or extracted fact. The same policy appli
 to A–D. Ordinary workflows raise by default; tool-free benchmark workflows opt in
 with `StateMachine(..., record_reply_errors=True)`. The option is part of checkpoint
 compatibility. Retry limits, prompts, generation caps and scenario fingerprints
-are unchanged from `integrated-memory-v2`; the container protocol changes to 3. This is a narrow operational contract,
+are unchanged from `integrated-memory-v2`; the container protocol changes to 4. This is a narrow operational contract,
 not semantic judging.
 
 Both strategies have an explicit memory ceiling. A finite curve does not prove
@@ -169,7 +176,7 @@ as a reference, without sending an oversized transcript to a model.
 
 ## 7. Evidence, costs and failure handling
 
-A new bundle contains a version-3 manifest, `turns.jsonl`, its exact `metrics.csv`
+A new bundle contains a version-4 manifest, `turns.jsonl`, its exact `metrics.csv`
 projection, and isolated per-condition/per-variant SQLite and telemetry CSV files.
 The manifest records the fixed plan, primary outcomes, hypotheses, policies,
 source hashes, complete rendered workload/oracle, model digests, software versions,
@@ -208,26 +215,52 @@ aborted cohort. Each raw response is retained with its node/model, token counter
 latency and stop reason, at most two attempts of at most 16,384 characters each.
 Analysis verifies the original parser rejects every attempt, exhausted retry
 counts, no accepted answer/response facts, exact cost totals, routing and SQLite
-agreement. Per-turn evidence remains bounded (300,000 characters per JSONL line).
+agreement. Bounded raw-attempt records are described below.
 
-Missing servers, model changes, extraction failures, tools, cancellation,
-oversized failure evidence, storage errors and invalid evidence/clocks still
-abort and retain a FAILED/CANCELLED bundle. The analyzer rejects partial cohorts.
-There is no automatic experiment resume or restart. Existing application data and
-earlier evidence are never overwritten. Protocol-2 integrated attempts remain
-unchanged and are not combined with a protocol-3 cohort.
+Protocol 4 additionally opts into `OllamaClient(..., record_prediction_aborts=True)`
+and `Extractor(..., record_errors=True)`. Only a structured HTTP 500 with the exact
+error `prediction aborted, token repeat limit reached` becomes a prediction-abort
+outcome. Its response and prompt/generated-token counters stay null; its measured
+latency and HTTP status are retained. The model label identifies the requested
+installed model, not an identity confirmed by a generation payload. The existing
+same-node correction budget still applies, with no extra retry or fallback.
+Warmup aborts fail setup rather than create measured rows.
+
+All observation, role and response attempts are retained, including recovered
+aborts. Exhausted extraction validation records source, issues and attempts and
+accepts no facts; ordinary valid empty extraction remains distinct. Role answers
+still receive their normal independent score. Failed observation extraction can
+lose required support; failed response extraction can occur after a correct role
+answer. No oracle filtering or restoration occurs. SQLite stores response-stage
+outcomes and attempt evidence; observation-stage diagnostics live in JSONL.
+Compatibility hashes include both opt-ins. Ordinary defaults still raise.
+
+Counter sums remain unknown when any attempt lacks counters, even after recovery.
+Analysis reports counter coverage, observation/response extraction failures and
+prediction-abort counts alongside accuracy/costs. Complete pipeline totals and
+paired token differences may be unknown; curves show gaps. Failed work is not
+zero-filled or excluded to manufacture an efficiency claim. Per-turn evidence
+allows up to 1,000,000 characters per JSONL line for bounded raw attempt records.
+
+Missing servers, model changes, unrelated HTTP errors, tools, cancellation,
+oversized evidence, storage errors and invalid evidence/clocks still abort and
+retain a FAILED/CANCELLED bundle. New fatal HTTP diagnostics retain available
+extraction source and HTTP metadata without endpoint addresses. The analyzer
+rejects partial cohorts. There is no automatic resume/restart. Existing data and
+all earlier integrated attempts remain unchanged and are never pooled into the
+new protocol-4 cohort.
 
 ## 8. Fresh, separately approved execution
 
-These commands reference a fresh approved model-driven cohort after both failed
-attempts. They are **not part of implementation verification**; protocol 3
+These commands reference a fresh approved model-driven cohort after three failed
+attempts. They are **not part of implementation verification**; protocol 4
 has not completed a full model-driven run. Do not resume the failed
 bundle or reuse its completed conditions. Choose fresh paths:
 
 ```bash
-python3 -m experiments.integrated_harness --execute --output data/experiments/integrated-003
-python3 -m experiments.integrated_analysis --input data/experiments/integrated-003 --output data/experiments/integrated-003-analysis
-python3 -m experiments.integrated_analysis --input data/experiments/integrated-003 --output data/experiments/integrated-003-figures --figures
+python3 -m experiments.integrated_harness --execute --output data/experiments/integrated-004
+python3 -m experiments.integrated_analysis --input data/experiments/integrated-004 --output data/experiments/integrated-004-analysis
+python3 -m experiments.integrated_analysis --input data/experiments/integrated-004 --output data/experiments/integrated-004-figures --figures
 ```
 
 Expected after a successful future run: progress through all 960 scored turns,
@@ -239,33 +272,36 @@ from actual measured inference; synthetic test figures have a prominent label.
 
 The original commands under `experiments.benchmark_harness`,
 `experiments.analyze_results` and `experiments.generate_plots` remain protocol-1
-entry points. Do not pass protocol-3 bundles to the original analyzer or mix rows
+entry points. Do not pass protocol-4 bundles to the original analyzer or mix rows
 from the studies. The original [measured report](../results/study-20261111-002/README.md)
 and [pruning probe](../results/pruning-probe-001/README.md) remain historical evidence.
 
 ## 9. Failure diagnosis and restart boundary
 
-Attempt 1 failed in D1/59 after 178 saved turns; attempt 2 failed in C1/59 after
-238 saved turns. Both original and corrective role responses reached 128 tokens
-while repeating cycle relationships. The prompt revision did not reliably
-prevent this. All partial rows remain excluded; both original bundles, raw
-attempts, checksums and earlier studies are preserved.
+Attempts 1 and 2 failed at cycle probes with truncated role JSON (178 and 238
+saved turns). Attempt 3 completed variant 1, then failed in B2/12 after 251 saved
+turns when response extraction received the server repetition-abort HTTP 500.
+Its original source and generation counters were not retained; the execution
+log supplies HTTP status/error and failed-call latency. Do not reconstruct lost
+text from the previous checkpoint or represent an equivalent injected test as
+an exact replay. See the third failure report for the evidence gap.
 
-The new policy records these model-reply failures as research outcomes instead
-of discarding the rest of the planned schedule. Offline replay demonstrates
-scheduled continuation and honest failure accounting, not real-model accuracy
-or guaranteed completion. No model calls were made during this implementation.
-A fresh full protocol-3 cohort requires approval after verification. No partial
-conditions from either earlier attempt may be reused.
+Protocol 4 records known prediction aborts and exhausted extraction validation
+across stages, while preserving the protocol-3 reply-failure scoring rule. All
+old bundles, checksums and earlier reports remain preserved and excluded. No
+real model calls were made for this fix. Offline checks establish accounting and
+scheduled continuation, not factual fidelity or guaranteed run completion. A
+fresh full cohort requires approval after verification; imports and plan-only
+commands cannot restart an experiment.
 
 ## 10. Commit message
 
 ```text
-fix(experiments): record invalid agent replies as scored outcomes
+fix(experiments): account for prediction aborts and failed extraction
 
-- preserve both failed integrated attempts without pooling partial rows
-- record bounded rejected replies with null answers and complete attempt costs
-- skip response extraction while retaining normal graph usage and checkpoints
-- apply one protocol-3 policy to all conditions with default workflows unchanged
-- replay both failures and validate corrupt evidence and all-invalid cohorts
+- preserve the third excluded attempt and document missing original evidence
+- opt into exact server repetition-abort and extraction-failure outcomes
+- retain every stage's attempts, latency and unknown token counters
+- keep role-answer scoring independent and accept no failed-extraction facts
+- validate protocol-4 accounting, retries, checkpoints and strict defaults
 ```

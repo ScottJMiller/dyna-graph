@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from src.config import NodeName
 from src.models.schemas import AgentMessage
-from src.network.ollama_client import GenerationResult, OllamaClient
+from src.network.ollama_client import GenerationResult, OllamaClient, generation_evidence
 
 MODEL_CONTEXT = 2048
 FRAMING_RESERVE = 128
@@ -146,6 +146,8 @@ def _constant(_value):
 
 def parse_reply(generation: GenerationResult) -> AgentReply:
     """Validate a complete reply; a length stop is rejected even if JSON closes."""
+    if generation.error is not None or generation.response is None:
+        raise ValueError("server aborted prediction without a reply")
     raw = generation.response.strip()
     if generation.done_reason == "length" or len(raw) > 16384:
         raise ValueError("truncated or oversized response")
@@ -161,7 +163,7 @@ def rejected_reply(error: AgentError, *, agent_id: str, turn: int) -> AgentResul
     still raise. The marker is a checkpoint record, never an answer or fact.
     """
     if error.kind != "reply" or not 1 <= len(error.attempts) <= 2 or any(
-            len(g.response) > 16384 for g in error.attempts):
+            g.response is not None and len(g.response) > 16384 for g in error.attempts):
         raise error
     for generation in error.attempts:
         try:
@@ -176,9 +178,7 @@ def rejected_reply(error: AgentError, *, agent_id: str, turn: int) -> AgentResul
 def reply_failure_evidence(result: AgentResult) -> dict | None:
     if result.reply_error is None:
         return None
-    return {"kind": result.reply_error, "attempts": tuple(
-        {name: getattr(g, name) for name in ("node", "model", "response", "prompt_tokens",
-            "generated_tokens", "latency_ms", "done_reason")} for g in result.generations)}
+    return {"kind": result.reply_error, "attempts": tuple(generation_evidence(g) for g in result.generations)}
 
 
 class BaseAgent(ABC):

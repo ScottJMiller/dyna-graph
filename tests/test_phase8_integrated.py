@@ -1,4 +1,4 @@
-"""Offline protocol-3 validation; synthetic HTTP is mandatory for these tests."""
+"""Offline protocol-4 validation; synthetic HTTP is mandatory for these tests."""
 
 import asyncio
 from collections import Counter
@@ -516,12 +516,13 @@ def test_extraction_failure_records_exact_source(tmp_path):
             return httpx.Response(200,json=data)
         return response
     output=tmp_path/'failed'
-    with pytest.raises(Exception,match='verbatim|source|grounding'):
-        asyncio.run(harness.run_integrated(IntegratedPlan(variants=1,warmups_per_node=0),config,output,execute=True,transport=httpx.MockTransport(broken)))
-    failure=load_json(output/'failure.json')
-    assert failure['condition']=='B' and failure['step']==1 and failure['stage']=='observation_extraction'
-    assert failure['source_message']['content']==workload()[0].observation
-    assert len(failure['generation_attempts'])==2
+    manifest=asyncio.run(harness.run_integrated(IntegratedPlan(variants=1,warmups_per_node=0),config,output,execute=True,transport=httpx.MockTransport(broken)))
+    rows=analysis.load_bundle(output)[2]
+    assert manifest['status']=='COMPLETED' and len(rows)==240
+    failure=next(r for r in rows if r.condition=='B').observation_failure
+    assert failure.source_message.content==workload()[0].observation and len(failure.attempts)==2
+    assert all(not r.observation_facts and not r.response_facts for r in rows if r.condition!='A')
+
 
 
 def test_default_state_machine_still_uses_its_original_clock(tmp_path):
@@ -593,3 +594,147 @@ def test_recall_gap_does_not_count_rehearsed_facts_as_long_delay():
     assert all(e.recall_gap<10 for e in items if e.category=='frequent')
     frequent=next(e for e in items if e.category=='frequent' and e.step>40)
     assert frequent.step-min(frequent.source_steps)>30 and frequent.recall_gap<4
+
+
+def make_prediction_abort(tmp_path,stage='response',condition='B',recover=False):
+    from src.network.ollama_client import REPEAT_ABORT
+    config=settings(tmp_path);fake=SyntheticServer(config);hits=[];last_task='';last_step=0
+    event=workload()[11]
+    async def abort(request):
+        nonlocal last_task,last_step
+        response=await fake(request)
+        if request.method!='POST':return response
+        body=json.loads(request.content);system=body.get('system','')
+        is_role=system.startswith('You are')
+        if is_role:
+            from src.agents.base_agent import CORRECTION
+            if not body['prompt'].endswith(CORRECTION):last_step=last_step%60+1
+            last_task=json.JSONDecoder().raw_decode(body['prompt'].split('TASK\n',1)[1])[0]
+        eligible=False
+        if stage=='role':eligible=is_role and last_step==12
+        elif system.startswith('Extract explicitly'):
+            message=json.JSONDecoder().raw_decode(body['prompt'].split('\n',1)[1])[0]['message']
+            if stage=='observation':eligible=message==workload()[12].observation
+            else:eligible=last_step==12 and message!=workload()[12].observation
+        if fake.inventories==2*('ABDC'.index(condition)+1) and eligible and (not recover or not hits):
+            hits.append(body)
+            return httpx.Response(500,json={'error':REPEAT_ABORT})
+        return response
+    path=tmp_path/'abort'
+    manifest=asyncio.run(harness.run_integrated(IntegratedPlan(variants=1,warmups_per_node=0),config,path,
+        execute=True,transport=httpx.MockTransport(abort)))
+    return path,manifest,hits
+
+
+@pytest.mark.parametrize('stage,condition',[('role','A'),('role','B'),('role','C'),('role','D'),('observation','C'),('response','B'),('response','C')])
+@pytest.mark.parametrize('recover',[False,True])
+def test_known_prediction_abort_is_retained_through_each_inference_stage(tmp_path,stage,condition,recover):
+    path,manifest,hits=make_prediction_abort(tmp_path,stage,condition,recover)
+    rows=analysis.load_bundle(path)[2]
+    step=13 if stage=='observation' else 12
+    row=next(r for r in rows if r.condition==condition and r.step==step)
+    assert manifest['status']=='COMPLETED' and len(rows)==240 and len(hits)==(1 if recover else 2)
+    attempts={'role':row.agent_attempts,'observation':row.observation_attempts,'response':row.response_attempts}[stage]
+    assert len(attempts)==2 and attempts[0].error=='token_repeat_limit' and attempts[0].http_status==500
+    assert attempts[0].response is attempts[0].prompt_tokens is attempts[0].generated_tokens is None
+    assert row.total_prompt_tokens is row.total_generated_tokens is None
+    assert row.wall_ms>=sum(a.latency_ms for a in attempts)
+    failure={'role':row.reply_failure,'observation':row.observation_failure,'response':row.response_failure}[stage]
+    assert (failure is None)==recover
+    if stage=='role' and not recover:assert row.answer is None and not row.correct
+    if stage=='observation' and not recover:assert not row.observation_facts
+    if stage=='response':
+        assert row.answer is not None and row.reply_failure is None
+        if not recover:
+            assert row.response_facts==()
+            assert (row.format_valid,row.correct)==evaluate(row.answer,workload()[11])
+            if condition=='C':assert row.correct
+    assert next(r for r in rows if r.condition==condition and r.step==step+1).logical_time==row.logical_time+7200
+    report=analysis.analyze_bundle(path)
+    assert report['conditions'][condition]['prediction_aborts']==len(hits)
+    assert report['conditions'][condition]['total_prompt_tokens'] is None
+
+
+@pytest.mark.parametrize('server_error',['prediction aborted, token repeat limit reached','other server failure'])
+@pytest.mark.parametrize('opt_in',[False,True])
+def test_only_exact_repeat_abort_is_an_opt_in_generation_outcome(tmp_path,server_error,opt_in):
+    from src.network.ollama_client import OllamaError,REPEAT_ABORT
+    async def abort(request):return httpx.Response(500,json={'error':server_error})
+    async def run():
+        async with OllamaClient(settings(tmp_path),transport=httpx.MockTransport(abort),record_prediction_aborts=opt_in) as client:
+            if opt_in and server_error==REPEAT_ABORT:
+                result=await client.generate_json('message',system='system',allow_fallback=False)
+                assert result.response is result.prompt_tokens is result.generated_tokens is None
+                assert result.error=='token_repeat_limit' and result.http_status==500
+            else:
+                with pytest.raises(OllamaError):await client.generate_json('message',system='system',allow_fallback=False)
+    asyncio.run(run())
+
+
+def test_warmup_repeat_abort_retains_failed_attempt_without_scoring_a_turn(tmp_path):
+    from src.network.ollama_client import REPEAT_ABORT
+    config=settings(tmp_path);fake=SyntheticServer(config)
+    async def abort(request):
+        if request.method=='POST':return httpx.Response(500,json={'error':REPEAT_ABORT})
+        return await fake(request)
+    output=tmp_path/'warmup-abort'
+    with pytest.raises(AgentError,match='warmup'):
+        asyncio.run(harness.run_integrated(IntegratedPlan(variants=1),config,output,execute=True,
+            transport=httpx.MockTransport(abort)))
+    failure=load_json(output/'failure.json');manifest=load_json(output/'manifest.json')
+    assert manifest['status']=='FAILED' and failure['stage']=='warmup'
+    assert failure['generation_attempts'][0]['error']=='token_repeat_limit'
+    assert failure['generation_attempts'][0]['http_status']==500
+    assert failure['generation_attempts'][0]['response'] is None
+    assert (output/'turns.jsonl').read_text()==''
+
+
+@pytest.mark.parametrize('attack',['fake_zero','raw_text','source','failure','facts','sqlite'])
+def test_prediction_abort_accounting_and_extraction_evidence_reject_tampering(tmp_path,attack):
+    path,_,_=make_prediction_abort(tmp_path)
+    if attack=='sqlite':
+        with sqlite3.connect(path/'B-1.db') as c:
+            payload=json.loads(c.execute('SELECT result FROM workflow_turns WHERE step=12').fetchone()[0])
+            payload['extraction_failure']=None
+            c.execute('UPDATE workflow_turns SET result=? WHERE step=12',(json.dumps(payload),))
+        c.close()
+        m=load_json(path/'manifest.json');m['artifacts']['B-1.db']=sha256(path/'B-1.db');write_json(path/'manifest.json',m)
+    else:
+        def change(rows):
+            row=next(r for r in rows if r['condition']=='B' and r['step']==12)
+            if attack=='fake_zero':row['response_attempts'][0]['prompt_tokens']=0
+            elif attack=='raw_text':row['response_attempts'][0]['response']='fabricated'
+            elif attack=='source':row['response_failure']['source_message']['content']='Invented source.'
+            elif attack=='failure':row['response_failure']=None
+            elif attack=='facts':row['response_facts']=[dict(subject='X',predicate='uses',object='Y',confidence=1.)]
+        rewrite_rows(path,change)
+    with pytest.raises(ValueError):analysis.analyze_bundle(path)
+
+
+@pytest.mark.parametrize('stage',['role','observation','response'])
+def test_unrelated_http_failure_still_aborts_and_records_available_source(tmp_path,stage):
+    config=settings(tmp_path);fake=SyntheticServer(config);role_seen=False
+    async def broken(request):
+        nonlocal role_seen
+        response=await fake(request)
+        if request.method!='POST':return response
+        body=json.loads(request.content);is_role=body.get('system','').startswith('You are')
+        if is_role:role_seen=True
+        eligible=(stage=='role' and is_role) or (fake.inventories==4 and
+            body.get('system','').startswith('Extract explicitly') and ((stage=='response' and role_seen) or (stage=='observation' and not role_seen)))
+        if eligible:return httpx.Response(500,json={'error':'unrelated server failure'})
+        if fake.inventories==2:role_seen=False
+        return response
+    # Use message content to distinguish B1's observation from its response.
+    async def selected(request):
+        nonlocal role_seen
+        if request.url.path=='/api/tags' and request.url.host!='localhost':role_seen=False
+        return await broken(request)
+    output=tmp_path/'unrelated'
+    with pytest.raises(Exception):
+        asyncio.run(harness.run_integrated(IntegratedPlan(variants=1,warmups_per_node=0),config,output,
+            execute=True,transport=httpx.MockTransport(selected)))
+    manifest=load_json(output/'manifest.json');failure=load_json(output/'failure.json')
+    assert manifest['status']=='FAILED' and failure['http_failure']['status_code']==500
+    assert failure['http_failure']['server_error']=='unrelated server failure'
+    if stage!='role':assert failure['source_message'] is not None

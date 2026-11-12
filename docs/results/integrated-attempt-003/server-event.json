@@ -1,0 +1,18 @@
+{
+  "source": "Sanitized event from original execution-log traceback; not a returned generation",
+  "log_sha256": "31adc5e9da1e8d619c7e3b63b354d22d54e1a240e8ef1260adc2e564a107df85",
+  "node": "node2",
+  "stage": "response_extraction",
+  "condition": "B",
+  "variant": 2,
+  "step": 12,
+  "http_status": 500,
+  "server_body": {
+    "error": "prediction aborted, token repeat limit reached"
+  },
+  "latency_ms": 58161.2,
+  "response": null,
+  "prompt_tokens": null,
+  "generated_tokens": null,
+  "original_extraction_source_recorded": false
+}

@@ -1,4 +1,4 @@
-"""Validate protocol-3 evidence, including recorded rejected-reply outcomes."""
+"""Validate protocol-4 evidence, including recorded rejected-reply outcomes."""
 
 import argparse
 from collections import Counter
@@ -11,7 +11,7 @@ import statistics
 import sys
 
 from experiments.contracts import load_json, sha256, write_json
-from experiments.integrated_contracts import CONDITIONS, GENERATION_PROTOCOL, REPLY_ERROR_POLICY, PRIMARY_OUTCOMES, HYPOTHESES, FactState, IntegratedPlan, IntegratedRow, project
+from experiments.integrated_contracts import CONDITIONS, GENERATION_PROTOCOL, REPLY_ERROR_POLICY, INFERENCE_ERROR_POLICY, PRIMARY_OUTCOMES, HYPOTHESES, FactState, IntegratedPlan, IntegratedRow, project
 from experiments.integrated_scenario import evaluate, records, role_at, workload
 from experiments.benchmark_harness import linear_context
 from src.retrieval.context_assembler import _quoted
@@ -54,13 +54,14 @@ def load_bundle(path):
     path=Path(path).expanduser().resolve()
     require((path/'manifest.json').stat().st_size<=2_000_000,'oversized manifest')
     m=load_json(path/'manifest.json')
-    require(type(m.get('version')) is int and m['version']==3 and m.get('protocol')=='integrated-memory-v2' and m.get('status')=='COMPLETED',
-        'integrated analysis requires a completed protocol-3 bundle')
+    require(type(m.get('version')) is int and m['version']==4 and m.get('protocol')=='integrated-memory-v3' and m.get('status')=='COMPLETED',
+        'integrated analysis requires a completed protocol-4 bundle')
     require(m.get('source') in ('measured','synthetic'),'invalid evidence source')
     plan=IntegratedPlan.model_validate(m['plan'])
     require(m['conditions']==json.loads(json.dumps(CONDITIONS)),'condition policies changed')
     require(m['generation_protocol']==GENERATION_PROTOCOL,'generation protocol differs')
     require(m['reply_error_policy']==REPLY_ERROR_POLICY,'reply error policy differs')
+    require(m['inference_error_policy']==INFERENCE_ERROR_POLICY,'inference error policy differs')
     require(m['primary_outcomes']==PRIMARY_OUTCOMES and m['hypotheses']==HYPOTHESES,'declared outcomes differ')
     require(m['fully_counterbalanced']==(plan.variants%4==0),'balance declaration differs from plan')
     require(m['scenario_hashes']==plan.scenario_hashes(),'scenario fingerprint differs')
@@ -88,11 +89,11 @@ def load_bundle(path):
         target=(path/name).resolve()
         require(not Path(name).is_absolute() and target.is_relative_to(path),'unsafe artifact path')
         require(target.is_file() and sha256(target)==digest,f'artifact checksum mismatch: {name}')
-    require((path/'turns.jsonl').stat().st_size<=plan.row_count*300_000,'turn evidence exceeds bound')
+    require((path/'turns.jsonl').stat().st_size<=plan.row_count*1_000_000,'turn evidence exceeds bound')
     rows=[]
     with (path/'turns.jsonl').open() as stream:
         for line in stream:
-            require(len(line)<=300_000 and len(rows)<plan.row_count,'oversized or excess turn evidence')
+            require(len(line)<=1_000_000 and len(rows)<plan.row_count,'oversized or excess turn evidence')
             rows.append(IntegratedRow.model_validate_json(line))
     require(len(rows)==plan.row_count,'incomplete scored turns')
     expected_runs=[];flat=[];budgets={}
@@ -114,6 +115,10 @@ def load_bundle(path):
             require((row.telemetry.agent_id,row.telemetry.node)==role_at(event.step),'role/node route differs')
             require(row.telemetry.run_id==run_id and row.telemetry.step==row.step and row.telemetry.governance_turn==row.step,'checkpoint identity differs')
             require(not row.telemetry.fallback_attempts,'fallback is prohibited')
+            for attempts,node in [(row.agent_attempts,row.telemetry.node),(row.observation_attempts,'node2'),(row.response_attempts,'node2')]:
+                require(all(a.node==node and a.model==m['inventory'][node]['name'] for a in attempts),'attempt route/model differs')
+            for failure in (row.observation_failure,row.response_failure):
+                if failure:require(len(failure.attempts)==GENERATION_PROTOCOL['extractor_max_retries']+1,'extraction correction attempts are incomplete')
             if row.reply_failure:
                 role=next(r for r in m['roles'] if r['agent_id']==row.telemetry.agent_id)
                 require(len(row.reply_failure.attempts)==role['max_retries']+1,'reply correction attempts are incomplete')
@@ -154,12 +159,15 @@ def load_bundle(path):
                 require(tuple(cp[:5])==(run_id,event.step,event.step,*role_at(event.step)),'SQLite checkpoint identity differs')
                 require(message['content']==(REJECTED_REPLY_CONTENT if row.reply_failure else row.answer) and payload['task']==row.task,'SQLite answer/input differs')
                 require(payload['reply_failure']==(None if row.reply_failure is None else row.reply_failure.model_dump(mode='json')),'SQLite reply failure differs')
+                require(payload['extraction_failure']==(None if row.response_failure is None else row.response_failure.model_dump(mode='json')),'SQLite extraction failure differs')
+                require(payload['agent_attempts']==[a.model_dump(mode='json') for a in row.agent_attempts] and
+                    payload['response_attempts']==[a.model_dump(mode='json') for a in row.response_attempts],'SQLite inference attempts differ')
                 if row.reply_failure:
                     require(not payload['fact_ids'] and not payload['extraction_attempts'] and not payload['tools'],
                         'rejected reply wrote response facts or ran extraction/tools')
                     require(len(payload['agent_generations'])==len(row.reply_failure.attempts),'SQLite failed generation count differs')
                     for generation,attempt in zip(payload['agent_generations'],row.reply_failure.attempts):
-                        require(all(generation[k]==v for k,v in attempt.model_dump().items() if k!='response'),
+                        require(all(generation.get(k)==v for k,v in attempt.model_dump().items() if k!='response'),
                             'SQLite rejected generation metrics differ')
                 require(payload['context']['text']==row.context and payload['context']['triple_ids']==list(row.context_triple_ids),'SQLite recalled context differs')
                 require(payload['telemetry']==row.telemetry.model_dump() and payload['governance_time']==row.logical_time,'SQLite timing/telemetry differs')
@@ -208,6 +216,9 @@ def describe(rows):
     return dict(turns=len(rows),correct=sum(r['correct'] for r in rows),accuracy=accuracy(rows),
         format_valid=sum(r['format_valid'] for r in rows),invalid_reply_turns=sum(r['reply_failed'] for r in rows),
         invalid_reply_rate=sum(r['reply_failed'] for r in rows)/len(rows),
+        observation_extraction_failures=sum(r['observation_failed'] for r in rows),
+        response_extraction_failures=sum(r['response_extraction_failed'] for r in rows),
+        prediction_aborts=sum(r['prediction_aborts'] for r in rows),
         role_prompt_tokens=complete_total([r['role_prompt_tokens'] for r in rows]),
         total_prompt_tokens=complete_total([r['total_prompt_tokens'] for r in rows]),
         total_generated_tokens=complete_total([r['total_generated_tokens'] for r in rows]),
@@ -264,7 +275,7 @@ def analyze_bundle(path):
             values=[c[key] for c in selected];known=all(v is not None for v in values)
             contrast_summary[purpose][key]=dict(n_variants=len(values),known_variants=sum(v is not None for v in values),
                 mean=mean(values),sd=statistics.stdev(values) if known and len(values)>1 else None)
-    return dict(version=3,source=manifest['source'],bundle_id=manifest['bundle_id'],plan=plan.model_dump(),conditions=conditions,
+    return dict(version=4,source=manifest['source'],bundle_id=manifest['bundle_id'],plan=plan.model_dump(),conditions=conditions,
         contrasts=contrasts,contrast_summary=contrast_summary,curves=curves,checkpoints=checkpoints,
         interpretation='Descriptive workload-variant comparisons; simulated age and measured inference. '
             'Bounded history and graph prompts are both capped. No asymptotic proof, biological validation, '

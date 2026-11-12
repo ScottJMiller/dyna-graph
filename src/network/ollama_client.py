@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from src.config import NodeName, Settings
 
 Payload = TypeVar("Payload", bound=BaseModel)
+REPEAT_ABORT = "prediction aborted, token repeat limit reached"
 
 
 class _VersionPayload(BaseModel):
@@ -84,6 +85,7 @@ class OllamaError(RuntimeError):
     def __init__(
         self, node: NodeName, url: str, kind: str, detail: str,
         latency_ms: float, *, retryable: bool = False, status_code: int | None = None,
+        server_error: str | None = None,
     ) -> None:
         self.node = node
         self.url = url
@@ -91,6 +93,7 @@ class OllamaError(RuntimeError):
         self.latency_ms = latency_ms
         self.retryable = retryable
         self.status_code = status_code
+        self.server_error = server_error
         super().__init__(f"{node} {url}: {kind}: {detail} ({latency_ms:.1f} ms)")
 
 
@@ -106,7 +109,7 @@ class OllamaUnavailableError(RuntimeError):
 class GenerationResult:
     node: NodeName
     model: str
-    response: str
+    response: str | None
     latency_ms: float
     node_latency_ms: float
     server_duration_ms: float | None
@@ -114,10 +117,18 @@ class GenerationResult:
     failed_attempts: tuple[OllamaError, ...]
     done_reason: str | None = None
     prompt_tokens: int | None = None
+    error: str | None = None
+    http_status: int | None = None
 
     @property
     def used_fallback(self) -> bool:
         return bool(self.failed_attempts)
+
+
+def generation_evidence(generation) -> dict:
+    """Public attempt evidence excludes endpoints; aborted counters stay unknown."""
+    return {name: getattr(generation, name) for name in ("node", "model", "response", "prompt_tokens",
+        "generated_tokens", "latency_ms", "done_reason", "error", "http_status")}
 
 
 class OllamaClient:
@@ -128,7 +139,11 @@ class OllamaClient:
     Invalid payloads and other HTTP 4xx errors remain visible without failover.
     """
 
-    def __init__(self, settings: Settings, *, transport: httpx.AsyncBaseTransport | None = None) -> None:
+    def __init__(self, settings: Settings, *, transport: httpx.AsyncBaseTransport | None = None,
+                 record_prediction_aborts: bool = False) -> None:
+        if type(record_prediction_aborts) is not bool:
+            raise ValueError("record_prediction_aborts must be boolean")
+        self.record_prediction_aborts = record_prediction_aborts
         self.settings = settings
         self._http = httpx.AsyncClient(
             transport=transport,
@@ -156,10 +171,11 @@ class OllamaClient:
 
         def error(
             kind: str, detail: str, *, retryable: bool = False, status_code: int | None = None,
+            server_error: str | None = None,
         ) -> OllamaError:
             return OllamaError(
                 node, url, kind, detail, (perf_counter() - started) * 1000,
-                retryable=retryable, status_code=status_code,
+                retryable=retryable, status_code=status_code, server_error=server_error,
             )
 
         try:
@@ -186,8 +202,15 @@ class OllamaClient:
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code
             detail = exc.response.text[:300] or exc.response.reason_phrase
+            server_error = None
+            try:
+                body = exc.response.json()
+                if isinstance(body, dict) and isinstance(body.get("error"), str):
+                    server_error = body["error"][:300]
+            except ValueError:
+                pass
             raise error("http", f"HTTP {status}: {detail}", status_code=status,
-                        retryable=status >= 500 or status in (408, 429)) from exc
+                        retryable=status >= 500 or status in (408, 429), server_error=server_error) from exc
         except httpx.RequestError as exc:
             raise error("transport", str(exc), retryable=True) from exc
         except ValueError as exc:
@@ -267,6 +290,12 @@ class OllamaClient:
                     },
                 )
             except OllamaError as exc:
+                if (self.record_prediction_aborts and exc.kind == "http" and exc.status_code == 500
+                        and exc.server_error == REPEAT_ABORT):
+                    return GenerationResult(node=target, model=self.settings.node_model(target), response=None,
+                        latency_ms=(perf_counter()-started)*1000, node_latency_ms=exc.latency_ms,
+                        server_duration_ms=None, generated_tokens=None, prompt_tokens=None,
+                        failed_attempts=tuple(failures), error="token_repeat_limit", http_status=500)
                 if not exc.retryable or not allow_fallback:
                     raise
                 failures.append(exc)

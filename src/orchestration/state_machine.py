@@ -17,6 +17,7 @@ from src.extraction import Extractor
 from src.governance import GovernedWriter, Pruner
 from src.governance.decay import _number
 from src.models import AgentMessage, ExtractedGraph, SemanticTriple
+from src.network.ollama_client import generation_evidence
 from src.retrieval import ContextAssembler, ContextResult
 from src.storage.graph_store import GraphStore
 from src.telemetry.profiler import TelemetryProfiler
@@ -104,13 +105,16 @@ def _turn(row):
 
 
 def _generation(generation):
-    return {"node": generation.node, "model": generation.model, "latency_ms": generation.latency_ms,
+    result = {"node": generation.node, "model": generation.model, "latency_ms": generation.latency_ms,
             "generated_tokens": generation.generated_tokens, "used_fallback": generation.used_fallback,
             "done_reason": generation.done_reason, "prompt_tokens": generation.prompt_tokens,
             "node_latency_ms": generation.node_latency_ms,
             "server_duration_ms": generation.server_duration_ms,
             "failed_attempts": [{"node": e.node, "kind": e.kind, "latency_ms": e.latency_ms}
                                 for e in generation.failed_attempts]}
+    if generation.error is not None:
+        result.update(error=generation.error, http_status=generation.http_status)
+    return result
 
 
 async def _settled(operation):
@@ -188,6 +192,10 @@ class StateMachine:
             configuration["separate_observation_clock"] = True
         if record_reply_errors:
             configuration["reply_error_policy"] = "record_rejected_reply_v1"
+        if getattr(self.extractor, "record_errors", False):
+            configuration["extraction_error_policy"] = "record_failed_extraction_v1"
+        if getattr(client, "record_prediction_aborts", False):
+            configuration["prediction_abort_policy"] = "record_repeat_abort_v1"
         self.config_hash = hashlib.sha256(encode(configuration).encode()).hexdigest()
 
     async def get_checkpoint(self, run_id: str) -> RunCheckpoint:
@@ -341,6 +349,10 @@ class StateMachine:
                             "tools": [asdict(t) for t in result.tools]}
                         if self.record_reply_errors:
                             payload["reply_failure"] = reply_failure_evidence(result)
+                        if self.record_reply_errors or getattr(self.extractor, "record_errors", False):
+                            payload["extraction_failure"] = getattr(extracted, "failure", None)
+                            payload["agent_attempts"] = [generation_evidence(g) for g in result.generations]
+                            payload["response_attempts"] = [generation_evidence(g) for g in extracted.attempts]
                         payload["telemetry"] = self.profiler.capture(connection, run_id=run_id, step=step,
                             governance_turn=turn, agent_id=agent.agent_id, node=result.generation.node,
                             observed_at=observed_at, started=started, agent=result, extraction=extracted,

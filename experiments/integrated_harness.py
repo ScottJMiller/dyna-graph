@@ -14,13 +14,13 @@ import httpx
 from experiments.benchmark_harness import (_RecordedExtractor, _add, _agents, _baseline_metrics,
     _failure_record, _inventory, _packages, _provenance, _routes, _sum, linear_context)
 from experiments.contracts import sha256, utc_now, write_json
-from experiments.integrated_contracts import (CONDITIONS, GENERATION_PROTOCOL, REPLY_ERROR_POLICY, PRIMARY_OUTCOMES, HYPOTHESES, Change, FactState, IntegratedPlan,
+from experiments.integrated_contracts import (CONDITIONS, GENERATION_PROTOCOL, REPLY_ERROR_POLICY, INFERENCE_ERROR_POLICY, PRIMARY_OUTCOMES, HYPOTHESES, Change, FactState, IntegratedPlan,
     IntegratedRow, MemoryState, project)
 from experiments.integrated_scenario import evaluate, records, role_at, workload
 from src.governance import record_access
 from src.agents.base_agent import AgentError, rejected_reply, reply_failure_evidence
 from src.models import AgentMessage
-from src.network.ollama_client import OllamaClient
+from src.network.ollama_client import OllamaClient, generation_evidence
 from src.orchestration import StateMachine
 from src.storage.database import Database
 from src.storage.graph_store import GraphStore
@@ -75,7 +75,7 @@ def changes(before, after, stage):
 
 async def ingest(machine, event, extractor, clock):
     if not event.observation:
-        return (), ()
+        return (), (), None
     source_role, _ = role_at(event.step)
     result = await extractor.extract(AgentMessage(agent_id=source_role,content=event.observation,turn=event.step),node='node2',allow_fallback=False)
     _routes(result.attempts,machine.client,'node2')
@@ -88,7 +88,7 @@ async def ingest(machine, event, extractor, clock):
             subject=graph.get_or_create_entity(fact.subject);obj=graph.get_or_create_entity(fact.object)
             machine.writer.write_fact(subject.id,fact.predicate,obj.id,turn=event.step,now=clock.now(),confidence=fact.confidence)
     await machine.graph.write_async(write)
-    return result.attempts, tuple(result.graph.triples)
+    return result.attempts, tuple(result.graph.triples), result.failure
 
 
 async def run_integrated(plan, settings, output, *, execute=False, transport=None, progress=None):
@@ -102,7 +102,7 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
         raise ValueError('experiment directory must not contain application database')
     output.mkdir(parents=True,exist_ok=False)
     bundle_id=uuid4().hex;source='synthetic' if transport is not None else 'measured'
-    manifest=dict(version=3,protocol='integrated-memory-v2',bundle_id=bundle_id,source=source,status='RUNNING',
+    manifest=dict(version=4,protocol='integrated-memory-v3',bundle_id=bundle_id,source=source,status='RUNNING',
         started_at=utc_now(),finished_at=None,plan=plan.model_dump(),conditions=CONDITIONS,
         scenario_hashes=plan.scenario_hashes(),scenarios={str(v):records(plan.turns,v) for v in range(1,plan.variants+1)},
         code_sha256=_provenance(),python=platform.python_version(),os=platform.system(),architecture=platform.machine(),
@@ -112,6 +112,7 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
         fully_counterbalanced=plan.variants%4==0,
         primary_outcomes=PRIMARY_OUTCOMES,hypotheses=HYPOTHESES,generation_protocol=GENERATION_PROTOCOL,
         reply_error_policy=REPLY_ERROR_POLICY,
+        inference_error_policy=INFERENCE_ERROR_POLICY,
         policies={c:configure(settings,plan,c).model_dump(mode='json',exclude={
             'database_path','node1_ollama_url','node2_ollama_url','coordinator_host'}) for c in CONDITIONS},
         measurement='Wall time includes diagnostic snapshots, observation extraction, role generation, response extraction and checkpoint work; excludes warmup/setup/exports.')
@@ -123,7 +124,7 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
             for position,(variant,condition) in enumerate(plan.order(),1):
                 configured=configure(settings,plan,condition);clock=ScenarioClock(plan.hours_per_turn)
                 stage='inventory';step=task=None
-                async with OllamaClient(configured,transport=transport) as client:
+                async with OllamaClient(configured,transport=transport,record_prediction_aborts=True) as client:
                     inventory=await _inventory(client,synthetic=transport is not None)
                     if manifest['inventory'] and manifest['inventory']!=inventory:
                         raise ValueError('model inventory changed')
@@ -141,6 +142,7 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                     for node in ('node1','node2'):
                         for _ in range(plan.warmups_per_node):
                             g=await client.generate('Reply OK.',node=node,allow_fallback=False,max_tokens=8)
+                            if g.error:raise AgentError('warmup','warmup prediction aborted',(g,))
                             _routes((g,),client,node)
                             manifest['warmups'].append(dict(condition=condition,variant=variant,node=node,
                                 prompt_tokens=g.prompt_tokens,generated_tokens=g.generated_tokens,latency_ms=g.latency_ms))
@@ -150,7 +152,7 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                     async with Database(output/f'{condition}-{variant}.db',pool_size=configured.sqlite_pool_size,
                             busy_timeout_ms=configured.sqlite_busy_timeout_ms) as database:
                         graph=GraphStore(database);extractor=_RecordedExtractor(client,
-                            max_tokens=GENERATION_PROTOCOL['extractor_max_tokens'],max_retries=GENERATION_PROTOCOL['extractor_max_retries'])
+                            max_tokens=GENERATION_PROTOCOL['extractor_max_tokens'],max_retries=GENERATION_PROTOCOL['extractor_max_retries'],record_errors=True)
                         machine=StateMachine(client,graph,agents=agents,extractor=extractor,
                             clock=clock.now,observation_clock=time.time,record_reply_errors=True)
                         if condition!='A':
@@ -161,11 +163,11 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                             for event in items:
                                 step,task=event.step,event.task;clock.step=step;stage='observation_extraction'
                                 started=time.perf_counter();initial=catalog(graph)
-                                incoming,observed=await ingest(machine,event,extractor,clock) if condition!='A' else ((),())
+                                incoming,observed,observation_failure=await ingest(machine,event,extractor,clock) if condition!='A' else ((),(),None)
                                 pre=catalog(graph);before=snapshot(graph,event,pre)
                                 stage='role_turn';role=agents[(step-1)%3]
                                 budget=min(plan.memory_budget,role.context_capacity(task,event.subject))
-                                full=dropped=0;pruned=();response_facts=();retrieved=();context_ids=()
+                                full=dropped=0;pruned=();response_facts=();retrieved=();context_ids=();outgoing=();response_failure=None
                                 if condition=='A':
                                     context,full,dropped=linear_context(history,budget)
                                     try:
@@ -182,6 +184,8 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                                     retrieved=tuple(pre[i] for i in context_ids)
                                     pruned=tuple(turn.checkpoint.result['pruned_ids'])
                                     response_facts=tuple(turn.extraction.graph.triples)
+                                    outgoing=turn.extraction.attempts
+                                    response_failure=getattr(turn.extraction,'failure',None)
                                 _routes(result.generations,client,role.node)
                                 post=catalog(graph);after=snapshot(graph,event,post)
                                 answer=result.message.content if result.reply_error is None else None
@@ -190,6 +194,10 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                                 row=IntegratedRow(source=source,bundle_id=bundle_id,condition=condition,variant=variant,
                                     position=position,step=step,scenario_sha256=manifest['scenario_hashes'][str(variant)],
                                     task=task,observation=event.observation,answer=answer,reply_failure=reply_failure_evidence(result),
+                                    observation_failure=observation_failure,response_failure=response_failure,
+                                    observation_attempts=tuple(generation_evidence(g) for g in incoming),
+                                    agent_attempts=tuple(generation_evidence(g) for g in result.generations),
+                                    response_attempts=tuple(generation_evidence(g) for g in outgoing),
                                     format_valid=valid,correct=correct,
                                     context=context,context_triple_ids=context_ids,retrieved_facts=retrieved,logical_time=clock.now(),
                                     memory_before=before,memory_after=after,changes=changes(initial,pre,'observation')+changes(pre,post,'response'),
@@ -234,13 +242,17 @@ def main(argv=None):
         if not args.execute:
             print(f'PLAN ONLY: {len(plan.order())} condition runs; {plan.row_count} scored turns; no model requests or experiment files')
             print(json.dumps(plan.model_dump()|{'order':plan.order(),'scenario_hashes':plan.scenario_hashes(),
-                'fully_counterbalanced':plan.variants%4==0,'reply_error_policy':REPLY_ERROR_POLICY},indent=2))
+                'fully_counterbalanced':plan.variants%4==0,'reply_error_policy':REPLY_ERROR_POLICY,
+                'inference_error_policy':INFERENCE_ERROR_POLICY},indent=2))
             return 0
         if args.output is None:parser.error('--execute requires --output with a new directory')
         from src.config import get_settings
         def progress(row):
             outcome='rejected' if row.reply_failure else 'valid'
-            print(f'TURN {row.condition} variant={row.variant} step={row.step}/{plan.turns} reply_json={outcome} wall_ms={row.wall_ms:.1f}',flush=True)
+            incoming='failed' if row.observation_failure else ('valid' if row.observation_calls else 'skipped')
+            outgoing='failed' if row.response_failure else ('valid' if row.telemetry.extraction_calls else 'skipped')
+            print(f'TURN {row.condition} variant={row.variant} step={row.step}/{plan.turns} reply_json={outcome} '
+                f'observation_extraction={incoming} response_extraction={outgoing} wall_ms={row.wall_ms:.1f}',flush=True)
         manifest=asyncio.run(run_integrated(plan,get_settings(),args.output,execute=True,progress=progress))
         print('INTEGRATED EXPERIMENT COMPLETE:',manifest['bundle_id'])
     except (KeyboardInterrupt,asyncio.CancelledError):

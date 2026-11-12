@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "bundle_id": "af496fddf0324b488647784356f0efeb",
+  "source": "measured",
+  "condition": "B",
+  "repetition": 2,
+  "step": 12,
+  "stage": "role_turn",
+  "task": "Observation: none\nQuestion: current uses values for CedarKUUH? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+  "error_type": "OllamaError",
+  "source_message": null,
+  "validation_errors": [],
+  "generation_attempts": []
+}

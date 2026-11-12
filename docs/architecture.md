@@ -317,26 +317,28 @@ research results.
 
 ### Integrated experiment extension
 
-The [protocol-3 verification guide](testing/phase8_integrated.md) documents a
+The [protocol-4 verification guide](testing/phase8_integrated.md) documents a
 separate four-condition study: bounded history, graph without governance,
 graph with supersession, and graph with supersession plus pruning. Its default
 plan has 960 role turns across four workload variants and uses two simulated
 hours of memory age per actual scenario turn. Model-driven execution is gated
-and two model-driven attempts failed before cohort completion. Their excluded
-failure reports ([first](results/integrated-attempt-001/README.md),
-[second](results/integrated-attempt-002/README.md)) remain historical evidence.
-Protocol 3 now records bounded invalid agent replies as incorrect outcomes with
-all attempts and costs, no accepted answer and no response extraction; graph
-usage, pruning and durable turn advancement still occur. The baseline retains
-the task with a null answer. Ordinary workflows keep default exception behavior;
-recording is explicitly enabled only for tool-free benchmark roles and is part
-of checkpoint compatibility. A fresh full cohort awaits approval. The original
-A/B analysis remains available.
+and three attempts remain excluded as incomplete cohorts. The
+[first](results/integrated-attempt-001/README.md),
+[second](results/integrated-attempt-002/README.md) and
+[third](results/integrated-attempt-003/README.md) failure reports preserve their
+scope and diagnostic limitations. Protocol 4 records invalid role replies, exact
+server repetition aborts and exhausted extraction validation across all applicable
+stages. Failed extraction accepts no facts; role-answer scoring is independent.
+Every attempt's latency and available counters are retained, with unknown totals
+when aborted requests supply no counters. Graph usage, pruning and checkpointing
+still advance normally. Ordinary application defaults raise; recording is opt-in
+and part of checkpoint compatibility. A fresh full cohort awaits approval.
+The original A/B analysis remains available.
 
 | File | Responsibility |
 | --- | --- |
 | [experiments/integrated_scenario.py](../experiments/integrated_scenario.py) | Generate fixed seeded 60–80-turn workloads, actual prompt fingerprints, current-value/set oracles, source steps and operational scoring. |
-| [experiments/integrated_contracts.py](../experiments/integrated_contracts.py) | Declare protocol-3 plans, four policies, balanced order, strict diagnostic records and the CSV projection. |
+| [experiments/integrated_contracts.py](../experiments/integrated_contracts.py) | Declare protocol-4 plans, four policies, balanced order, strict diagnostic records and the CSV projection. |
 | [experiments/integrated_harness.py](../experiments/integrated_harness.py) | Execute isolated condition/variant runs with one governance clock, real observation timestamps, complete costs and before/after memory transitions. |
 | [experiments/integrated_analysis.py](../experiments/integrated_analysis.py) | Validate transition replay and durable evidence; calculate per-variant contrasts and category/lag outcomes; export six SVG/PDF/PNG figure sets. |
 | [tests/test_phase8_integrated.py](../tests/test_phase8_integrated.py) | Block real HTTP and verify gates, policy isolation, full workload execution, clocks, pruning loss, artifact consistency and legacy compatibility. |
