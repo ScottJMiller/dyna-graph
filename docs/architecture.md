@@ -332,7 +332,9 @@ stages. Failed extraction accepts no facts; role-answer scoring is independent.
 Every attempt's latency and available counters are retained, with unknown totals
 when aborted requests supply no counters. Graph usage, pruning and checkpointing
 still advance normally. Ordinary application defaults raise; recording is opt-in
-and part of checkpoint compatibility. A fresh full cohort awaits approval.
+and part of checkpoint compatibility. The [completed 960-turn cohort](results/integrated-004/README.md)
+shows improved strict accuracy with supersession, but delayed recall losses with
+pruning and higher pipeline prompt costs than bounded history.
 The original A/B analysis remains available.
 
 | File | Responsibility |

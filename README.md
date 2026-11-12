@@ -22,19 +22,14 @@ time, while leaving the model to distinguish old facts from new ones.
 
 DynaGraph investigates whether a persistent, selectively retrieved graph can
 provide useful shared memory with less repeated context while preserving factual
-consistency. The framework and experiment tools are implemented. An initial
-[measured A/B case study](docs/results/study-20261111-002/README.md) has completed
-80 scored turns across two paired repetitions. Its results describe one controlled
-scenario; broader efficiency and accuracy benefits remain research questions. In
-that case study, graph memory scored 40/40 correct answers versus 26/40 for
-bounded history and used 14.2% fewer role prompt tokens. Including extraction,
-it used 2.66 times the prompt tokens and averaged 22.47 seconds per turn versus
-10.88 seconds. This is a consistency/cost tradeoff on one scenario, not a general
-performance guarantee.
-
-A separate [deterministic pruning probe](docs/results/pruning-probe-001/README.md)
-uses simulated age to examine memory retirement, pin protection, and loss of a
-fact needed again later. It measures the mechanism rather than model performance.
+consistency. The framework and experiment tools are implemented. Research has
+progressed from a short A/B case study, through an offline pruning probe and
+three incomplete integrated attempts, to a completed four-condition experiment.
+The [experiment history below](#experiment-history-original-to-latest) links the
+evidence and explains what changed at each step. Results show improvements in
+some consistency measures alongside extraction costs, answer-format failures,
+and loss of useful facts through pruning; they do not establish universal
+efficiency or long-horizon preservation.
 
 ### How graph memory works
 
@@ -105,8 +100,10 @@ and checksums before calculating descriptive comparisons. Plotting exports SVG,
 PDF, and PNG figures; synthetic test figures are visibly labeled. The completed
 measured case study is linked above and kept separate from synthetic verification.
 
-A separate [integrated protocol](docs/testing/phase8_integrated.md) is implemented
-and awaits a completed model-driven cohort. Three attempts
+A separate [integrated experiment](docs/results/integrated-004/README.md) completed
+all 960 model-driven turns. Supersession improved strict accuracy; pruning reduced
+active edges but hurt delayed recall and did not materially reduce pipeline costs.
+See the report for answer-format limitations and complete costs. Three earlier attempts
 ([first](docs/results/integrated-attempt-001/README.md),
 [second](docs/results/integrated-attempt-002/README.md),
 [third](docs/results/integrated-attempt-003/README.md)) remain excluded as partial
@@ -128,6 +125,65 @@ python3 -m experiments.integrated_harness
 This extension preserves the original study; its offline tests do not supply
 new measured findings. See the protocol before explicitly starting a new run.
 
+### Experiment history: original to latest
+
+This history includes completed studies, excluded attempts, and unscored
+diagnostics. **Only complete measured cohorts contribute to their respective
+condition comparisons.** Every full restart used fresh state; partial rows were
+never pooled with later runs. Offline tests and simulated aging are identified
+separately from measured model inference.
+
+| Order | Study or diagnostic | Scope and status | Finding and subsequent change |
+| --- | --- | --- | --- |
+| 1 | [Original A/B attempt, scenario v1](docs/results/study-20261111-002/README.md#preserved-unsuccessful-attempt) | **Excluded:** 30 saved turns; stopped during graph run B1 turn 11. | Extraction grounding validation failed. A later isolated diagnostic produced a malformed copied placeholder; the original failed reply was not retained. Scenario v2 replaced literal placeholders with plain-language instructions and improved prospective failure evidence. |
+| 2 | [Completed original A/B case study](docs/results/study-20261111-002/README.md) | **Completed:** 80 scored turns; two paired repetitions, 20 turns per condition per repetition. | Graph memory scored 40/40 versus bounded history's 26/40. It used 14.24% fewer role prompt tokens but 2.66 times the pipeline prompt tokens. No triples were pruned, motivating a separate pruning check. |
+| 3 | [Deterministic pruning probe](docs/results/pruning-probe-001/README.md) | **Completed offline mechanism test:** two executions per policy, simulated age through 96 hours, no model calls; 12 checks passed. | Pruning retired two of seven triples, including a fact needed later. Frequently consumed and pinned facts survived; an unused cycle remained protected by leaf-only eligibility. Final required-fact availability was 2/3 with pruning versus 3/3 without. This measured graph availability, not answer accuracy. |
+| 4 | [First integrated attempt](docs/results/integrated-attempt-001/README.md) | **Excluded:** 178/960 saved turns; stopped at D1 turn 59. Scenario v1, container protocol 2. | A cycle question produced repeated text and truncated JSON on both permitted attempts. Scenario v2 narrowed instructions to direct facts about the requested subject and predicate, retaining observations, oracle, models, policies and output cap. |
+| 5 | [Post-failure prompt diagnostics](docs/results/integrated-attempt-001/README.md#prompt-revision-and-unscored-checks) | **Unscored:** three local generation checks using revised instructions. | All returned complete JSON, but none met the strict answer contract. These checks did not establish accuracy or reliable completion and were not added to any cohort. |
+| 6 | [Second integrated attempt](docs/results/integrated-attempt-002/README.md) | **Excluded:** 238/960 saved turns; stopped at C1 turn 59. Scenario v2, container protocol 2. | The cycle question again exhausted the output cap. Protocol 3 introduced explicit rejected-reply outcomes: preserve attempts and costs, score the turn incorrect, and continue the schedule after bounded reply validation fails. |
+| 7 | [Third integrated attempt](docs/results/integrated-attempt-003/README.md) | **Excluded:** 251/960 saved turns; stopped at B2 turn 12. Scenario v2, container protocol 3. | Response extraction encountered an HTTP 500 token-repetition abort. Protocol 4 added explicit known-abort and exhausted-extraction outcomes across applicable stages; failed extraction accepts no facts, and unreturned counters remain unknown. |
+| 8 | [Completed integrated experiment](docs/results/integrated-004/README.md) | **Completed:** 960 scored turns; four conditions, four counterbalanced workload variants, 60 turns per condition per variant. Scenario v2, container protocol 4. | Supersession improved strict accuracy and eliminated active single-valued conflicts. Pruning reduced active graph size but harmed delayed recall, with almost no pipeline prompt-token reduction relative to supersession alone. |
+
+The integrated experiment separates the memory policies that the original A/B
+study evaluated together. Its condition labels apply within this study: original
+**B** was governed graph memory, whereas integrated **B** disables supersession
+and pruning. The different scenarios and protocols also prevent treating the
+original and integrated accuracy figures as a single performance trend.
+
+| Latest integrated condition | Strict correct answers | Accuracy |
+| --- | ---: | ---: |
+| A: bounded linear history | 4/240 | 1.67% |
+| B: graph without supersession or pruning | 76/240 | 31.67% |
+| C: graph with supersession, pruning off | 112/240 | 46.67% |
+| D: graph with supersession and pruning | 102/240 | 42.50% |
+
+Supersession improved C over B by **15 percentage points**, but generated
+incorrect assertions could still supersede correct source facts. The invariant
+of one active value is distinct from semantic correctness. Pruning reduced D's
+mean final active edges by **26.9%** relative to C, while dedicated delayed
+probes fell from **8/8 correct to 0/8**. D used only **0.15% fewer pipeline prompt
+tokens** than C. Compared with A, D used **20.7% fewer role prompt tokens** but
+**124.8% more pipeline prompt tokens**, including extraction and corrections.
+
+Interpret these results with the recorded limitations. A's poor strict score
+includes answer-format and instruction-following failures that occurred before
+history truncation, so its errors cannot all be attributed to forgetting. Six
+rejected role replies remain incorrect outcomes in the complete cohort. Three
+server aborts left B's pipeline token total unknown, with complete counters on
+237/240 turns; no counters were zero-filled. Memory aging was simulated at two
+hours per turn, while inference and latency were measured. Both history and
+graph context were capped. The four variants support descriptive comparisons,
+not asymptotic proofs or general preservation guarantees. The two-node inference
+setup used centralized storage; replicated state and network partitions were
+not evaluated.
+
+The [latest report](docs/results/integrated-004/README.md) provides the complete
+bundle, answer audit, checksums, six figure sets and commands to reproduce the
+analysis without contacting models. Earlier reports preserve the evidence and
+limitations of their own protocols, including historical verification counts.
+Together, the studies document a consistency, cost and retention tradeoff;
+they do not establish every claim of the motivating thesis.
+
 ### Potential benefits and limitations
 
 | Potential benefit | Limitation or tradeoff |
@@ -140,8 +196,8 @@ new measured findings. See the protocol before explicitly starting a new run.
 
 Triples preserve selected facts, not complete source documents or exact wording.
 Applications that need quotations, detailed evidence, or audit trails also need
-the original material and appropriate provenance. The initial experiment assesses
-this design on a controlled scenario; broader application suitability requires
+the original material and appropriate provenance. The experiments assess
+this design on controlled scenarios; broader application suitability requires
 additional evaluation.
 
 ### Suitable candidate workloads

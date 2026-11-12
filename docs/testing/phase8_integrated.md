@@ -7,7 +7,10 @@ measured results and the deterministic pruning report remain unchanged. Three
 integrated attempts remain excluded as partial cohorts. Protocol 4 records
 invalid role replies, exact server repetition aborts and failed extraction as
 explicit outcomes, retaining unknown counters and independent answer scoring.
-A fresh full cohort awaits approval. See the
+The [completed protocol-4 cohort](../results/integrated-004/README.md) contains
+960 scored turns and independently validated evidence. It reports pruning losses,
+answer-format limitations and unknown counters without excluding failed outcomes.
+The commands below remain offline verification; they do not launch another study. See the
 [first](../results/integrated-attempt-001/README.md),
 [second](../results/integrated-attempt-002/README.md) and
 [third failure report](../results/integrated-attempt-003/README.md).

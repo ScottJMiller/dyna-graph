@@ -1,0 +1,1940 @@
+{
+  "purpose": "Post hoc diagnostic evidence; primary scores unchanged. Examples are selected cases, not a new correctness metric.",
+  "examples": [
+    {
+      "condition": "A",
+      "variant": 1,
+      "step": 1,
+      "task": "Observation: CedarXEZP uses DBAAQEYF.\nQuestion: current uses values for CedarXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "CedarXEZP uses DBAAQEYF.\nCedarXEZP uses values. Unknown.",
+      "correct": false,
+      "format_valid": false,
+      "context": "",
+      "memory_before": {
+        "target_facts": [],
+        "active_nodes": 0,
+        "active_edges": 0,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": null,
+        "last_access_turn": null
+      },
+      "memory_after": {
+        "target_facts": [],
+        "active_nodes": 0,
+        "active_edges": 0,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": null,
+        "last_access_turn": null
+      },
+      "changes": [],
+      "response_facts": [],
+      "reply_failure": null
+    },
+    {
+      "condition": "A",
+      "variant": 1,
+      "step": 2,
+      "task": "Observation: AuroraXEZP uses DBVRJHMG. Critical: preserve AuroraXEZP.\nQuestion: current uses values for AuroraXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "AuroraXEZP uses DBVRJHMG.\nAuroraXEZP uses values.\nUnknown.",
+      "correct": false,
+      "format_valid": false,
+      "context": "[{\"task\":\"Observation: CedarXEZP uses DBAAQEYF.\\nQuestion: current uses values for CedarXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.\",\"answer\":\"CedarXEZP uses DBAAQEYF.\\nCedarXEZP uses values. Unknown.\"}]",
+      "memory_before": {
+        "target_facts": [],
+        "active_nodes": 0,
+        "active_edges": 0,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": null,
+        "last_access_turn": null
+      },
+      "memory_after": {
+        "target_facts": [],
+        "active_nodes": 0,
+        "active_edges": 0,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": null,
+        "last_access_turn": null
+      },
+      "changes": [],
+      "response_facts": [],
+      "reply_failure": null
+    },
+    {
+      "condition": "B",
+      "variant": 1,
+      "step": 7,
+      "task": "Observation: CedarXEZP uses DBGJBEXN.\nQuestion: current uses values for CedarXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "CedarXEZP uses DBGJBEXN. CedarXEZP uses DBAAQEYF.",
+      "correct": false,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t1] \"CedarXEZP\" -- \"uses\" --> \"DBAAQEYF\"\n- [t7] \"CedarXEZP\" -- \"uses\" --> \"DBGJBEXN\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 7,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBGJBEXN",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 12,
+        "active_edges": 7,
+        "single_value_conflicts": 1,
+        "subject_pinned": false,
+        "last_access_at": 50400.0,
+        "last_access_turn": 7
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 7,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBGJBEXN",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 12,
+        "active_edges": 7,
+        "single_value_conflicts": 1,
+        "subject_pinned": false,
+        "last_access_at": 50400.0,
+        "last_access_turn": 7
+      },
+      "changes": [
+        {
+          "stage": "observation",
+          "before": null,
+          "fact": {
+            "id": 7,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBGJBEXN",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "CedarXEZP",
+          "predicate": "uses",
+          "object": "DBGJBEXN",
+          "confidence": 1.0
+        },
+        {
+          "subject": "CedarXEZP",
+          "predicate": "uses",
+          "object": "DBAAQEYF",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "C",
+      "variant": 1,
+      "step": 16,
+      "task": "Observation: none\nQuestion: current uses values for CedarXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "CedarXEZP uses DBAAQEYF. CedarXEZP uses Unknown.",
+      "correct": false,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t1] \"CedarXEZP\" -- \"uses\" --> \"DBAAQEYF\"\n- [t15] \"Unknown\" -- \"uses\" --> \"CedarXEZP\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 7,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBGJBEXN",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 23,
+        "active_edges": 15,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 100800.0,
+        "last_access_turn": 14
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 7,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBGJBEXN",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 17,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 23,
+        "active_edges": 15,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 115200.0,
+        "last_access_turn": 16
+      },
+      "changes": [
+        {
+          "stage": "response",
+          "before": "ACTIVE",
+          "fact": {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          }
+        },
+        {
+          "stage": "response",
+          "before": null,
+          "fact": {
+            "id": 17,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "CedarXEZP",
+          "predicate": "uses",
+          "object": "DBAAQEYF",
+          "confidence": 1.0
+        },
+        {
+          "subject": "CedarXEZP",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "C",
+      "variant": 1,
+      "step": 17,
+      "task": "Observation: NoiseXEZP17 uses Cache382868.\nQuestion: current uses values for CedarXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "Unknown uses CedarXEZP. CedarXEZP uses Unknown.",
+      "correct": false,
+      "format_valid": false,
+      "context": "## Graph memory\n- [t15] \"Unknown\" -- \"uses\" --> \"CedarXEZP\"\n- [t17] \"CedarXEZP\" -- \"uses\" --> \"Unknown\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 7,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBGJBEXN",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 17,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 25,
+        "active_edges": 16,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 115200.0,
+        "last_access_turn": 16
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 7,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBGJBEXN",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 17,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 25,
+        "active_edges": 16,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 122400.0,
+        "last_access_turn": 17
+      },
+      "changes": [
+        {
+          "stage": "observation",
+          "before": null,
+          "fact": {
+            "id": 18,
+            "subject": "NoiseXEZP17",
+            "predicate": "uses",
+            "object": "Cache382868",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "Unknown",
+          "predicate": "uses",
+          "object": "CedarXEZP",
+          "confidence": 1.0
+        },
+        {
+          "subject": "CedarXEZP",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "D",
+      "variant": 1,
+      "step": 16,
+      "task": "Observation: none\nQuestion: current uses values for CedarXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "CedarXEZP uses DBAAQEYF. CedarXEZP uses Unknown.",
+      "correct": false,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t1] \"CedarXEZP\" -- \"uses\" --> \"DBAAQEYF\"\n- [t15] \"Unknown\" -- \"uses\" --> \"CedarXEZP\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 7,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBGJBEXN",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 23,
+        "active_edges": 15,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 100800.0,
+        "last_access_turn": 14
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 7,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBGJBEXN",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 17,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 23,
+        "active_edges": 15,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 115200.0,
+        "last_access_turn": 16
+      },
+      "changes": [
+        {
+          "stage": "response",
+          "before": "ACTIVE",
+          "fact": {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          }
+        },
+        {
+          "stage": "response",
+          "before": null,
+          "fact": {
+            "id": 17,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "CedarXEZP",
+          "predicate": "uses",
+          "object": "DBAAQEYF",
+          "confidence": 1.0
+        },
+        {
+          "subject": "CedarXEZP",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "D",
+      "variant": 1,
+      "step": 17,
+      "task": "Observation: NoiseXEZP17 uses Cache382868.\nQuestion: current uses values for CedarXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "Unknown uses CedarXEZP. CedarXEZP uses Unknown.",
+      "correct": false,
+      "format_valid": false,
+      "context": "## Graph memory\n- [t15] \"Unknown\" -- \"uses\" --> \"CedarXEZP\"\n- [t17] \"CedarXEZP\" -- \"uses\" --> \"Unknown\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 7,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBGJBEXN",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 17,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 25,
+        "active_edges": 16,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 115200.0,
+        "last_access_turn": 16
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 1,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBAAQEYF",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 7,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "DBGJBEXN",
+            "status": "SUPERSEDED",
+            "subject_active": true,
+            "object_active": true
+          },
+          {
+            "id": 17,
+            "subject": "CedarXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 25,
+        "active_edges": 16,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 122400.0,
+        "last_access_turn": 17
+      },
+      "changes": [
+        {
+          "stage": "observation",
+          "before": null,
+          "fact": {
+            "id": 18,
+            "subject": "NoiseXEZP17",
+            "predicate": "uses",
+            "object": "Cache382868",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "Unknown",
+          "predicate": "uses",
+          "object": "CedarXEZP",
+          "confidence": 1.0
+        },
+        {
+          "subject": "CedarXEZP",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "C",
+      "variant": 1,
+      "step": 40,
+      "task": "Observation: none\nQuestion: current uses values for BirchXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchXEZP uses DBQGVWDC.",
+      "correct": true,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t3] \"BirchXEZP\" -- \"uses\" --> \"DBQGVWDC\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "DBQGVWDC",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 60,
+        "active_edges": 38,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 21600.0,
+        "last_access_turn": 3
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "DBQGVWDC",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 60,
+        "active_edges": 38,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "changes": [],
+      "response_facts": [
+        {
+          "subject": "BirchXEZP",
+          "predicate": "uses",
+          "object": "DBQGVWDC",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "C",
+      "variant": 1,
+      "step": 56,
+      "task": "Observation: none\nQuestion: current uses values for BirchXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchXEZP uses DBQGVWDC.",
+      "correct": true,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t3] \"BirchXEZP\" -- \"uses\" --> \"DBQGVWDC\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "DBQGVWDC",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 84,
+        "active_edges": 50,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "DBQGVWDC",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 84,
+        "active_edges": 50,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 403200.0,
+        "last_access_turn": 56
+      },
+      "changes": [],
+      "response_facts": [
+        {
+          "subject": "BirchXEZP",
+          "predicate": "uses",
+          "object": "DBQGVWDC",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "C",
+      "variant": 2,
+      "step": 40,
+      "task": "Observation: none\nQuestion: current uses values for BirchKUUH? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchKUUH uses DBFNCTZX.",
+      "correct": true,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t5] \"BirchKUUH\" -- \"uses\" --> \"DBFNCTZX\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 5,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "DBFNCTZX",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 61,
+        "active_edges": 48,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 21600.0,
+        "last_access_turn": 3
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 5,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "DBFNCTZX",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 61,
+        "active_edges": 48,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "changes": [],
+      "response_facts": [
+        {
+          "subject": "BirchKUUH",
+          "predicate": "uses",
+          "object": "DBFNCTZX",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "C",
+      "variant": 2,
+      "step": 56,
+      "task": "Observation: none\nQuestion: current uses values for BirchKUUH? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchKUUH uses DBFNCTZX.",
+      "correct": true,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t5] \"BirchKUUH\" -- \"uses\" --> \"DBFNCTZX\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 5,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "DBFNCTZX",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 87,
+        "active_edges": 62,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 5,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "DBFNCTZX",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 87,
+        "active_edges": 62,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 403200.0,
+        "last_access_turn": 56
+      },
+      "changes": [],
+      "response_facts": [
+        {
+          "subject": "BirchKUUH",
+          "predicate": "uses",
+          "object": "DBFNCTZX",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "C",
+      "variant": 3,
+      "step": 40,
+      "task": "Observation: none\nQuestion: current uses values for BirchQHTB? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchQHTB uses DBLTMKZQ.",
+      "correct": true,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t3] \"BirchQHTB\" -- \"uses\" --> \"DBLTMKZQ\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "DBLTMKZQ",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 59,
+        "active_edges": 40,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 21600.0,
+        "last_access_turn": 3
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "DBLTMKZQ",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 59,
+        "active_edges": 40,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "changes": [],
+      "response_facts": [
+        {
+          "subject": "BirchQHTB",
+          "predicate": "uses",
+          "object": "DBLTMKZQ",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "C",
+      "variant": 3,
+      "step": 56,
+      "task": "Observation: none\nQuestion: current uses values for BirchQHTB? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchQHTB uses DBLTMKZQ.",
+      "correct": true,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t3] \"BirchQHTB\" -- \"uses\" --> \"DBLTMKZQ\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "DBLTMKZQ",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 83,
+        "active_edges": 52,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "DBLTMKZQ",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 83,
+        "active_edges": 52,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 403200.0,
+        "last_access_turn": 56
+      },
+      "changes": [],
+      "response_facts": [
+        {
+          "subject": "BirchQHTB",
+          "predicate": "uses",
+          "object": "DBLTMKZQ",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "C",
+      "variant": 4,
+      "step": 40,
+      "task": "Observation: none\nQuestion: current uses values for BirchMFJN? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchMFJN uses DBMFDYHP.",
+      "correct": true,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t3] \"BirchMFJN\" -- \"uses\" --> \"DBMFDYHP\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "DBMFDYHP",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 59,
+        "active_edges": 32,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 21600.0,
+        "last_access_turn": 3
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "DBMFDYHP",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 59,
+        "active_edges": 32,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "changes": [],
+      "response_facts": [
+        {
+          "subject": "BirchMFJN",
+          "predicate": "uses",
+          "object": "DBMFDYHP",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "C",
+      "variant": 4,
+      "step": 56,
+      "task": "Observation: none\nQuestion: current uses values for BirchMFJN? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchMFJN uses DBMFDYHP.",
+      "correct": true,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t3] \"BirchMFJN\" -- \"uses\" --> \"DBMFDYHP\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "DBMFDYHP",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 83,
+        "active_edges": 44,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "DBMFDYHP",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 83,
+        "active_edges": 44,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 403200.0,
+        "last_access_turn": 56
+      },
+      "changes": [],
+      "response_facts": [
+        {
+          "subject": "BirchMFJN",
+          "predicate": "uses",
+          "object": "DBMFDYHP",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "D",
+      "variant": 1,
+      "step": 40,
+      "task": "Observation: none\nQuestion: current uses values for BirchXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchXEZP uses Unknown.",
+      "correct": false,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t39] \"NoiseXEZP38\" -- \"uses\" --> \"Cache996066\"\n- [t40] \"NoiseXEZP39\" -- \"uses\" --> \"Cache542207\"\n- [t38] \"NoiseXEZP37\" -- \"uses\" --> \"Cache168608\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "DBQGVWDC",
+            "status": "PRUNED",
+            "subject_active": false,
+            "object_active": false
+          }
+        ],
+        "active_nodes": 57,
+        "active_edges": 34,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 21600.0,
+        "last_access_turn": 3
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "DBQGVWDC",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 41,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 58,
+        "active_edges": 35,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "changes": [
+        {
+          "stage": "response",
+          "before": "PRUNED",
+          "fact": {
+            "id": 3,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "DBQGVWDC",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          }
+        },
+        {
+          "stage": "response",
+          "before": null,
+          "fact": {
+            "id": 41,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "BirchXEZP",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "D",
+      "variant": 1,
+      "step": 56,
+      "task": "Observation: none\nQuestion: current uses values for BirchXEZP? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchXEZP uses Unknown. Unknown uses CedarXEZP. CedarXEZP uses Unknown. HubXEZP uses Unknown.",
+      "correct": false,
+      "format_valid": false,
+      "context": "## Graph memory\n- [t41] \"BirchXEZP\" -- \"uses\" --> \"Unknown\"\n- [t15] \"Unknown\" -- \"uses\" --> \"CedarXEZP\"\n- [t17] \"CedarXEZP\" -- \"uses\" --> \"Unknown\"\n- [t45] \"CedarXEZP\" -- \"is used by\" --> \"Unknown\"\n- [t54] \"HubXEZP\" -- \"uses\" --> \"Unknown\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "DBQGVWDC",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 41,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 57,
+        "active_edges": 37,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 396000.0,
+        "last_access_turn": 55
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "DBQGVWDC",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 41,
+            "subject": "BirchXEZP",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 55,
+        "active_edges": 36,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 403200.0,
+        "last_access_turn": 56
+      },
+      "changes": [
+        {
+          "stage": "response",
+          "before": "ACTIVE",
+          "fact": {
+            "id": 27,
+            "subject": "NoiseXEZP26",
+            "predicate": "uses",
+            "object": "Cache196543",
+            "status": "PRUNED",
+            "subject_active": false,
+            "object_active": false
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "BirchXEZP",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        },
+        {
+          "subject": "Unknown",
+          "predicate": "uses",
+          "object": "CedarXEZP",
+          "confidence": 1.0
+        },
+        {
+          "subject": "CedarXEZP",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        },
+        {
+          "subject": "HubXEZP",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "D",
+      "variant": 2,
+      "step": 40,
+      "task": "Observation: none\nQuestion: current uses values for BirchKUUH? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchKUUH uses Unknown.",
+      "correct": false,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t48] \"NoiseKUUH38\" -- \"uses\" --> \"Cache255588\"\n- [t49] \"NoiseKUUH39\" -- \"uses\" --> \"Cache552387\"\n- [t47] \"NoiseKUUH37\" -- \"uses\" --> \"Cache668550\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 5,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "DBFNCTZX",
+            "status": "PRUNED",
+            "subject_active": false,
+            "object_active": false
+          }
+        ],
+        "active_nodes": 56,
+        "active_edges": 43,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 21600.0,
+        "last_access_turn": 3
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 5,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "DBFNCTZX",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 50,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 57,
+        "active_edges": 44,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "changes": [
+        {
+          "stage": "response",
+          "before": "PRUNED",
+          "fact": {
+            "id": 5,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "DBFNCTZX",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          }
+        },
+        {
+          "stage": "response",
+          "before": null,
+          "fact": {
+            "id": 50,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "BirchKUUH",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "D",
+      "variant": 2,
+      "step": 56,
+      "task": "Observation: none\nQuestion: current uses values for BirchKUUH? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchKUUH uses Unknown. BirchKUUH links Unknown. BirchKUUH links CycleAKUUH. BirchKUUH links CycleCKUUH. BirchKUUH links CedarKUUH.",
+      "correct": false,
+      "format_valid": false,
+      "context": "## Graph memory\n- [t50] \"BirchKUUH\" -- \"uses\" --> \"Unknown\"\n- [t13] \"CycleAKUUH\" -- \"links\" --> \"Unknown\"\n- [t26] \"CedarKUUH\" -- \"uses\" --> \"Unknown\"\n- [t29] \"CycleCKUUH\" -- \"links\" --> \"Unknown\"\n- [t33] \"CedarKUUH\" -- \"links\" --> \"Unknown\"\n- [t17] \"CycleCKUUH\" -- \"links\" --> \"CycleAKUUH\"\n- [t34] \"CedarKUUH\" -- \"links\" --> \"CycleAKUUH\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 5,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "DBFNCTZX",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 50,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 60,
+        "active_edges": 46,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 396000.0,
+        "last_access_turn": 55
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 5,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "DBFNCTZX",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 50,
+            "subject": "BirchKUUH",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 58,
+        "active_edges": 49,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 403200.0,
+        "last_access_turn": 56
+      },
+      "changes": [
+        {
+          "stage": "response",
+          "before": "ACTIVE",
+          "fact": {
+            "id": 36,
+            "subject": "NoiseKUUH26",
+            "predicate": "uses",
+            "object": "Cache313019",
+            "status": "PRUNED",
+            "subject_active": false,
+            "object_active": false
+          }
+        },
+        {
+          "stage": "response",
+          "before": null,
+          "fact": {
+            "id": 66,
+            "subject": "BirchKUUH",
+            "predicate": "links",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        },
+        {
+          "stage": "response",
+          "before": null,
+          "fact": {
+            "id": 67,
+            "subject": "BirchKUUH",
+            "predicate": "links",
+            "object": "CycleAKUUH",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        },
+        {
+          "stage": "response",
+          "before": null,
+          "fact": {
+            "id": 68,
+            "subject": "BirchKUUH",
+            "predicate": "links",
+            "object": "CycleCKUUH",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        },
+        {
+          "stage": "response",
+          "before": null,
+          "fact": {
+            "id": 69,
+            "subject": "BirchKUUH",
+            "predicate": "links",
+            "object": "CedarKUUH",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "BirchKUUH",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        },
+        {
+          "subject": "BirchKUUH",
+          "predicate": "links",
+          "object": "Unknown",
+          "confidence": 1.0
+        },
+        {
+          "subject": "BirchKUUH",
+          "predicate": "links",
+          "object": "CycleAKUUH",
+          "confidence": 1.0
+        },
+        {
+          "subject": "BirchKUUH",
+          "predicate": "links",
+          "object": "CycleCKUUH",
+          "confidence": 1.0
+        },
+        {
+          "subject": "BirchKUUH",
+          "predicate": "links",
+          "object": "CedarKUUH",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "D",
+      "variant": 3,
+      "step": 40,
+      "task": "Observation: none\nQuestion: current uses values for BirchQHTB? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchQHTB uses Unknown.",
+      "correct": false,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t43] \"NoiseQHTB38\" -- \"uses\" --> \"Cache959424\"\n- [t44] \"NoiseQHTB39\" -- \"uses\" --> \"Cache203472\"\n- [t42] \"NoiseQHTB37\" -- \"uses\" --> \"Cache771483\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "DBLTMKZQ",
+            "status": "PRUNED",
+            "subject_active": false,
+            "object_active": false
+          }
+        ],
+        "active_nodes": 54,
+        "active_edges": 39,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 21600.0,
+        "last_access_turn": 3
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "DBLTMKZQ",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 45,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 55,
+        "active_edges": 40,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "changes": [
+        {
+          "stage": "response",
+          "before": "PRUNED",
+          "fact": {
+            "id": 3,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "DBLTMKZQ",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          }
+        },
+        {
+          "stage": "response",
+          "before": null,
+          "fact": {
+            "id": 45,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "BirchQHTB",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "D",
+      "variant": 3,
+      "step": 56,
+      "task": "Observation: none\nQuestion: current uses values for BirchQHTB? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": null,
+      "correct": false,
+      "format_valid": false,
+      "context": "## Graph memory\n- [t56] \"AuroraQHTB\" -- \"uses\" --> \"Unknown\"\n- [t45] \"BirchQHTB\" -- \"uses\" --> \"Unknown\"\n- [t53] \"Unknown\" -- \"uses\" --> \"BirchQHTB\"\n- [t7] \"HubQHTB\" -- \"supports\" --> \"Unknown\"\n- [t16] \"CedarQHTB\" -- \"is used by\" --> \"Unknown\"\n- [t18] \"CedarQHTB\" -- \"uses\" --> \"Unknown\"\n- [t21] \"CedarQHTB\" -- \"used by\" --> \"Unknown\"\n- [t23] \"DBUTWPLY\" -- \"uses\" --> \"Unknown\"\n- [t31] \"DBUTWPLY\" -- \"is used by\" --> \"Unknown\"\n- [t34] \"Unknown\" -- \"is used by\" --> \"CedarQHTB\"\n- [t52] \"Unknown\" -- \"is used by\" --> \"DBUTWPLY\"\n- [t9] \"DBUTWPLY\" -- \"is used by\" --> \"CedarQHTB\"\n- [t19] \"CedarQHTB\" -- \"is used by\" --> \"DBUTWPLY\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "DBLTMKZQ",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 45,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 57,
+        "active_edges": 42,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 396000.0,
+        "last_access_turn": 55
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "DBLTMKZQ",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 45,
+            "subject": "BirchQHTB",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 55,
+        "active_edges": 41,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 403200.0,
+        "last_access_turn": 56
+      },
+      "changes": [
+        {
+          "stage": "response",
+          "before": "ACTIVE",
+          "fact": {
+            "id": 33,
+            "subject": "NoiseQHTB26",
+            "predicate": "uses",
+            "object": "Cache457403",
+            "status": "PRUNED",
+            "subject_active": false,
+            "object_active": false
+          }
+        }
+      ],
+      "response_facts": [],
+      "reply_failure": {
+        "kind": "invalid_or_truncated_json",
+        "attempts": [
+          {
+            "node": "node2",
+            "model": "llama3.2:3b",
+            "response": "{\"content\": \"BirchQHTB uses Unknown. BirchQHTB is used by Unknown. Unknown uses BirchQHTB. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by Unknown. Unknown is used by",
+            "prompt_tokens": 465,
+            "generated_tokens": 128,
+            "latency_ms": 77232.09018800117,
+            "done_reason": "length",
+            "error": null,
+            "http_status": null
+          },
+          {
+            "node": "node2",
+            "model": "llama3.2:3b",
+            "response": "{\"content\": \"Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown. Unknown.",
+            "prompt_tokens": 477,
+            "generated_tokens": 128,
+            "latency_ms": 53843.32828299375,
+            "done_reason": "length",
+            "error": null,
+            "http_status": null
+          }
+        ]
+      }
+    },
+    {
+      "condition": "D",
+      "variant": 4,
+      "step": 40,
+      "task": "Observation: none\nQuestion: current uses values for BirchMFJN? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchMFJN uses Unknown.",
+      "correct": false,
+      "format_valid": true,
+      "context": "## Graph memory\n- [t34] \"NoiseMFJN38\" -- \"uses\" --> \"Cache788144\"\n- [t35] \"NoiseMFJN39\" -- \"uses\" --> \"Cache484476\"\n- [t33] \"NoiseMFJN37\" -- \"uses\" --> \"Cache892655\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "DBMFDYHP",
+            "status": "PRUNED",
+            "subject_active": false,
+            "object_active": false
+          }
+        ],
+        "active_nodes": 54,
+        "active_edges": 30,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 21600.0,
+        "last_access_turn": 3
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "DBMFDYHP",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 36,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 55,
+        "active_edges": 31,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "changes": [
+        {
+          "stage": "response",
+          "before": "PRUNED",
+          "fact": {
+            "id": 3,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "DBMFDYHP",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          }
+        },
+        {
+          "stage": "response",
+          "before": null,
+          "fact": {
+            "id": 36,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "BirchMFJN",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    },
+    {
+      "condition": "D",
+      "variant": 4,
+      "step": 56,
+      "task": "Observation: none\nQuestion: current uses values for BirchMFJN? In content answer only this subject and predicate using explicit direct facts. Write one sentence per value with subject, predicate, value, and a period. No repetitions, explanations, reverse or transitive inferences. Write only Unknown. if unsupported.",
+      "answer": "BirchMFJN uses Unknown, BirchMFJN uses Unknown, BirchMFJN uses Unknown.",
+      "correct": false,
+      "format_valid": false,
+      "context": "## Graph memory\n- [t36] \"BirchMFJN\" -- \"uses\" --> \"Unknown\"\n- [t9] \"CycleAMFJN\" -- \"links\" --> \"Unknown\"\n- [t48] \"HubMFJN\" -- \"uses\" --> \"Unknown\"",
+      "memory_before": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "DBMFDYHP",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 36,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 59,
+        "active_edges": 33,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 288000.0,
+        "last_access_turn": 40
+      },
+      "memory_after": {
+        "target_facts": [
+          {
+            "id": 3,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "DBMFDYHP",
+            "status": "PRUNED",
+            "subject_active": true,
+            "object_active": false
+          },
+          {
+            "id": 36,
+            "subject": "BirchMFJN",
+            "predicate": "uses",
+            "object": "Unknown",
+            "status": "ACTIVE",
+            "subject_active": true,
+            "object_active": true
+          }
+        ],
+        "active_nodes": 57,
+        "active_edges": 32,
+        "single_value_conflicts": 0,
+        "subject_pinned": false,
+        "last_access_at": 403200.0,
+        "last_access_turn": 56
+      },
+      "changes": [
+        {
+          "stage": "response",
+          "before": "ACTIVE",
+          "fact": {
+            "id": 25,
+            "subject": "NoiseMFJN26",
+            "predicate": "uses",
+            "object": "Cache165135",
+            "status": "PRUNED",
+            "subject_active": false,
+            "object_active": false
+          }
+        }
+      ],
+      "response_facts": [
+        {
+          "subject": "BirchMFJN",
+          "predicate": "uses",
+          "object": "Unknown",
+          "confidence": 1.0
+        }
+      ],
+      "reply_failure": null
+    }
+  ]
+}
