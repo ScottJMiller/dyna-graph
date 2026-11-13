@@ -16,9 +16,9 @@ from uuid import uuid4
 
 import httpx
 
-from experiments.benchmark_harness import (
-    _RecordedExtractor, _add, _agents, _baseline_metrics, _failure_record,
-    _inventory, _packages, _provenance, _routes, _sum, linear_context,
+from experiments.common import (
+    RecordedExtractor, add_costs, make_agents, baseline_metrics, failure_record,
+    model_inventory, package_versions, source_provenance, validate_routes, sum_attempt_field, linear_context,
 )
 from experiments.contracts import sha256, utc_now, write_json
 from experiments.integrated_contracts import (
@@ -130,7 +130,7 @@ async def ingest(machine, event, extractor, clock):
         AgentMessage(agent_id=source_role, content=event.observation, turn=event.step),
         node='node2', allow_fallback=False,
     )
-    _routes(result.attempts, machine.client, 'node2')
+    validate_routes(result.attempts, machine.client, 'node2')
 
     def write(graph):
         """Apply this observation inside the graph's queued write transaction."""
@@ -158,8 +158,8 @@ def _new_manifest(plan, settings, bundle_id, source):
         plan=plan.model_dump(), conditions=CONDITIONS,
         scenario_hashes=plan.scenario_hashes(),
         scenarios={str(variant): records(plan.turns, variant) for variant in range(1, plan.variants + 1)},
-        code_sha256=_provenance(), python=platform.python_version(), os=platform.system(),
-        architecture=platform.machine(), packages=_packages(),
+        code_sha256=source_provenance(), python=platform.python_version(), os=platform.system(),
+        architecture=platform.machine(), packages=package_versions(),
         inventory={}, roles=[], warmups=[], runs=[], artifacts={},
         time_basis='Simulated governance age; real observation timestamps and perf_counter latency.',
         input_policy=(
@@ -214,11 +214,11 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                 stage = 'inventory'
                 step = task = None
                 async with OllamaClient(configured, transport=transport, record_prediction_aborts=True) as client:
-                    inventory = await _inventory(client, synthetic=transport is not None)
+                    inventory = await model_inventory(client, synthetic=transport is not None)
                     if manifest['inventory'] and manifest['inventory'] != inventory:
                         raise ValueError('model inventory changed')
                     manifest['inventory'] = inventory
-                    agents = _agents(client)
+                    agents = make_agents(client)
                     roles = [dict(
                         agent_id=agent.agent_id, node=agent.node, system=agent.system_prompt(),
                         max_tokens=agent.max_tokens, max_retries=agent.max_retries, tool_rounds=agent.max_tool_rounds,
@@ -236,7 +236,7 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                             generation = await client.generate('Reply OK.', node=node, allow_fallback=False, max_tokens=8)
                             if generation.error:
                                 raise AgentError('warmup', 'warmup prediction aborted', (generation,))
-                            _routes((generation,), client, node)
+                            validate_routes((generation,), client, node)
                             manifest['warmups'].append(dict(
                                 condition=condition, variant=variant, node=node,
                                 prompt_tokens=generation.prompt_tokens,
@@ -251,7 +251,7 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                         busy_timeout_ms=configured.sqlite_busy_timeout_ms,
                     ) as database:
                         graph = GraphStore(database)
-                        extractor = _RecordedExtractor(
+                        extractor = RecordedExtractor(
                             client, max_tokens=GENERATION_PROTOCOL['extractor_max_tokens'],
                             max_retries=GENERATION_PROTOCOL['extractor_max_retries'], record_errors=True,
                         )
@@ -293,24 +293,24 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                                         result = await role.execute(task, event.subject, context, turn=step, allow_fallback=False)
                                     except AgentError as exc:
                                         result = rejected_reply(exc, agent_id=role.agent_id, turn=step)
-                                    metrics = _baseline_metrics(run_id, event, result, context, budget, started)
+                                    metrics = baseline_metrics(run_id, event, result, context, budget, started)
                                 else:
                                     turn = await machine.step(run_id, task=task, subgoal=event.subject, governance_turn=step)
                                     result, context = turn.agent, turn.context.text
                                     metrics = TelemetryProfiler.from_checkpoint(turn.checkpoint)
-                                    _routes(turn.extraction.attempts, client, 'node2')
+                                    validate_routes(turn.extraction.attempts, client, 'node2')
                                     context_ids = turn.context.triple_ids
                                     retrieved = tuple(before_facts[fact_id] for fact_id in context_ids)
                                     pruned = tuple(turn.checkpoint.result['pruned_ids'])
                                     response_facts = tuple(turn.extraction.graph.triples)
                                     outgoing = turn.extraction.attempts
                                     response_failure = getattr(turn.extraction, 'failure', None)
-                                _routes(result.generations, client, role.node)
+                                validate_routes(result.generations, client, role.node)
                                 after_facts = catalog(graph)
                                 memory_after = snapshot(graph, event, after_facts)
                                 answer = result.message.content if result.reply_error is None else None
                                 valid, correct = evaluate(answer, event) if answer is not None else (False, False)
-                                observation_ms = _sum(incoming, 'latency_ms')
+                                observation_ms = sum_attempt_field(incoming, 'latency_ms')
                                 row = IntegratedRow(
                                     source=source, bundle_id=bundle_id, condition=condition, variant=variant,
                                     position=position, step=step, scenario_sha256=manifest['scenario_hashes'][str(variant)],
@@ -325,10 +325,10 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                                     memory_before=memory_before, memory_after=memory_after,
                                     changes=changes(initial_facts, before_facts, 'observation') + changes(before_facts, after_facts, 'response'),
                                     pruned_entity_ids=pruned, observation_facts=observed, response_facts=response_facts,
-                                    observation_calls=len(incoming), observation_prompt_tokens=_sum(incoming, 'prompt_tokens'),
-                                    observation_generated_tokens=_sum(incoming, 'generated_tokens'), observation_latency_ms=observation_ms,
-                                    total_prompt_tokens=_add(metrics.prompt_tokens, _sum(incoming, 'prompt_tokens')),
-                                    total_generated_tokens=_add(metrics.generated_tokens, _sum(incoming, 'generated_tokens')),
+                                    observation_calls=len(incoming), observation_prompt_tokens=sum_attempt_field(incoming, 'prompt_tokens'),
+                                    observation_generated_tokens=sum_attempt_field(incoming, 'generated_tokens'), observation_latency_ms=observation_ms,
+                                    total_prompt_tokens=add_costs(metrics.prompt_tokens, sum_attempt_field(incoming, 'prompt_tokens')),
+                                    total_generated_tokens=add_costs(metrics.generated_tokens, sum_attempt_field(incoming, 'generated_tokens')),
                                     total_inference_ms=metrics.generation_latency_ms + observation_ms,
                                     wall_ms=(time.perf_counter() - started) * 1000,
                                     history_full_bytes=full_bytes, history_dropped_turns=dropped, telemetry=metrics,
@@ -347,13 +347,13 @@ async def run_integrated(plan, settings, output, *, execute=False, transport=Non
                                 if progress:
                                     progress(row)
                 write_json(output / 'manifest.json', manifest)
-        if _provenance() != manifest['code_sha256']:
+        if source_provenance() != manifest['code_sha256']:
             raise ValueError('source changed during experiment')
         manifest['status'] = 'COMPLETED'
     except BaseException as exc:
         manifest['status'] = 'CANCELLED' if isinstance(exc, (KeyboardInterrupt, asyncio.CancelledError)) else 'FAILED'
         manifest['error_type'] = type(exc).__name__
-        write_json(output / 'failure.json', _failure_record(
+        write_json(output / 'failure.json', failure_record(
             exc, manifest=manifest, condition=condition, repetition=variant, step=step, stage=stage, task=task,
         ))
         raise

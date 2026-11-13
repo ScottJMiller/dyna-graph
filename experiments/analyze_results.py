@@ -7,7 +7,9 @@ from pathlib import Path
 import statistics
 import sys
 
-from experiments.contracts import BenchmarkPlan, BenchmarkRow, load_json, sha256, write_json
+from experiments.contracts import (
+    BenchmarkPlan, BenchmarkRow, CSV_COLUMNS, flatten_row, load_json, sha256, write_json,
+)
 from experiments.scenario import scenario, scenario_records, score
 
 
@@ -86,13 +88,12 @@ def _validate_run_order(manifest, plan, rows):
 
 def _validate_metrics_csv(path, rows):
     """Require the CSV to match the deterministic JSONL projection exactly."""
-    from experiments.benchmark_harness import CSV_COLUMNS, _flatten
     with (path / "metrics.csv").open(encoding="utf-8", newline="") as stream:
         reader = csv.DictReader(stream, strict=True)
         if tuple(reader.fieldnames or ()) != CSV_COLUMNS:
             raise ValueError("benchmark CSV schema mismatch")
         csv_rows = list(reader)
-    expected_csv = [{k: "" if v is None else str(v) for k, v in _flatten(row).items()} for row in rows]
+    expected_csv = [{k: "" if v is None else str(v) for k, v in flatten_row(row).items()} for row in rows]
     if csv_rows != expected_csv:
         raise ValueError("CSV and JSONL evidence disagree")
 

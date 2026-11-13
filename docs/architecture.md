@@ -283,6 +283,7 @@ store; see the Phase 7 protocol for flush and recovery boundaries.
 
 | File | Status | Responsibility |
 | --- | --- | --- |
+| [experiments/common.py](../experiments/common.py) | Implemented | Share condition-neutral roles, recorded extraction, bounded history, inference accounting, inventory checks and source provenance across both studies. Imports do not start model or database work. |
 | [experiments/benchmark_harness.py](../experiments/benchmark_harness.py) | Implemented | Default to plan-only mode. On explicit execution, run fresh A/B conditions in AB/BA order, record inventories/digests/warmups, and export complete input, response, usage, timing and oracle evidence. |
 | [experiments/scenario.py](../experiments/scenario.py) | Implemented | Version the 20-turn observation/question schedule, selected prefix, independent oracle, update/reversion labels and strict answer-contract scoring. |
 | [experiments/contracts.py](../experiments/contracts.py) | Implemented | Define strict plan/row contracts, atomic manifest writes, finite JSON parsing and streaming artifact checksums. |
@@ -383,3 +384,21 @@ start a server, contact Ollama, or mutate graph state.
 
 Use the [architecture verification protocol](testing/architecture.md) after
 editing the atlas. The phase-specific protocols remain under `docs/testing/`.
+
+## Shared helpers after the experiment
+
+The [refactoring notes](refactoring.md) distinguish maintenance from the measured
+source revisions. Both experiment runners now import shared support from
+`experiments/common.py`; neither study runner is a helper library for the other.
+The original CSV column order and `flatten_row` projection live with
+`BenchmarkRow` in `experiments/contracts.py`. Analysis reads these contracts
+without importing an executable harness.
+
+Core helpers keep domain-specific owners. `graph_store.py` provides
+`normalize_text`, `validate_id`, `serialize_properties` and
+`validate_confidence`; `decay.py` provides `validate_number`, `validate_count`
+and `usage_from_row`; `seed_matcher.py` provides `validate_limit` and
+`normalize_subgoal`. `context_assembler.py` exposes `quote_label` so analysis
+can verify the exact serialized facts. These are explicit shared functions;
+implementation-only helpers remain private. No storage schema, SQL, policy or
+checkpoint behavior changes as part of this import cleanup.

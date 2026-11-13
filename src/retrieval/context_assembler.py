@@ -8,7 +8,7 @@ from time import perf_counter
 from typing import Callable, Literal
 
 from src.governance.decay import record_access
-from src.retrieval.seed_matcher import SeedMatcher, _limit, _subgoal
+from src.retrieval.seed_matcher import SeedMatcher, validate_limit, normalize_subgoal
 from src.retrieval.traversal import Traversal
 from src.storage.graph_store import GraphStore
 
@@ -42,9 +42,10 @@ class ContextResult:
     latency_ms: float
 
 
-def _quoted(value: str) -> str:
+def quote_label(value: str) -> str:
     # Escape angle brackets as well as controls/Unicode, so a raw model control
     # token or Markdown/HTML delimiter in a label remains literal data.
+    """Escape a graph label so controls, markup and Unicode remain literal data."""
     return json.dumps(value, ensure_ascii=True).replace("<", "\\u003c").replace(">", "\\u003e")
 
 
@@ -60,7 +61,7 @@ class ContextAssembler:
                  hops: int = 2, max_nodes: int = 64, max_triples: int = 128, fanout: int = 16,
                  token_counter: Callable[[str], int] | None = None) -> None:
         self.graph = graph
-        self.token_budget = _limit(token_budget, "token_budget", 1000)
+        self.token_budget = validate_limit(token_budget, "token_budget", 1000)
         self.matcher = SeedMatcher(graph, seed_limit=seed_limit)
         self.traversal = Traversal(graph, hops=hops, max_nodes=max_nodes, max_triples=max_triples, fanout=fanout)
         if seed_limit > max_nodes:
@@ -87,7 +88,7 @@ class ContextAssembler:
 
     def assemble(self, subgoal: str, *, format: ContextFormat = "markdown") -> ContextResult:
         started = perf_counter()
-        subgoal = _subgoal(subgoal)
+        subgoal = normalize_subgoal(subgoal)
         if format not in ("markdown", "json"):
             raise ValueError("format must be 'markdown' or 'json'")
         with self.graph.database.connection() as connection:
@@ -97,8 +98,8 @@ class ContextAssembler:
         selected_facts, selected_entities = [], []
         fact_text, entity_text = [], []
         covered = set()
-        quoted_names = {key: _quoted(entity.name) for key, entity in by_id.items()}
-        quoted_predicates = {triple.predicate: _quoted(triple.predicate) for triple in graph.triples}
+        quoted_names = {key: quote_label(entity.name) for key, entity in by_id.items()}
+        quoted_predicates = {triple.predicate: quote_label(triple.predicate) for triple in graph.triples}
 
         def fact_line(t):
             subject, predicate, obj = quoted_names[t.subject_id], quoted_predicates[t.predicate], quoted_names[t.object_id]

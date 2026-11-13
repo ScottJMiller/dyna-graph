@@ -8,13 +8,16 @@ from pathlib import Path
 import re
 import shutil
 import sqlite3
+import subprocess
+import sys
 
 import httpx
 from pydantic import ValidationError
 import pytest
 
 from experiments import analyze_results, benchmark_harness, generate_plots
-from experiments.benchmark_harness import linear_context, run_experiment
+from experiments.benchmark_harness import run_experiment
+from experiments.common import linear_context
 from experiments.contracts import BenchmarkPlan, BenchmarkRow, load_json, sha256, write_json
 from experiments.scenario import ScenarioTurn, scenario, scenario_hash, scenario_records, score
 from src.config import Settings
@@ -429,3 +432,37 @@ def test_per_turn_input_override_is_validated_and_saved_atomically(tmp_path):
                 assert turn.checkpoint.result["subgoal"] == second.subject
                 assert (await machine.get_checkpoint(run.id)).task == second.task
     asyncio.run(case())
+
+
+def test_analysis_imports_do_not_load_runners_or_start_work():
+    """Analysis imports must not require execution modules or start local services."""
+    script = """
+import importlib
+import sqlite3
+import sys
+import httpx
+from src import config
+from src.storage.database import Database
+
+def forbidden(*args, **kwargs):
+    raise AssertionError('import started configuration, database or HTTP work')
+
+config.get_settings = forbidden
+config.Settings.__init__ = forbidden
+Database.__init__ = forbidden
+sqlite3.connect = forbidden
+httpx.Client.send = forbidden
+httpx.AsyncClient.send = forbidden
+for name in ('experiments.common', 'experiments.analyze_results', 'experiments.integrated_analysis'):
+    importlib.import_module(name)
+assert 'experiments.benchmark_harness' not in sys.modules
+assert 'experiments.integrated_harness' not in sys.modules
+print('IMPORT BOUNDARIES OK')
+"""
+    result = subprocess.run(
+        [sys.executable, '-B', '-c', script],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip() == 'IMPORT BOUNDARIES OK'

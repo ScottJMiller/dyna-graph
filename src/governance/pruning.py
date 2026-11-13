@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import time
 from typing import Callable
 
-from src.governance.decay import DEGREE_SQL, DecayPolicy, _count, _number, _usage
+from src.governance.decay import DEGREE_SQL, DecayPolicy, validate_count, validate_number, usage_from_row
 from src.storage.graph_store import GraphStore
 
 
@@ -19,7 +19,7 @@ class PruningResult:
 class Pruner:
     def __init__(self, graph: GraphStore, *, policy: DecayPolicy | None = None,
                  threshold: float = 0.2, batch_size: int = 100) -> None:
-        _number(threshold, "threshold")
+        validate_number(threshold, "threshold")
         if threshold > 1:
             raise ValueError("threshold must be in the range 0-1")
         if type(batch_size) is not int or not 1 <= batch_size <= 1000:
@@ -39,9 +39,9 @@ class Pruner:
         has at most one active incident fact. Pins protect themselves and both
         endpoints of their active facts. No record is physically deleted.
         """
-        _count(current_turn, "current_turn")
-        _count(after_id, "after_id")
-        now = time.time() if now is None else _number(now, "now")
+        validate_count(current_turn, "current_turn")
+        validate_count(after_id, "after_id")
+        now = time.time() if now is None else validate_number(now, "now")
         with self.graph.database.transaction() as connection:
             rows = connection.execute(
                 f"SELECT e.id,e.created_at,e.is_pinned,m.*,({DEGREE_SQL}) AS degree, "
@@ -57,7 +57,7 @@ class Pruner:
             for row in rows:
                 if row["is_pinned"] or row["pinned_neighbor"] or row["degree"] > 1:
                     continue
-                score = self.policy.score(_usage(row), degree=row["degree"], now=now, current_turn=current_turn)
+                score = self.policy.score(usage_from_row(row), degree=row["degree"], now=now, current_turn=current_turn)
                 if score.retention < self.threshold:
                     pruned.append(row["id"])
             # Apply only after every score has been calculated: one batch cannot
@@ -85,7 +85,7 @@ class PruningDaemon:
 
     def __init__(self, pruner: Pruner, turn_provider: Callable[[], int], *,
                  interval_seconds: float = 60, clock: Callable[[], float] = time.time) -> None:
-        _number(interval_seconds, "interval_seconds", positive=True)
+        validate_number(interval_seconds, "interval_seconds", positive=True)
         if not callable(turn_provider) or not callable(clock):
             raise ValueError("turn_provider and clock must be callable")
         self.pruner, self.turn_provider = pruner, turn_provider

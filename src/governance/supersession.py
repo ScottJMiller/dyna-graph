@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 import time
 
-from src.governance.decay import _count, _number, record_access
-from src.storage.graph_store import GraphStore, Triple, _confidence, _id, _properties, _text
+from src.governance.decay import validate_count, validate_number, record_access
+from src.storage.graph_store import GraphStore, Triple, validate_confidence, validate_id, serialize_properties, normalize_text
 
 
 @dataclass(frozen=True)
@@ -38,7 +38,7 @@ class GovernedWriter:
             raise ValueError("single_valued_predicates must be a collection")
         self.graph = graph
         self.single_valued_predicates = frozenset(
-            _text(predicate, "predicate").casefold() for predicate in single_valued_predicates
+            normalize_text(predicate, "predicate").casefold() for predicate in single_valued_predicates
         )
 
     @classmethod
@@ -47,12 +47,12 @@ class GovernedWriter:
 
     def write_fact(self, subject_id: int, predicate: str, object_id: int, *, turn: int,
                    now: float | None = None, confidence: float = 1.0, properties: dict | None = None) -> WriteResult:
-        subject_id, object_id = _id(subject_id), _id(object_id)
-        predicate = _text(predicate, "predicate").casefold()
-        _count(turn, "turn")
-        now = time.time() if now is None else _number(now, "now")
-        _confidence(confidence)
-        _properties(properties)
+        subject_id, object_id = validate_id(subject_id), validate_id(object_id)
+        predicate = normalize_text(predicate, "predicate").casefold()
+        validate_count(turn, "turn")
+        now = time.time() if now is None else validate_number(now, "now")
+        validate_confidence(confidence)
+        serialize_properties(properties)
         with self.graph.database.transaction() as connection:
             for entity_id in {subject_id, object_id}:
                 entity = self.graph.get_entity(entity_id)
@@ -93,7 +93,7 @@ class GovernedWriter:
         return await self.graph.write_async(lambda _graph: self.write_fact(*args, **kwargs))
 
     def list_supersessions(self, *, after_id: int = 0, limit: int = 100) -> list[SupersessionEdge]:
-        _count(after_id, "after_id")
+        validate_count(after_id, "after_id")
         if type(limit) is not int or not 1 <= limit <= 1000:
             raise ValueError("limit must be an integer in the range 1-1000")
         with self.graph.database.connection() as connection:

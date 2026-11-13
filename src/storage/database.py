@@ -33,9 +33,16 @@ class Database:
     busy timeout handle other instances/processes. Nested transactions use
     savepoints. Read transactions prohibit writes and cannot be promoted.
     Do not manually commit, close, or change PRAGMAs on managed connections.
+
+    The application owns this Database lifetime. GraphStore and StateMachine
+    borrow it; they do not close it. A queued callback receives a transaction's
+    connection only for that callback and must remain synchronous. Use the async
+    context manager or aclose() once queued writes have been used, so accepted
+    work drains before pooled connections close.
     """
 
     def __init__(self, path: str | Path, *, pool_size: int = 4, busy_timeout_ms: int = 5000) -> None:
+        """Open and own a bounded connection pool; close all opened handles if setup fails."""
         if sqlite3.sqlite_version_info < (3, 38, 0):
             raise DatabaseError("SQLite 3.38+ is required for STRICT tables and JSON property checks")
         if str(path).strip() in ("", ":memory:") or str(path).startswith("file:"):
@@ -77,6 +84,7 @@ class Database:
 
     @classmethod
     def from_settings(cls, settings: "Settings | None" = None) -> "Database":
+        """Create a caller-owned database from explicit settings or the local environment."""
         if settings is None:
             from src.config import get_settings
             settings = get_settings()
@@ -84,6 +92,7 @@ class Database:
                    busy_timeout_ms=settings.sqlite_busy_timeout_ms)
 
     def _open_connection(self) -> sqlite3.Connection:
+        """Create one exclusively leased WAL connection with required safety pragmas."""
         connection = sqlite3.connect(
             self.path, timeout=self.busy_timeout_ms / 1000,
             isolation_level=None, check_same_thread=False,
@@ -102,6 +111,7 @@ class Database:
         return connection
 
     def _initialize(self, connection: sqlite3.Connection) -> None:
+        """Initialize or upgrade application storage atomically; never use for saved evidence."""
         version = connection.execute("PRAGMA user_version").fetchone()[0]
         if version not in (0, 1, 2, SCHEMA_VERSION):
             raise DatabaseError(f"Unsupported schema version {version}; expected {SCHEMA_VERSION}")
@@ -120,6 +130,7 @@ class Database:
 
     @contextmanager
     def _checkout(self) -> Iterator[sqlite3.Connection]:
+        """Lease one connection until the borrower exits, then return it to the pool."""
         with self._condition:
             if self._closed or self._closing:
                 raise DatabaseError("Database is closed or closing")
@@ -183,6 +194,7 @@ class Database:
         return self.transaction(write=False)
 
     def _execute_write(self, operation: Callable[[sqlite3.Connection], Result]) -> Result:
+        """Run one synchronous queued callback inside a committing write transaction."""
         with self.transaction() as connection:
             result = operation(connection)
             if inspect.isawaitable(result):
@@ -192,6 +204,7 @@ class Database:
             return result
 
     async def _write_worker(self) -> None:
+        """Serialize queued callbacks off the event loop and resolve their result futures."""
         while True:
             job = await self._queue.get()
             try:
@@ -256,6 +269,7 @@ class Database:
             self._closed = True
 
     async def aclose(self) -> None:
+        """Stop accepting writes, drain accepted work and close the owned pool."""
         if self._loop is not None and self._loop is not asyncio.get_running_loop():
             raise DatabaseError("Async close must use the database's original event loop")
         if self._worker is not None:
@@ -269,13 +283,17 @@ class Database:
         await asyncio.to_thread(self.close)
 
     def __enter__(self) -> "Database":
+        """Borrow this database in a synchronous caller-owned resource scope."""
         return self
 
     def __exit__(self, *args: object) -> None:
+        """Close the pool when the synchronous caller leaves its resource scope."""
         self.close()
 
     async def __aenter__(self) -> "Database":
+        """Borrow this database in an asynchronous caller-owned resource scope."""
         return self
 
     async def __aexit__(self, *args: object) -> None:
+        """Drain queued work and close the pool when the asynchronous caller exits."""
         await self.aclose()

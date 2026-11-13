@@ -16,6 +16,7 @@ from pydantic import ValidationError
 import pytest
 
 from experiments import integrated_analysis as analysis, integrated_harness as harness
+from experiments.common import make_agents
 from experiments.contracts import load_json,sha256,write_json
 from experiments.integrated_contracts import CONDITIONS,IntegratedPlan,IntegratedRow,project
 from experiments.integrated_scenario import Event,evaluate,fingerprint,records,role_at,workload
@@ -141,7 +142,7 @@ def test_workload_has_required_cases_and_valid_prompt_capacity(turns,tmp_path):
     assert items[1].pin_subject and all(e.pin_subject is None for e in items if e.step!=2)
     assert all(len(e.task)<=500 for e in items)
     client=OllamaClient(settings(tmp_path))
-    for actor in harness._agents(client):
+    for actor in make_agents(client):
         assert all(actor.context_capacity(e.task,e.subject)>0 for e in items)
     assert records(turns,1)==records(turns,1)
     assert len({fingerprint(turns,v) for v in range(1,5)})==4
@@ -327,7 +328,7 @@ def test_reply_error_policy_is_part_of_workflow_compatibility(tmp_path):
     async def run():
         async with OllamaClient(config,transport=httpx.MockTransport(fake)) as client:
             async with Database(tmp_path/'policy.db') as database:
-                graph=GraphStore(database);agents=harness._agents(client)
+                graph=GraphStore(database);agents=make_agents(client)
                 normal=StateMachine(client,graph,agents=agents)
                 recorded=StateMachine(client,graph,agents=agents,record_reply_errors=True)
                 assert normal.config_hash!=recorded.config_hash

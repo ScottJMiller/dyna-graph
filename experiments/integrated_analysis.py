@@ -14,7 +14,7 @@ import sqlite3
 import statistics
 import sys
 
-from experiments.benchmark_harness import linear_context
+from experiments.common import linear_context
 from experiments.contracts import load_json, sha256, write_json
 from experiments.integrated_contracts import (
     CONDITIONS, GENERATION_PROTOCOL, REPLY_ERROR_POLICY, INFERENCE_ERROR_POLICY,
@@ -22,7 +22,7 @@ from experiments.integrated_contracts import (
 )
 from experiments.integrated_scenario import evaluate, records, role_at, workload
 from src.agents.base_agent import REJECTED_REPLY_CONTENT
-from src.retrieval.context_assembler import _quoted
+from src.retrieval.context_assembler import quote_label
 
 
 def require(value, message):
@@ -317,7 +317,7 @@ def _validate_run(path, manifest, plan, rows, run, budgets):
         for fact in row.retrieved_facts:
             require(fact.live and catalog.get(fact.id) == fact,
                     'retrieval contains inactive or unrecorded fact')
-            line = f'- [t{fact.id}] {_quoted(fact.subject)} -- {_quoted(fact.predicate)} --> {_quoted(fact.object)}'
+            line = f'- [t{fact.id}] {quote_label(fact.subject)} -- {quote_label(fact.predicate)} --> {quote_label(fact.object)}'
             require(line in row.context, 'retrieved fact missing from supplied memory')
         _apply(catalog, row.changes, 'response')
         _validate_graph_snapshot(row.memory_after, catalog, event, 'post-write')

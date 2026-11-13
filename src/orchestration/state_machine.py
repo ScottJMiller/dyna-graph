@@ -15,7 +15,7 @@ from src.agents import AgentResult, BaseAgent, default_agents
 from src.agents.base_agent import AgentError, encode, rejected_reply, reply_failure_evidence, text
 from src.extraction import Extractor
 from src.governance import GovernedWriter, Pruner
-from src.governance.decay import _number
+from src.governance.decay import validate_number
 from src.models import AgentMessage, ExtractedGraph, SemanticTriple
 from src.network.ollama_client import generation_evidence
 from src.retrieval import ContextAssembler, ContextResult
@@ -24,6 +24,7 @@ from src.telemetry.profiler import TelemetryProfiler
 
 
 class Stage(StrEnum):
+    """Observable phase of a controller turn, including failure and cancellation."""
     IDLE = "IDLE"
     RECALL = "RECALL"
     GENERATE = "GENERATE"
@@ -39,6 +40,7 @@ class WorkflowError(RuntimeError):
 
 @dataclass(frozen=True)
 class RunCheckpoint:
+    """Durable workflow inputs, progress, ownership and recovery metadata."""
     id: str
     task: str
     subgoal: str
@@ -58,6 +60,7 @@ class RunCheckpoint:
 
 @dataclass(frozen=True)
 class TurnCheckpoint:
+    """One committed role outcome with its exact input and result evidence."""
     run_id: str
     step: int
     governance_turn: int
@@ -70,6 +73,7 @@ class TurnCheckpoint:
 
 @dataclass(frozen=True)
 class TurnResult:
+    """Return the committed checkpoint with its generation and memory context."""
     checkpoint: TurnCheckpoint
     agent: AgentResult
     context: ContextResult
@@ -85,12 +89,14 @@ class _SkippedExtraction:
 
 
 def _run_id(value):
+    """Require a bounded identifier suitable for durable workflow lookup."""
     if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", value):
         raise ValueError("run_id must have 1-64 ASCII letters, digits, underscores or hyphens")
     return value
 
 
 def _run(row):
+    """Decode a workflow_runs row into an immutable run checkpoint."""
     values = dict(row)
     values["agent_ids"] = tuple(json.loads(values["agent_ids"]))
     values["stop_on_verified"] = bool(values["stop_on_verified"])
@@ -98,6 +104,7 @@ def _run(row):
 
 
 def _turn(row):
+    """Decode the stored message and result of one committed workflow turn."""
     values = dict(row)
     values["message"] = AgentMessage.model_validate_json(values["message"])
     values["result"] = json.loads(values["result"])
@@ -105,6 +112,7 @@ def _turn(row):
 
 
 def _generation(generation):
+    """Serialize generation metrics while preserving recorded failure metadata."""
     result = {"node": generation.node, "model": generation.model, "latency_ms": generation.latency_ms,
             "generated_tokens": generation.generated_tokens, "used_fallback": generation.used_fallback,
             "done_reason": generation.done_reason, "prompt_tokens": generation.prompt_tokens,
@@ -149,6 +157,7 @@ class StateMachine:
                  clock: Callable[[], float] = time.time, profiler: TelemetryProfiler | None = None,
                  observation_clock: Callable[[], float] | None = None,
                  record_reply_errors: bool = False):
+        """Borrow the caller's client and graph; validate roles and freeze compatibility metadata."""
         self.client, self.graph, self.settings = client, graph, client.settings
         self.agents = tuple(default_agents(client) if agents is None else agents)
         if not 1 <= len(self.agents) <= 16 or any(not isinstance(a, BaseAgent) for a in self.agents):
@@ -199,8 +208,10 @@ class StateMachine:
         self.config_hash = hashlib.sha256(encode(configuration).encode()).hexdigest()
 
     async def get_checkpoint(self, run_id: str) -> RunCheckpoint:
+        """Read one durable run checkpoint without changing its state."""
         _run_id(run_id)
         def read():
+            """Read workflow state using a borrowed read-only snapshot connection."""
             with self.graph.database.connection() as connection:
                 row = connection.execute("SELECT * FROM workflow_runs WHERE id=?", (run_id,)).fetchone()
                 if row is None:
@@ -209,11 +220,13 @@ class StateMachine:
         return await asyncio.to_thread(read)
 
     async def history(self, run_id: str, *, after_step: int = 0, limit: int = 100) -> tuple[TurnCheckpoint, ...]:
+        """Read an ordered, bounded page of committed turns after after_step."""
         _run_id(run_id)
         if type(after_step) is not int or after_step < 0 or type(limit) is not int or not 1 <= limit <= 1000:
             raise ValueError("after_step must be nonnegative and limit must be 1-1000")
         await self.get_checkpoint(run_id)
         def read():
+            """Read workflow state using a borrowed read-only snapshot connection."""
             with self.graph.database.connection() as connection:
                 return tuple(_turn(row) for row in connection.execute(
                     "SELECT * FROM workflow_turns WHERE run_id=? AND step>? ORDER BY step LIMIT ?",
@@ -223,6 +236,7 @@ class StateMachine:
     async def start(self, task: str, *, initial_subgoal: str | None = None,
                     max_turns: int | None = None, stop_on_verified: bool = False,
                     run_id: str | None = None) -> RunCheckpoint:
+        """Validate framing and create a READY run without dispatching a model request."""
         task = text(task, "task", 500)
         subgoal = text(task if initial_subgoal is None else initial_subgoal, "initial_subgoal", 256)
         max_turns = self.settings.orchestration_max_turns if max_turns is None else max_turns
@@ -233,6 +247,7 @@ class StateMachine:
         for agent in self.agents:
             agent.context_capacity(task, subgoal)
         def create(_graph):
+            """Persist the initial run inside the queued write transaction."""
             with self.graph.database.transaction() as connection:
                 connection.execute("INSERT INTO workflow_runs(id,task,subgoal,agent_ids,config_hash,max_turns,stop_on_verified) VALUES(?,?,?,?,?,?,?)",
                     (run_id, task, subgoal, encode([a.agent_id for a in self.agents]), self.config_hash, max_turns, int(stop_on_verified)))
@@ -240,12 +255,13 @@ class StateMachine:
         return await _settled(self.graph.write_async(create))
 
     def _compatible(self, checkpoint):
+        """Require the original role, routing and memory-policy configuration."""
         if checkpoint.config_hash != self.config_hash:
             raise WorkflowError("run configuration differs; resume with its original roles, routes and policy")
 
     async def step(self, run_id: str, *, task: str | None = None,
                    subgoal: str | None = None, governance_turn: int | None = None) -> TurnResult:
-        """Advance one role, optionally accepting a new explicit task/sub-goal.
+        """Advance one role through recall, generation, extraction and commit.
 
         Validate inputs before claiming. A claimed input survives interruption;
         each committed turn retains the exact input used for its generation.
@@ -259,9 +275,11 @@ class StateMachine:
             self._compatible(checkpoint)
             if checkpoint.status != "READY":
                 raise WorkflowError(f"run is {checkpoint.status}; resume or recover it explicitly")
-            checkpoint = replace(checkpoint,
+            checkpoint = replace(
+                checkpoint,
                 task=checkpoint.task if task is None else text(task, "task", 500),
-                subgoal=checkpoint.subgoal if subgoal is None else text(subgoal, "subgoal", 256))
+                subgoal=checkpoint.subgoal if subgoal is None else text(subgoal, "subgoal", 256),
+            )
             agent = self.agents[checkpoint.next_step % len(self.agents)]
             agent.context_capacity(checkpoint.task, checkpoint.subgoal)
             step = checkpoint.next_step + 1
@@ -269,117 +287,198 @@ class StateMachine:
             owner = uuid4().hex
             started = self.profiler.timer()
             try:
-                def claim(_graph):
-                    with self.graph.database.transaction() as connection:
-                        changed = connection.execute("UPDATE workflow_runs SET status='RUNNING',error=NULL,owner_token=?,task=?,subgoal=? "
-                            "WHERE id=? AND status='READY' AND next_step=?",
-                            (owner, checkpoint.task, checkpoint.subgoal, run_id, checkpoint.next_step)).rowcount
-                        if changed != 1:
-                            raise WorkflowError("run is already owned or its checkpoint changed")
                 # Set before awaiting: a cancelled claim still settles durably.
                 claimed = True
-                await _settled(self.graph.write_async(claim))
+                await _settled(self.graph.write_async(
+                    lambda _graph: self._claim_turn(checkpoint, owner)
+                ))
+
                 self.stage = Stage.RECALL
-                capacity = min(self.settings.context_token_budget, agent.context_capacity(checkpoint.task, checkpoint.subgoal))
-                assembler = ContextAssembler(self.graph, token_budget=capacity,
-                    seed_limit=self.settings.retrieval_seed_limit, hops=self.settings.retrieval_hops,
-                    max_nodes=self.settings.retrieval_max_nodes, max_triples=self.settings.retrieval_max_triples,
-                    fanout=self.settings.retrieval_fanout)
-                context = await assembler.assemble_async(checkpoint.subgoal)
+                assembler, context = await self._recall_context(agent, checkpoint)
                 self.stage = Stage.GENERATE
-                try:
-                    result = await agent.execute(checkpoint.task, checkpoint.subgoal, context.text, turn=step,
-                        allow_fallback=self.settings.orchestration_allow_fallback)
-                except AgentError as exc:
-                    if not self.record_reply_errors:
-                        raise
-                    result = rejected_reply(exc, agent_id=agent.agent_id, turn=step)
+                result = await self._execute_agent(agent, checkpoint, context, step)
                 self.stage = Stage.EXTRACT
-                if result.reply_error is None:
-                    extracted = await self.extractor.extract(result.message, node="node2",
-                        allow_fallback=self.settings.orchestration_allow_fallback)
-                else:
-                    extracted = _SkippedExtraction(ExtractedGraph(triples=[]))
-                accepted = []
-                for fact in extracted.graph.triples:
-                    decision = True if self.accept_fact is None else self.accept_fact(
-                        SemanticTriple.model_validate(fact.model_dump()), AgentMessage.model_validate(result.message.model_dump()))
-                    if inspect.iscoroutine(decision):
-                        decision.close()
-                    if type(decision) is not bool:
-                        raise ValueError("accept_fact must return a boolean synchronously")
-                    if decision:
-                        accepted.append(SemanticTriple.model_validate(fact.model_dump()))
-                next_subgoal = checkpoint.subgoal if result.next_subgoal is None else text(result.next_subgoal, "next_subgoal", 256)
+                extracted = await self._extract_response(result)
+                accepted = self._select_facts(extracted, result)
+                next_subgoal = (checkpoint.subgoal if result.next_subgoal is None
+                                else text(result.next_subgoal, "next_subgoal", 256))
+
                 self.stage = Stage.COMMIT
-                def commit(_graph):
-                    with self.graph.database.transaction() as connection:
-                        row = connection.execute("SELECT status,next_step,owner_token FROM workflow_runs WHERE id=?", (run_id,)).fetchone()
-                        if row["status"] != "RUNNING" or row["next_step"] != checkpoint.next_step or row["owner_token"] != owner:
-                            raise WorkflowError("checkpoint ownership changed before commit")
-                        latest_access, latest_commit = connection.execute(
-                            "SELECT COALESCE((SELECT max(last_access_turn) FROM entity_memory),0),"
-                            "COALESCE((SELECT max(governance_turn) FROM workflow_turns),0)").fetchone()
-                        turn = max(latest_access, latest_commit) + 1 if governance_turn is None else governance_turn
-                        if turn < latest_access or turn <= latest_commit:
-                            raise ValueError("governance_turn must follow committed turns and not precede accesses")
-                        now = _number(self.clock(), "clock")
-                        observed_at = _number(self.observation_clock(), "observation_clock")
-                        assembler.mark_used(context, turn=turn, now=now)
-                        writes = []
-                        for fact in accepted:
-                            endpoints = []
-                            for label in (fact.subject, fact.object):
-                                exact = next((e for e in self.graph.search_prefix(label, limit=5)
-                                              if e.canonical_name == label.casefold()), None)
-                                endpoints.append(exact or self.graph.get_or_create_entity(label))
-                            writes.append(self.writer.write_fact(endpoints[0].id, fact.predicate, endpoints[1].id,
-                                confidence=fact.confidence, turn=turn, now=now))
-                        pruning = self.pruner.run_once(current_turn=turn, now=now) if self.settings.orchestration_prune_between_turns else None
-                        verified = checkpoint.stop_on_verified and result.complete
-                        done = step == checkpoint.max_turns or verified
-                        payload = {"governance_time": now, "task": checkpoint.task, "subgoal": checkpoint.subgoal,
-                            "context": asdict(context), "next_subgoal": next_subgoal,
-                            "complete": result.complete, "fact_ids": [w.triple.id for w in writes],
-                            "superseded_ids": [value for w in writes for value in w.superseded_ids],
-                            "pruned_ids": [] if pruning is None else list(pruning.pruned_ids),
-                            "extracted_facts": extracted.graph.model_dump(mode="json")["triples"],
-                            "agent_generations": [_generation(g) for g in result.generations],
-                            "extraction_attempts": [_generation(g) for g in extracted.attempts],
-                            "tools": [asdict(t) for t in result.tools]}
-                        if self.record_reply_errors:
-                            payload["reply_failure"] = reply_failure_evidence(result)
-                        if self.record_reply_errors or getattr(self.extractor, "record_errors", False):
-                            payload["extraction_failure"] = getattr(extracted, "failure", None)
-                            payload["agent_attempts"] = [generation_evidence(g) for g in result.generations]
-                            payload["response_attempts"] = [generation_evidence(g) for g in extracted.attempts]
-                        payload["telemetry"] = self.profiler.capture(connection, run_id=run_id, step=step,
-                            governance_turn=turn, agent_id=agent.agent_id, node=result.generation.node,
-                            observed_at=observed_at, started=started, agent=result, extraction=extracted,
-                            context=context).model_dump(mode="json")
-                        connection.execute("INSERT INTO workflow_turns(run_id,step,governance_turn,agent_id,node,message,result) VALUES(?,?,?,?,?,?,?)",
-                            (run_id, step, turn, agent.agent_id, result.generation.node, result.message.model_dump_json(), encode(payload)))
-                        connection.execute("UPDATE workflow_runs SET next_step=?,subgoal=?,status=?,stop_reason=?,last_response=?,error=NULL,owner_token=NULL,"
-                            "updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",
-                            (step, next_subgoal, "COMPLETED" if done else "READY", "verified" if verified else "turn_budget" if done else None,
-                             result.message.content, run_id))
-                        return _turn(connection.execute("SELECT * FROM workflow_turns WHERE run_id=? AND step=?", (run_id, step)).fetchone())
-                saved = await _settled(self.graph.write_async(commit))
+                saved = await _settled(self.graph.write_async(
+                    lambda _graph: self._commit_turn(
+                        checkpoint, agent, owner,
+                        governance_turn=governance_turn, assembler=assembler,
+                        context=context, result=result, extracted=extracted,
+                        accepted=accepted, next_subgoal=next_subgoal, started=started,
+                    )
+                ))
                 self.stage = Stage.IDLE
                 return TurnResult(saved, result, context, extracted)
             except BaseException as exc:
                 cancelled = isinstance(exc, asyncio.CancelledError)
                 if claimed:
-                    def fail(_graph):
-                        with self.graph.database.transaction() as connection:
-                            connection.execute("UPDATE workflow_runs SET status=?,error=?,owner_token=NULL,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') "
-                                "WHERE id=? AND status='RUNNING' AND next_step=? AND owner_token=?",
-                                ("CANCELLED" if cancelled else "FAILED", f"{self.stage}: {type(exc).__name__}"[:300], run_id, checkpoint.next_step, owner))
-                    await _settled(self.graph.write_async(fail))
+                    await _settled(self.graph.write_async(
+                        lambda _graph: self._record_turn_failure(checkpoint, owner, exc, cancelled)
+                    ))
                 self.stage = Stage.CANCELLED if cancelled else Stage.FAILED
                 raise
 
+    def _claim_turn(self, checkpoint, owner):
+        """Claim a READY turn and persist its inputs in a queued transaction.
+
+        The compare-and-update prevents a second controller from claiming a
+        checkpoint that has already advanced. The caller settles this write
+        before allowing cancellation to propagate.
+        """
+        run_id = checkpoint.id
+        with self.graph.database.transaction() as connection:
+            changed = connection.execute("UPDATE workflow_runs SET status='RUNNING',error=NULL,owner_token=?,task=?,subgoal=? "
+                "WHERE id=? AND status='READY' AND next_step=?",
+                (owner, checkpoint.task, checkpoint.subgoal, run_id, checkpoint.next_step)).rowcount
+            if changed != 1:
+                raise WorkflowError("run is already owned or its checkpoint changed")
+
+    async def _recall_context(self, agent, checkpoint):
+        """Assemble bounded memory without marking it used before a commit.
+
+        Return both the assembler and its context: the commit later records
+        usage of exactly the memory that was supplied to the agent.
+        """
+        capacity = min(
+            self.settings.context_token_budget,
+            agent.context_capacity(checkpoint.task, checkpoint.subgoal),
+        )
+        assembler = ContextAssembler(
+            self.graph, token_budget=capacity,
+            seed_limit=self.settings.retrieval_seed_limit,
+            hops=self.settings.retrieval_hops,
+            max_nodes=self.settings.retrieval_max_nodes,
+            max_triples=self.settings.retrieval_max_triples,
+            fanout=self.settings.retrieval_fanout,
+        )
+        context = await assembler.assemble_async(checkpoint.subgoal)
+        return assembler, context
+
+    async def _execute_agent(self, agent, checkpoint, context, step):
+        """Run the selected role with the existing fallback and rejection policy."""
+        try:
+            return await agent.execute(
+                checkpoint.task, checkpoint.subgoal, context.text, turn=step,
+                allow_fallback=self.settings.orchestration_allow_fallback,
+            )
+        except AgentError as exc:
+            if not self.record_reply_errors:
+                raise
+            return rejected_reply(exc, agent_id=agent.agent_id, turn=step)
+
+    async def _extract_response(self, result):
+        """Extract accepted reply text; rejected replies contribute no facts."""
+        if result.reply_error is None:
+            return await self.extractor.extract(
+                result.message, node="node2",
+                allow_fallback=self.settings.orchestration_allow_fallback,
+            )
+        return _SkippedExtraction(ExtractedGraph(triples=[]))
+
+    def _select_facts(self, extracted, result):
+        """Apply the existing synchronous acceptance policy to cloned facts.
+
+        This selects facts for the later transaction; it does not write them.
+        Source extraction and policy approval do not establish semantic truth.
+        """
+        accepted = []
+        for fact in extracted.graph.triples:
+            decision = True if self.accept_fact is None else self.accept_fact(
+                SemanticTriple.model_validate(fact.model_dump()),
+                AgentMessage.model_validate(result.message.model_dump()),
+            )
+            if inspect.iscoroutine(decision):
+                decision.close()
+            if type(decision) is not bool:
+                raise ValueError("accept_fact must return a boolean synchronously")
+            if decision:
+                accepted.append(SemanticTriple.model_validate(fact.model_dump()))
+        return accepted
+
+    def _commit_turn(self, checkpoint, agent, owner, *, governance_turn,
+                     assembler, context, result, extracted, accepted,
+                     next_subgoal, started):
+        """Commit memory, governance, telemetry and the turn checkpoint together.
+
+        Called only through the graph's queued write API. Keep the ownership
+        check, usage updates, accepted writes, pruning, telemetry capture and
+        both checkpoint writes in this one transaction. No inference or CSV
+        output belongs inside it. The caller settles an accepted commit even
+        if the awaiting task is cancelled.
+        """
+        run_id = checkpoint.id
+        step = checkpoint.next_step + 1
+        with self.graph.database.transaction() as connection:
+            row = connection.execute("SELECT status,next_step,owner_token FROM workflow_runs WHERE id=?", (run_id,)).fetchone()
+            if row["status"] != "RUNNING" or row["next_step"] != checkpoint.next_step or row["owner_token"] != owner:
+                raise WorkflowError("checkpoint ownership changed before commit")
+            latest_access, latest_commit = connection.execute(
+                "SELECT COALESCE((SELECT max(last_access_turn) FROM entity_memory),0),"
+                "COALESCE((SELECT max(governance_turn) FROM workflow_turns),0)").fetchone()
+            turn = max(latest_access, latest_commit) + 1 if governance_turn is None else governance_turn
+            if turn < latest_access or turn <= latest_commit:
+                raise ValueError("governance_turn must follow committed turns and not precede accesses")
+            now = validate_number(self.clock(), "clock")
+            observed_at = validate_number(self.observation_clock(), "observation_clock")
+            assembler.mark_used(context, turn=turn, now=now)
+            writes = []
+            for fact in accepted:
+                endpoints = []
+                for label in (fact.subject, fact.object):
+                    exact = next((e for e in self.graph.search_prefix(label, limit=5)
+                                  if e.canonical_name == label.casefold()), None)
+                    endpoints.append(exact or self.graph.get_or_create_entity(label))
+                writes.append(self.writer.write_fact(endpoints[0].id, fact.predicate, endpoints[1].id,
+                    confidence=fact.confidence, turn=turn, now=now))
+            pruning = self.pruner.run_once(current_turn=turn, now=now) if self.settings.orchestration_prune_between_turns else None
+            verified = checkpoint.stop_on_verified and result.complete
+            done = step == checkpoint.max_turns or verified
+            payload = {"governance_time": now, "task": checkpoint.task, "subgoal": checkpoint.subgoal,
+                "context": asdict(context), "next_subgoal": next_subgoal,
+                "complete": result.complete, "fact_ids": [w.triple.id for w in writes],
+                "superseded_ids": [value for w in writes for value in w.superseded_ids],
+                "pruned_ids": [] if pruning is None else list(pruning.pruned_ids),
+                "extracted_facts": extracted.graph.model_dump(mode="json")["triples"],
+                "agent_generations": [_generation(g) for g in result.generations],
+                "extraction_attempts": [_generation(g) for g in extracted.attempts],
+                "tools": [asdict(t) for t in result.tools]}
+            if self.record_reply_errors:
+                payload["reply_failure"] = reply_failure_evidence(result)
+            if self.record_reply_errors or getattr(self.extractor, "record_errors", False):
+                payload["extraction_failure"] = getattr(extracted, "failure", None)
+                payload["agent_attempts"] = [generation_evidence(g) for g in result.generations]
+                payload["response_attempts"] = [generation_evidence(g) for g in extracted.attempts]
+            payload["telemetry"] = self.profiler.capture(connection, run_id=run_id, step=step,
+                governance_turn=turn, agent_id=agent.agent_id, node=result.generation.node,
+                observed_at=observed_at, started=started, agent=result, extraction=extracted,
+                context=context).model_dump(mode="json")
+            connection.execute("INSERT INTO workflow_turns(run_id,step,governance_turn,agent_id,node,message,result) VALUES(?,?,?,?,?,?,?)",
+                (run_id, step, turn, agent.agent_id, result.generation.node, result.message.model_dump_json(), encode(payload)))
+            connection.execute("UPDATE workflow_runs SET next_step=?,subgoal=?,status=?,stop_reason=?,last_response=?,error=NULL,owner_token=NULL,"
+                "updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",
+                (step, next_subgoal, "COMPLETED" if done else "READY", "verified" if verified else "turn_budget" if done else None,
+                 result.message.content, run_id))
+            return _turn(connection.execute("SELECT * FROM workflow_turns WHERE run_id=? AND step=?", (run_id, step)).fetchone())
+
+    def _record_turn_failure(self, checkpoint, owner, exc, cancelled):
+        """Release only this owner's still-uncommitted turn after an error.
+
+        The guarded update leaves another owner's work and an already committed
+        turn unchanged, including when cancellation arrives during commit.
+        """
+        run_id = checkpoint.id
+        with self.graph.database.transaction() as connection:
+            connection.execute("UPDATE workflow_runs SET status=?,error=?,owner_token=NULL,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') "
+                "WHERE id=? AND status='RUNNING' AND next_step=? AND owner_token=?",
+                ("CANCELLED" if cancelled else "FAILED", f"{self.stage}: {type(exc).__name__}"[:300], run_id, checkpoint.next_step, owner))
+
     async def resume(self, run_id: str, *, recover_interrupted: bool = False) -> RunCheckpoint:
+        """Continue from the next uncommitted turn, explicitly recovering stale ownership."""
         if type(recover_interrupted) is not bool:
             raise ValueError("recover_interrupted must be boolean")
         checkpoint = await self.get_checkpoint(run_id)
@@ -388,6 +487,7 @@ class StateMachine:
             raise WorkflowError("run is RUNNING; recover only after its previous owner has stopped")
         if checkpoint.status in ("FAILED", "CANCELLED", "RUNNING"):
             def reset(_graph):
+                """Reset only the matching interrupted checkpoint before resuming."""
                 with self.graph.database.transaction() as connection:
                     changed = connection.execute("UPDATE workflow_runs SET status='READY',error=NULL,owner_token=NULL WHERE id=? AND status=? AND next_step=?",
                         (run_id, checkpoint.status, checkpoint.next_step)).rowcount
@@ -401,6 +501,7 @@ class StateMachine:
             await self.step(run_id)
 
     async def run(self, task: str, **kwargs) -> RunCheckpoint:
+        """Create a run and resume it, retaining the run ID in any workflow error."""
         checkpoint = await self.start(task, **kwargs)
         try:
             return await self.resume(checkpoint.id)

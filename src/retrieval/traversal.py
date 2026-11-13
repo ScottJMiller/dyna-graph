@@ -4,8 +4,8 @@ from dataclasses import dataclass
 import json
 import sqlite3
 
-from src.retrieval.seed_matcher import MAX_LABEL_CHARS, _limit
-from src.storage.graph_store import GraphStore, _id
+from src.retrieval.seed_matcher import MAX_LABEL_CHARS, validate_limit
+from src.storage.graph_store import GraphStore, validate_id
 
 
 @dataclass(frozen=True)
@@ -44,15 +44,15 @@ class Traversal:
     def __init__(self, graph: GraphStore, *, hops: int = 2, max_nodes: int = 64,
                  max_triples: int = 128, fanout: int = 16) -> None:
         self.graph = graph
-        self.hops = _limit(hops, "hops", 2)
-        self.max_nodes = _limit(max_nodes, "max_nodes", 256)
-        self.max_triples = _limit(max_triples, "max_triples", 512)
-        self.fanout = _limit(fanout, "fanout", 64)
+        self.hops = validate_limit(hops, "hops", 2)
+        self.max_nodes = validate_limit(max_nodes, "max_nodes", 256)
+        self.max_triples = validate_limit(max_triples, "max_triples", 512)
+        self.fanout = validate_limit(fanout, "fanout", 64)
 
     def _seeds(self, entity_ids) -> tuple[int, ...]:
         if not isinstance(entity_ids, (list, tuple, set, frozenset)) or len(entity_ids) > 16:
             raise ValueError("seed IDs must be a collection of at most 16 IDs")
-        ids = tuple(sorted({_id(value) for value in entity_ids}))
+        ids = tuple(sorted({validate_id(value) for value in entity_ids}))
         if len(ids) > self.max_nodes:
             raise ValueError("max_nodes must accommodate every supplied seed")
         return ids

@@ -179,7 +179,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       ],
       "inputs": "Role instructions, sub-goal, bounded graph context.",
       "outputs": "An agent response and inference metadata.",
-      "notes": "Guard input/framing/output within 2048-token context using baseline byte bounds. At most 8 tools, 2 calls/request, 0\u20132 tool rounds. No model code execution. Node 2 serves inference; Python stays on Node 1.",
+      "notes": "Guard input/framing/output within 2048-token context using baseline byte bounds. At most 8 tools, 2 calls/request, 0–2 tool rounds. No model code execution. Node 2 serves inference; Python stays on Node 1.",
       "kind": "source",
       "label": "base_agent.py",
       "status": "implemented",
@@ -191,7 +191,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "id": "personas",
       "path": "src/agents/personas.py",
       "phase": 6,
-      "summary": "Planner \u00b7 researcher \u00b7 verifier",
+      "summary": "Planner · researcher · verifier",
       "description": "Define a planner and verifier using Node 1 inference and a research role using Node 2 inference. These are logical roles controlled by the same orchestrator.",
       "interfaces": [
         "PlannerAgent / ResearchAgent / VerificationAgent",
@@ -255,7 +255,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "id": "ollama1",
       "path": "",
       "phase": 1,
-      "summary": "Node 1 \u00b7 local HTTP inference",
+      "summary": "Node 1 · local HTTP inference",
       "description": "The coordinator machine also runs a local quantized synthesis model. Planner/verifier inference uses this service; extraction may use it directly or as a fallback.",
       "interfaces": [
         "HTTP /api/version",
@@ -266,7 +266,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "outputs": "Generated text, model inventory, and timing counters.",
       "notes": "All storage and orchestration remain on Node 1. No external cloud inference is used.",
       "kind": "resource",
-      "label": "Ollama \u00b7 primary",
+      "label": "Ollama · primary",
       "status": "resource",
       "support": false,
       "x": 1980,
@@ -276,16 +276,16 @@ svg #arrow-active path { fill: var(--edge-active); }
       "id": "ollama2",
       "path": "",
       "phase": 1,
-      "summary": "Node 2 \u00b7 LAN HTTP inference",
+      "summary": "Node 2 · LAN HTTP inference",
       "description": "A secondary computer runs the smaller local model. It serves research/extraction requests over the private LAN; it does not open the SQLite file.",
       "interfaces": [
         "Same Ollama HTTP endpoints"
       ],
       "inputs": "Private LAN HTTP requests from Node 1.",
       "outputs": "Local worker generations and timing counters.",
-      "notes": "Baseline: an Intel N100-or-better computer with 8\u201316 GB RAM. Keep one loaded model and one concurrent generation for constrained hardware.",
+      "notes": "Baseline: an Intel N100-or-better computer with 8–16 GB RAM. Keep one loaded model and one concurrent generation for constrained hardware.",
       "kind": "resource",
-      "label": "Ollama \u00b7 worker",
+      "label": "Ollama · worker",
       "status": "resource",
       "support": false,
       "x": 2460,
@@ -405,7 +405,7 @@ svg #arrow-active path { fill: var(--edge-active); }
         "ExtractedGraph"
       ],
       "inputs": "Message fields or decoded JSON.",
-      "outputs": "Typed messages and subject\u2013predicate\u2013object facts.",
+      "outputs": "Typed messages and subject–predicate–object facts.",
       "notes": "Current bounds: 2,000 message characters; 16 triples; 256 characters per label; confidence in [0,1]. An explicit empty triples array is valid.",
       "kind": "source",
       "label": "schemas.py",
@@ -545,7 +545,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "id": "sqlite",
       "path": "data/dynagraph.db",
       "phase": 2,
-      "summary": "Node 1 \u00b7 persistent graph file",
+      "summary": "Node 1 · persistent graph file",
       "description": "The configured embedded SQLite database stores graph records and its FTS index. WAL sidecars support local concurrent readers and serialized writers.",
       "interfaces": [
         "Configured DATABASE_PATH"
@@ -554,7 +554,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "outputs": "Durable graph state across runs.",
       "notes": "This is a generated, ignored runtime artifact. Node 2 never mounts or opens this database.",
       "kind": "resource",
-      "label": "SQLite \u00b7 local file",
+      "label": "SQLite · local file",
       "status": "resource",
       "support": false,
       "x": 1980,
@@ -1436,7 +1436,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "experiments/contracts.py",
       "label": "contracts.py",
       "summary": "Validate plans and evidence",
-      "description": "Strict finite contracts, atomic manifests and bounded-memory checksums.",
+      "description": "Strict finite contracts, the original CSV layout and projection, atomic manifests and bounded-memory checksums.",
       "phase": 8,
       "interfaces": [
         "Versioned experiment API"
@@ -1589,7 +1589,7 @@ svg #arrow-active path { fill: var(--edge-active); }
       "path": "experiments/integrated_scenario.py",
       "label": "integrated_scenario.py",
       "summary": "Seed long-horizon observations and probes",
-      "description": "Version complete rendered prompts, current value/set oracles, critical metadata and source-role steps across 60\u201380 turns.",
+      "description": "Version complete rendered prompts, current value/set oracles, critical metadata and source-role steps across 60–80 turns.",
       "phase": 8,
       "interfaces": [
         "Protocol 4; scenario: integrated-memory-v2"
@@ -1659,6 +1659,27 @@ svg #arrow-active path { fill: var(--edge-active); }
       "support": true,
       "x": 2460,
       "y": 3936
+    },
+    {
+      "id": "experiment-common",
+      "path": "experiments/common.py",
+      "label": "common.py",
+      "summary": "Shared experiment support",
+      "description": "Provide condition-neutral roles, recorded extraction, bounded history, inference accounting, inventory checks and source provenance for both studies.",
+      "phase": 8,
+      "interfaces": [
+        "make_agents / RecordedExtractor",
+        "linear_context / baseline_metrics",
+        "model_inventory / source_provenance"
+      ],
+      "inputs": "Caller-owned clients, recorded generations, history and local source files.",
+      "outputs": "Shared roles, metrics, model metadata and evidence diagnostics.",
+      "notes": "Import has no settings, database or network side effects. Scenario execution and scoring remain in their own study modules.",
+      "kind": "source",
+      "status": "implemented",
+      "support": false,
+      "x": 1980,
+      "y": 1888
     }
   ],
   "edges": [
@@ -2564,8 +2585,8 @@ svg #arrow-active path { fill: var(--edge-active); }
     },
     {
       "source": "integrated-harness",
-      "target": "harness",
-      "label": "reuse client guards and bounded-history helpers",
+      "target": "experiment-common",
+      "label": "reuse shared experiment roles and accounting",
       "kind": "call"
     },
     {
@@ -2585,6 +2606,48 @@ svg #arrow-active path { fill: var(--edge-active); }
       "target": "figures",
       "label": "export six figure sets from validated evidence",
       "kind": "data"
+    },
+    {
+      "source": "harness",
+      "target": "experiment-common",
+      "label": "reuse shared experiment roles and accounting",
+      "kind": "call"
+    },
+    {
+      "source": "integrated-analysis",
+      "target": "experiment-common",
+      "label": "replay bounded linear history",
+      "kind": "call"
+    },
+    {
+      "source": "experiment-common",
+      "target": "personas",
+      "label": "create condition-neutral role schedule",
+      "kind": "call"
+    },
+    {
+      "source": "experiment-common",
+      "target": "extractor",
+      "label": "retain failed extraction sources",
+      "kind": "call"
+    },
+    {
+      "source": "experiment-common",
+      "target": "profiler",
+      "label": "construct history-only turn metrics",
+      "kind": "call"
+    },
+    {
+      "source": "experiment-common",
+      "target": "client",
+      "label": "validate inventory and fixed node/model routes",
+      "kind": "call"
+    },
+    {
+      "source": "experiment-common",
+      "target": "contracts",
+      "label": "hash current source provenance",
+      "kind": "call"
     }
   ],
   "phases": [
@@ -2664,7 +2727,7 @@ svg #arrow-active path { fill: var(--edge-active); }
     },
     {
       "phase": 5,
-      "label": "RELEVANT CONTEXT \u00b7 TARGET \u2264 1,000 TOKENS",
+      "label": "RELEVANT CONTEXT · TARGET ≤ 1,000 TOKENS",
       "x": 36,
       "y": 576,
       "w": 1288,
@@ -2788,7 +2851,8 @@ svg #arrow-active path { fill: var(--edge-active); }
         "scenario",
         "contracts",
         "integrated-harness",
-        "integrated-analysis"
+        "integrated-analysis",
+        "experiment-common"
       ]
     }
   }

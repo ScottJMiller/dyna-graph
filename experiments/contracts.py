@@ -79,6 +79,17 @@ class BenchmarkRow(Strict):
         return self
 
 
+def flatten_row(row):
+    """Project a validated turn and its telemetry into the original CSV layout."""
+    values = row.model_dump()
+    telemetry = values.pop("telemetry")
+    return values | {"m_" + key: value for key, value in telemetry.items()}
+
+
+CSV_COLUMNS = tuple(k for k in BenchmarkRow.model_fields if k != "telemetry") + tuple(
+    "m_" + k for k in TurnMetrics.model_fields)
+
+
 def utc_now():
     return datetime.now(timezone.utc).isoformat()
 

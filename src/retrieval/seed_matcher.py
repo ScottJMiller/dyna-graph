@@ -13,13 +13,15 @@ MAX_LABEL_CHARS = 256
 STOP_WORDS = frozenset("a an and are as at be by do does for from how i in is it of on or that the this to was what when where which who why with".split())
 
 
-def _limit(value: int, name: str, maximum: int) -> int:
+def validate_limit(value: int, name: str, maximum: int) -> int:
+    """Require an integer limit within the named operation's bounds."""
     if type(value) is not int or not 1 <= value <= maximum:
         raise ValueError(f"{name} must be an integer in the range 1-{maximum}")
     return value
 
 
-def _subgoal(value: str) -> str:
+def normalize_subgoal(value: str) -> str:
+    """Validate a bounded Unicode goal and normalize its whitespace."""
     if not isinstance(value, str) or len(value) > MAX_SUBGOAL_CHARS:
         raise ValueError(f"subgoal must be a string of at most {MAX_SUBGOAL_CHARS} characters")
     if "\x00" in value or any(0xD800 <= ord(char) <= 0xDFFF for char in value):
@@ -37,10 +39,10 @@ class SeedMatch:
 class SeedMatcher:
     def __init__(self, graph: GraphStore, *, seed_limit: int = 5) -> None:
         self.graph = graph
-        self.seed_limit = _limit(seed_limit, "seed_limit", 16)
+        self.seed_limit = validate_limit(seed_limit, "seed_limit", 16)
 
     def match(self, subgoal: str) -> SeedMatch:
-        subgoal = _subgoal(subgoal)
+        subgoal = normalize_subgoal(subgoal)
         with self.graph.database.connection() as connection:
             return self._match(connection, subgoal)
 

@@ -42,19 +42,22 @@ class Triple:
     updated_at: str
 
 
-def _text(value: str, label: str) -> str:
+def normalize_text(value: str, label: str) -> str:
+    """Require nonblank text and normalize repeated whitespace."""
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{label} must be a nonempty string")
     return " ".join(value.split())
 
 
-def _id(value: int) -> int:
+def validate_id(value: int) -> int:
+    """Require a positive integer entity or triple identifier."""
     if type(value) is not int or value < 1:
         raise ValueError("IDs must be positive integers")
     return value
 
 
-def _properties(value: dict | None) -> str:
+def serialize_properties(value: dict | None) -> str:
+    """Validate properties and return deterministic finite JSON for storage."""
     if value is None:
         return "{}"
     if not isinstance(value, dict) or any(not isinstance(key, str) for key in value):
@@ -66,13 +69,14 @@ def _properties(value: dict | None) -> str:
 
 
 def _status(value: str, allowed: frozenset[str]) -> str:
-    value = _text(value, "status").upper()
+    value = normalize_text(value, "status").upper()
     if value not in allowed:
         raise ValueError(f"status must be one of {sorted(allowed)}")
     return value
 
 
-def _confidence(value: float) -> float:
+def validate_confidence(value: float) -> float:
+    """Require a finite confidence value between zero and one."""
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
         raise ValueError("confidence must be a finite number in the range 0-1")
     return float(value)
@@ -134,11 +138,11 @@ class GraphStore:
 
     def _get(self, table: str, row_id: int, convert: Callable) -> Entity | Triple | None:
         with self.database.connection() as connection:
-            row = connection.execute(f"SELECT * FROM {table} WHERE id=?", (_id(row_id),)).fetchone()
+            row = connection.execute(f"SELECT * FROM {table} WHERE id=?", (validate_id(row_id),)).fetchone()
             return None if row is None else convert(row)
 
     def _update(self, table: str, row_id: int, fields: dict, convert: Callable) -> Entity | Triple | None:
-        _id(row_id)
+        validate_id(row_id)
         if not fields:
             return self._get(table, row_id, convert)
         assignments = ", ".join(f"{column}=?" for column in fields)
@@ -155,7 +159,7 @@ class GraphStore:
 
     def _delete(self, table: str, row_id: int) -> bool:
         with self.database.transaction() as connection:
-            cursor = connection.execute(f"DELETE FROM {table} WHERE id=?", (_id(row_id),))
+            cursor = connection.execute(f"DELETE FROM {table} WHERE id=?", (validate_id(row_id),))
             deleted = cursor.rowcount > 0
             cursor.close()
             return deleted
@@ -164,15 +168,15 @@ class GraphStore:
         self, name: str, *, entity_type: str = "concept", description: str = "",
         properties: dict | None = None, is_pinned: bool = False, status: str = "ACTIVE",
     ) -> Entity:
-        name = _text(name, "name")
+        name = normalize_text(name, "name")
         if not isinstance(description, str):
             raise ValueError("description must be a string")
         if type(is_pinned) is not bool:
             raise ValueError("is_pinned must be a boolean")
         return self._insert("entities", {
             "name": name, "canonical_name": name.casefold(),
-            "entity_type": _text(entity_type, "entity_type").casefold(),
-            "description": description, "properties": _properties(properties),
+            "entity_type": normalize_text(entity_type, "entity_type").casefold(),
+            "description": description, "properties": serialize_properties(properties),
             "is_pinned": int(is_pinned), "status": _status(status, ENTITY_STATUSES),
         }, _entity)
 
@@ -180,7 +184,7 @@ class GraphStore:
         return self._get("entities", entity_id, _entity)
 
     def find_entity(self, name: str) -> Entity | None:
-        canonical = _text(name, "name").casefold()
+        canonical = normalize_text(name, "name").casefold()
         with self.database.connection() as connection:
             row = connection.execute("SELECT * FROM entities WHERE canonical_name=?", (canonical,)).fetchone()
             return None if row is None else _entity(row)
@@ -198,16 +202,16 @@ class GraphStore:
     ) -> Entity | None:
         fields = {}
         if name is not None:
-            fields["name"] = _text(name, "name")
+            fields["name"] = normalize_text(name, "name")
             fields["canonical_name"] = fields["name"].casefold()
         if entity_type is not None:
-            fields["entity_type"] = _text(entity_type, "entity_type").casefold()
+            fields["entity_type"] = normalize_text(entity_type, "entity_type").casefold()
         if description is not None:
             if not isinstance(description, str):
                 raise ValueError("description must be a string")
             fields["description"] = description
         if properties is not None:
-            fields["properties"] = _properties(properties)
+            fields["properties"] = serialize_properties(properties)
         if is_pinned is not None:
             if type(is_pinned) is not bool:
                 raise ValueError("is_pinned must be a boolean")
@@ -237,9 +241,9 @@ class GraphStore:
         properties: dict | None = None, confidence: float = 1.0, status: str = "ACTIVE",
     ) -> Triple:
         return self._insert("triples", {
-            "subject_id": _id(subject_id), "predicate": _text(predicate, "predicate").casefold(),
-            "object_id": _id(object_id), "properties": _properties(properties),
-            "confidence": _confidence(confidence), "status": _status(status, TRIPLE_STATUSES),
+            "subject_id": validate_id(subject_id), "predicate": normalize_text(predicate, "predicate").casefold(),
+            "object_id": validate_id(object_id), "properties": serialize_properties(properties),
+            "confidence": validate_confidence(confidence), "status": _status(status, TRIPLE_STATUSES),
         }, _triple)
 
     def get_triple(self, triple_id: int) -> Triple | None:
@@ -252,15 +256,15 @@ class GraphStore:
     ) -> Triple | None:
         fields = {}
         if subject_id is not None:
-            fields["subject_id"] = _id(subject_id)
+            fields["subject_id"] = validate_id(subject_id)
         if predicate is not None:
-            fields["predicate"] = _text(predicate, "predicate").casefold()
+            fields["predicate"] = normalize_text(predicate, "predicate").casefold()
         if object_id is not None:
-            fields["object_id"] = _id(object_id)
+            fields["object_id"] = validate_id(object_id)
         if properties is not None:
-            fields["properties"] = _properties(properties)
+            fields["properties"] = serialize_properties(properties)
         if confidence is not None:
-            fields["confidence"] = _confidence(confidence)
+            fields["confidence"] = validate_confidence(confidence)
         if status is not None:
             fields["status"] = _status(status, TRIPLE_STATUSES)
         return self._update("triples", triple_id, fields, _triple)
@@ -276,11 +280,11 @@ class GraphStore:
         _page(limit, offset)
         filters = {}
         if subject_id is not None:
-            filters["subject_id"] = _id(subject_id)
+            filters["subject_id"] = validate_id(subject_id)
         if object_id is not None:
-            filters["object_id"] = _id(object_id)
+            filters["object_id"] = validate_id(object_id)
         if predicate is not None:
-            filters["predicate"] = _text(predicate, "predicate").casefold()
+            filters["predicate"] = normalize_text(predicate, "predicate").casefold()
         if status is not None:
             filters["status"] = _status(status, TRIPLE_STATUSES)
         clause = " WHERE " + " AND ".join(f"{column}=?" for column in filters) if filters else ""
@@ -294,7 +298,7 @@ class GraphStore:
     def search_prefix(self, query: str, *, limit: int = 20) -> list[Entity]:
         """Match all literal word prefixes in active entity names/descriptions."""
         _page(limit)
-        query = _text(query, "query")
+        query = normalize_text(query, "query")
         words = re.findall(r"[^\W_]+", query, flags=re.UNICODE)
         if not words:
             return []
