@@ -222,10 +222,11 @@ benefit from persistent graph memory.
 
 ### Current capabilities and extensibility
 
-| Status | Capabilities |
-| --- | --- |
-| Implemented: phases 1–8 | Validated local configuration; async Ollama health, model inventory, inference, latency metrics, and fallback; transactional SQLite entity/triple storage with prefix search; structured fact extraction with defensive parsing and bounded retry; configured single-valued supersession, deterministic retention scoring, and pin-protected soft-pruning; bounded SQL neighborhood recall and budgeted Markdown/JSON context; sequential planner/researcher/verifier cycles with local tools and durable atomic checkpoints; measured per-turn usage, graph/RSS snapshots, a live terminal dashboard, recoverable CSV export, and an explicitly gated paired benchmark with validated analysis and figure export. |
-| Initial measured case study | [80-turn paired comparison](docs/results/study-20261111-002/README.md), including role and complete-pipeline costs, strict answer accuracy, figures, reproducible evidence, and a disclosed unsuccessful first attempt. Broader evaluation remains open. |
+The framework includes local inference, transactional graph storage, validated
+fact extraction, replacement and pruning policies, bounded recall, sequential
+agent roles, durable checkpoints, telemetry and reproducible experiment analysis.
+The [experiment history](#experiment-history-original-to-latest) records the
+completed studies and unsuccessful attempts separately.
 
 The programmatic workflow now connects extraction, storage, governance, and
 retrieval. The standalone APIs remain available; calling extraction alone does
@@ -253,6 +254,16 @@ light/dark themes, and SVG export, with source components and local artifacts la
 Open the HTML file directly in a browser; viewing the atlas needs no Ollama server.
 
 ## Getting started with DynaGraph
+
+Choose a starting point:
+
+| Your goal | Start here |
+| --- | --- |
+| Understand the evidence | Read the [experiment history](#experiment-history-original-to-latest) and linked reports. No installation is needed to read them. |
+| Check saved results without running models | Install Python dependencies below, then run `python3 docs/testing/verify_refactor_baseline.py`. It checks published evidence and reproduces both completed study summaries without writing results. |
+| Preview the interface without models | After installing dependencies, use the synthetic dashboard demo in Step 4. |
+| Run your own local task | Configure both nodes, then follow Step 5. |
+| Build on the framework | Use the [API examples](docs/usage.md) and [component architecture](docs/architecture.md). |
 
 ### 1. Check the hardware and software requirements
 
@@ -304,16 +315,13 @@ model tags. A tag identifies a particular model/version in Ollama.
 | `NODE1_OLLAMA_URL` | Node 1's Ollama endpoint, normally `http://localhost:11434`. |
 | `NODE2_OLLAMA_URL` | Node 2's private LAN endpoint, including its Ollama port. |
 | `NODE1_MODEL`, `NODE2_MODEL` | Exact local model tags for each node. |
-| `NODE1_OLLAMA_NUM_THREADS`, `NODE2_OLLAMA_NUM_THREADS` | CPU thread budgets; the example uses four per node. |
-| `DATABASE_PATH` | Local database file; relative paths resolve from the repository root. |
-| `SQLITE_BUSY_TIMEOUT_MS`, `SQLITE_POOL_SIZE` | How long a database writer waits and how many pooled connections are available. |
-| `SINGLE_VALUED_PREDICATES` | JSON array of relationships that can have only one current value per subject; defaults to `[]`. |
-| `PRUNING_THRESHOLD`, `PRUNING_BATCH_SIZE`, `PRUNING_INTERVAL_SECONDS` | Retention cutoff and bounded maintenance scheduling. |
-| `DECAY_RECENCY_HALF_LIFE_SECONDS`, `DECAY_TURN_HALF_LIFE` | How quickly unused memory loses time-based and turn-based retention. |
-| `ORCHESTRATION_MAX_TURNS`, `ORCHESTRATION_ALLOW_FALLBACK`, `ORCHESTRATION_PRUNE_BETWEEN_TURNS` | Role-turn budget, local-node fallback, and bounded checkpoint maintenance. |
-| `AGENT_MAX_TOKENS`, `AGENT_MAX_RETRIES`, `AGENT_MAX_TOOL_ROUNDS`, `AGENT_TOOL_TIMEOUT_SECONDS` | Limits on role responses, JSON correction, and registered local tools. |
-| `CONTEXT_TOKEN_BUDGET` | Maximum graph-context budget, restricted to 1–1,000. |
-| `RETRIEVAL_SEED_LIMIT`, `RETRIEVAL_HOPS`, `RETRIEVAL_MAX_NODES`, `RETRIEVAL_MAX_TRIPLES`, `RETRIEVAL_FANOUT` | Bounds on seed matching and one/two-hop SQL neighborhood discovery. |
+| `DATABASE_PATH` | Local SQLite file owned by Node 1. Use a separate file for practice tasks. |
+| `SINGLE_VALUED_PREDICATES` | Relationships with one current value per subject; defaults to `[]`. |
+| `CONTEXT_TOKEN_BUDGET` | Graph-context limit, from 1 to 1,000. |
+
+The [example configuration](.env.example) lists CPU, request, retrieval,
+retention and workflow limits. The [API guide](docs/usage.md) explains when
+these settings matter.
 
 Follow the [Phase 1 setup and verification guide](docs/testing/phase1.md) to
 install/configure Ollama on both nodes, disable cloud features, install local
@@ -332,256 +340,43 @@ directory. Process environment values override dotenv values. Legacy aliases
 `NODE1_HOST_IP`, `NODE1_OLLAMA_MODEL`, and `NODE2_OLLAMA_MODEL` are accepted; use
 one name per setting. SQLite WAL mode is required for concurrent local storage.
 
-### 4. Try extracting facts from a message
+### 4. Preview the dashboard offline
 
-With both node addresses configured and the worker's Ollama service available,
-run this from the repository root with the virtual environment active:
-
-```bash
-python3 - <<'PY'
-import asyncio
-from src.config import get_settings
-from src.extraction import Extractor
-from src.models import AgentMessage
-from src.network.ollama_client import OllamaClient
-
-async def main():
-    async with OllamaClient(get_settings()) as client:
-        result = await Extractor(client).extract(
-            AgentMessage(agent_id="researcher", content="Project Cedar uses SQLite.")
-        )
-        print(result.graph.model_dump_json())
-
-asyncio.run(main())
-PY
-```
-
-The output is a JSON object with a `triples` array containing extracted facts;
-the wording and optional confidence value can vary with the model. This example
-returns data and does not write to the database.
-
-Extraction prefers Node 2 and can fall back to Node 1. It requests JSON output
-with two examples, validates the response, and permits one corrective retry.
-Current limits are 2,000 input characters and 16 output triples. Subject/object
-labels must occur in the source message, but that check does not prove the
-relationship is correct. Exhausted validation attempts raise `ExtractionError`.
-
-### 5. Try persistent graph storage
-
-This example creates or opens the configured local database, stores a relationship,
-and searches for entities whose text begins with `sql`. It needs valid configuration
-but no running Ollama server:
+This example needs Python dependencies, but no `.env`, Ollama or database:
 
 ```bash
-python3 - <<'PY'
-from src.storage.database import Database
-from src.storage.graph_store import GraphStore
-
-with Database.from_settings() as database:
-    graph = GraphStore(database)
-    with graph.transaction():
-        project = graph.get_or_create_entity("Example project", entity_type="project")
-        software = graph.get_or_create_entity("SQLite", entity_type="software")
-        if not graph.list_triples(subject_id=project.id, predicate="uses", object_id=software.id):
-            graph.create_triple(project.id, "uses", software.id)
-    print([entity.name for entity in graph.search_prefix("sql")])
-PY
+python3 -m src.telemetry.dashboard --demo --plain --csv .verification/demo.csv
 ```
 
-On a new database, expect `['SQLite']`. Existing records and their statuses can
-affect matches. A transaction groups changes so they either all succeed or roll back.
-The example reuses existing entities and avoids inserting the same fact twice.
+Expected: `SIMULATED DEMO OK: 3 turns; no model requests or database writes`,
+plus a CSV path. These synthetic numbers illustrate the display; they are not
+research measurements. Omit `--plain` to use the interactive terminal view.
 
-Names and predicates use whitespace normalization and casefolding for matching.
-JSON properties round-trip as dictionaries, and property updates replace the
-complete object. Physical entity deletion also removes its incident triples and
-search entry. The Phase 4 pruner instead marks eligible memory `PRUNED` and
-preserves its rows.
+### 5. Run a task with your local models
 
-Read connections provide immutable snapshots. Use write transactions for
-modifications. Async callers can use an async database context and enqueue a short
-synchronous callback, such as
-`await graph.write_async(lambda tx: tx.create_entity("Example"))`; accepted writes
-drain before that context closes. See the storage guide for lifecycle details.
-
-### 6. Keep current facts and maintain memory
-
-Use `GovernedWriter` for accepted facts that need replacement policy. The writer
-requires existing entities and an explicit list of single-valued relationships:
-
-```python
-from src.governance import GovernedWriter, Pruner
-
-# Within an open Database/GraphStore context, using existing entity IDs:
-writer = GovernedWriter(graph, single_valued_predicates=["primary_database"])
-writer.write_fact(project.id, "primary_database", sqlite.id, turn=1)
-update = writer.write_fact(project.id, "primary_database", postgres.id, turn=2)
-```
-
-The earlier fact immediately becomes `SUPERSEDED`. A separate, foreign-key-checked
-provenance table records the new fact's explicit `SUPERSEDES` edge to the old
-fact. The latest accepted assertion wins; this policy does not establish truth.
-Relationships omitted from the policy can retain several current values.
-Raw `GraphStore` writes remain low-level operations and bypass this policy.
-
-`Pruner(graph).run_once(current_turn=...)` soft-prunes old leaf memory below its
-retention threshold. Scores combine recency, usage frequency, active connectivity,
-and elapsed turns. Pins protect entities and their active facts. Call
-`record_access()` for memory actually used; searches and scans do not count as
-use. The optional `PruningDaemon` requires explicit startup and a caller-supplied
-turn number. No maintenance starts on import.
-
-Schema version 3 preserves usage/provenance and adds durable workflow
-checkpoints. Before upgrading existing data, follow the consistent-backup
-command in the [Phase 6 guide](docs/testing/phase6.md). The
-[Phase 4 guide](docs/testing/phase4.md) also provides a complete,
-temporary-database example, scoring formulas, async lifecycle, and limitations.
-The default decay parameters are configurable engineering choices; they have
-not yet been calibrated by the planned experiment.
-
-### 7. Recall a small current neighborhood
-
-A sub-goal can now retrieve active facts as Markdown or JSON. This example reads
-the configured graph without contacting either model:
-
-```bash
-python3 - <<'PY'
-from src.config import get_settings
-from src.retrieval import ContextAssembler
-from src.storage.database import Database
-from src.storage.graph_store import GraphStore
-
-settings = get_settings()
-with Database.from_settings(settings) as database:
-    assembler = ContextAssembler.from_settings(GraphStore(database), settings)
-    memory = assembler.assemble(
-        "Which database does the example project use?", format="json",
-    )
-    print(memory.text or "(no eligible memory fits)")
-    print(f"budget={memory.budget_used}/{memory.budget_limit} method={memory.budget_method}")
-PY
-```
-
-The result depends on stored data. Lexical prefix matching finds seeds, with
-recent active entities as fallback. SQL explores incoming/outgoing active facts
-up to two hops, using explicit node/fact/fan-out caps. Superseded/pruned facts and
-inactive endpoints cannot supply old values or bridge to other memory.
-
-The default budget counts an **upper bound from serialized bytes**, suitable
-for the baseline byte-level BPE tokenizers; it is not measured model-token usage.
-A correct local model-specific counter can be supplied for another tokenizer or
-fuller budget utilization. Entire facts are omitted when they cannot fit;
-labels are never cut, and nonempty JSON is always complete. The ceiling covers
-the graph block, while role/task prompts and chat formatting need separate space.
-
-Assembly is read-only. After actually supplying the block to an agent, call
-`assembler.mark_used(memory, turn=...)` to reinforce only the emitted entities.
-The [Phase 5 guide](docs/testing/phase5.md) explains usage lifecycle, async calls,
-selection limits, tokenizer assumptions, and the offline latency benchmark.
-
-### 8. Run a local role cycle
-
-The controller runs one role per turn: planner on Node 1, researcher on Node 2,
-then verifier on Node 1. Each role recalls current memory, generates a response,
-and sends it through extraction on Node 2. Accepted facts, usage, bounded pruning,
-and the turn checkpoint commit together. Model requests do not hold database
-write transactions. The default three turns make one complete role cycle.
-
-After backing up existing data, run this from the repository root:
-
-```bash
-python3 - <<'PY'
-import asyncio
-from src.config import get_settings
-from src.network.ollama_client import OllamaClient
-from src.orchestration import StateMachine
-from src.storage.database import Database
-from src.storage.graph_store import GraphStore
-
-async def main():
-    settings = get_settings()
-    async with OllamaClient(settings) as client:
-        async with Database.from_settings(settings) as database:
-            machine = StateMachine(client, GraphStore(database))
-            run = await machine.start(
-                "Project Cedar uses SQLite. Confirm the supplied relationship.",
-                initial_subgoal="Project Cedar", max_turns=3,
-            )
-            print("RUN_ID:", run.id, flush=True)
-            done = await machine.resume(run.id)
-            print(done.status, done.next_step, done.stop_reason)
-            print(done.last_response)
-
-asyncio.run(main())
-PY
-```
-
-Expect a run ID, `COMPLETED 3 turn_budget`, and the final model response. Keep
-the run ID for inspection/resume. An interrupted run resumes from its next
-uncommitted step; a completed run makes no further model requests. Completing
-its turn budget does not establish that a model's answer is correct.
-
-Custom roles subclass `BaseAgent` and are passed through the controller's
-`agents` argument. Tools require explicit registration, Pydantic argument
-validation, and local read-only callbacks; model-generated code is not executed.
-The controller keeps prompts bounded and stores history locally instead of
-resending a full transcript. The [Phase 6 guide](docs/testing/phase6.md) explains
-recovery, acceptance filtering, prompt limits, and direct two-node verification.
-
-### 9. Watch execution and export measurements
-
-Preview the terminal dashboard with synthetic data, without Ollama or database
-access:
-
-```bash
-python3 -m src.telemetry.dashboard --demo --plain --csv .verification/phase7/demo.csv
-```
-
-Expect `SIMULATED DEMO OK: 3 turns; no model requests or database writes` and a
-CSV path. Omit `--plain` for live display; a redirected output stream prints the
-final snapshot. Demo numbers are illustrative, not experimental measurements.
-
-Run a real task using your configured models and local graph:
+After completing the network setup, choose a separate writable `DATABASE_PATH`
+in `.env` for practice tasks. This command writes graph state and checkpoints
+there and makes inference requests to your configured nodes:
 
 ```bash
 python3 -m src.telemetry.dashboard --task "Repeat this fact exactly: Project Cedar uses SQLite." --subgoal "Project Cedar" --turns 3
 ```
 
-The dashboard refreshes twice per second, showing the current role, stage,
-committed prompt usage, inference latency, active graph size, and coordinator
-Python RAM. Press **p** to pause/resume the display, or **q** / **Ctrl+C** to stop
-execution. Keep the printed `RUN_ID`. Committed turns are retained; resume with
-`python3 -m src.telemetry.dashboard --resume RUN_ID`. A crashed process can leave
-a `RUNNING` row; use `--recover-interrupted` only after its former process has
-stopped, as explained in the Phase 6 recovery protocol.
-
-Each new turn saves telemetry with its graph checkpoint. The dashboard appends
-CSV rows under ignored `data/telemetry/`, or a path supplied with `--csv`.
-Programmatic workflows also save metrics automatically; use this command to
-export their checkpoints without contacting either model:
+One cycle runs planner, researcher and verifier roles in sequence. Each turn
+recalls memory, generates a response, extracts facts and commits accepted updates.
+The display reports usage, latency and graph size; completing the cycle does not
+prove the response is correct. Press **p** to pause/resume the display and **q**
+or **Ctrl+C** to stop execution. Keep the printed `RUN_ID` to resume later:
 
 ```bash
-python3 -m src.telemetry.dashboard --resume RUN_ID --export-only
+python3 -m src.telemetry.dashboard --resume RUN_ID
 ```
 
-A file belongs to one run and one writer. Each new task gets a separate CSV by
-default; an incompatible explicit path is rejected before inference starts.
-Repeated export safely skips identical rows; damaged/incompatible CSV files
-require export to a new path. Export failure
-does not undo committed graph state. Older checkpoints without telemetry are
-reported as skipped; their historical measurements cannot be reconstructed.
+The [usage guide](docs/usage.md#6-watch-execution-and-export-measurements) covers
+CSV export, recovery and measurement boundaries. It also provides the longer
+extraction, storage, governance, recall and programmatic role-cycle examples.
 
-Prompt counts come from Ollama's `prompt_eval_count`, including role/extraction
-corrections. CSV keeps those stages separate and also reports their total.
-Missing counters produce blank cells, not zero or a retrieval-byte estimate.
-Failed fallback requests contribute latency, but their unknown token work cannot
-be counted. Failed/uncommitted turns are excluded from this committed-turn data.
-RAM is a sampled **Python process RSS**, excluding both Ollama processes and
-remote-node RAM. This is useful framework telemetry, not total cluster profiling
-or evidence of experimental benefit. See the [Phase 7 guide](docs/testing/phase7.md)
-for the column contract, timing boundaries, recovery, and verification.
-
-### 10. Inspect the experiment plan without running it
+### 6. Inspect the experiment plan without running it
 
 ```bash
 python3 -m experiments.benchmark_harness
@@ -600,7 +395,7 @@ execution. Existing application data and the private `.env` are preserved.
 Matplotlib is pinned for local, headless figure export; no plotting server or
 cloud account is needed.
 
-### 11. Verify the installed components
+### 7. Verify the installed components
 
 Run the functional suite without network access or Ollama:
 
@@ -608,33 +403,10 @@ Run the functional suite without network access or Ollama:
 python3 -m pytest -q
 ```
 
-Expected: **848 passed, 18 skipped**. The skips are checks that need physical LAN
-nodes or explicitly requested storage/retrieval benchmarks. Run those separately:
-
-```bash
-python3 -m pytest tests/test_phase1_network.py --run-lan -q
-python3 -m pytest tests/test_phase3_extraction.py --run-lan -q
-python3 -m pytest tests/test_phase6_orchestration.py --run-lan -q
-python3 -m pytest tests/test_phase7_telemetry.py --run-lan -q
-mkdir -p .verification
-python3 -m pytest tests/test_phase2_storage.py --run-storage-benchmark --basetemp .verification/phase2 -v -s
-```
-
-The Phase 5 retrieval benchmark is also local and offline:
-
-```bash
-python3 -m pytest tests/test_phase5_retrieval.py --run-retrieval-benchmark --basetemp .verification/phase5 -v -s
-```
-
-Expected: **108 passed** for retrieval; its four warm workloads require median
-and p95 below **5 ms**, with every block within budget. See the protocol for
-fixture size, warm-up, and measurement boundaries.
-
-Expected: **122 passed** for network checks, **111 passed** for extraction,
-**77 passed** for orchestration, **83 passed** for telemetry, and **83 passed** for storage. The storage benchmark checks a median below 1 ms for
-200 individually committed inserts with FULL synchronization. Results depend on
-the storage host and system load; this does not guarantee every insert is under
-1 ms or establish a complete application performance result.
+Expected: **849 passed, 18 skipped**. The skipped checks require physical LAN
+nodes or explicitly requested storage/retrieval timing measurements. The guides
+below provide their exact commands and acceptance criteria. Ordinary offline
+verification makes no model requests.
 
 | Guide | What it explains |
 | --- | --- |
@@ -649,7 +421,7 @@ the storage host and system load; this does not guarantee every insert is under
 | [Integrated experiment verification](docs/testing/phase8_integrated.md) | Synthetic-only four-condition checks, consistent simulated aging, delayed recall, transition/checkpoint validation and six figure sets. Model-driven execution is gated. |
 | [Architecture atlas verification](docs/testing/architecture.md) | Optional checks for the documentation's themes, controls, SVG export, and connector geometry. |
 
-### 12. Troubleshoot and build on the APIs
+### 8. Troubleshoot and build on the APIs
 
 | Symptom | First check |
 | --- | --- |

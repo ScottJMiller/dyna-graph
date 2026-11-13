@@ -45,8 +45,8 @@ completed cohorts or rerun by this verifier.
 
 ## Scope and review sequence
 
-Steps 1–5 are implemented. Each later step requires its own review before
-the next starts. All changes retain local-only inference, the two-node layout,
+Steps 1–6 are implemented. The final documentation step awaits its verification
+and review gate. All changes retain local-only inference, the two-node layout,
 existing CLI entry points and generic public setup documentation.
 
 | Step | Scope | Required acceptance |
@@ -139,17 +139,6 @@ cancellation, ownership, rollback, recovery, telemetry and complete experiment
 regressions, together with the historical evidence verifier. No new experiment
 is run, and previously approved working-tree changes remain intact.
 
-## Required architecture cleanup before completion
-
-Step 6 must remove the redundant Implemented selector from
-`docs/architecture.html` now that all phases are complete. Review the other
-status controls, repeated implementation badges and unused filter code for
-similar redundancy. Retain useful navigation and the previously requested
-theme toggle, zoom/pan, search, component details, supporting-file access and SVG
-export. Verify the simplified controls and connector geometry before calling
-the refactor complete. This requirement is recorded now; the HTML cleanup is
-not included in Step 4.
-
 ## Step 5: readable tests and shared offline setup
 
 Common environment isolation and the identical default settings fixture live in
@@ -170,5 +159,25 @@ unchanged by this step.
 
 The [Step 5 verification protocol](testing/refactor_step5.md) documents collection,
 full offline regression, focused categories, unchanged hardware opt-ins and
-historical evidence checks. The architecture control cleanup recorded above
-remains required in Step 6 before the refactor can be called complete.
+historical evidence checks. The final architecture cleanup is documented in Step 6 below.
+
+## Step 6: documentation and architecture navigation
+
+The README keeps its two main sections and complete experiment chronology.
+Its practical section provides direct routes to reading/checking existing
+results, an offline synthetic preview and a configured local task. The longer
+API and dashboard recipes now live in [the usage guide](usage.md), with existing
+phase protocols retaining detailed acceptance and optional hardware checks.
+
+The atlas no longer has the Implemented selector, per-component status fields,
+repeated implementation badges, planned legend or unused status-filter code.
+Theme selection, zoom/pan, search, phase/workflow focus, component details,
+supporting-file access and themed SVG export remain. Component coordinates,
+connections, router and stroke widths are retained. This fulfills the architecture
+cleanup requested before completion.
+
+The [Step 6 protocol](testing/refactor_step6.md) covers links, documentation
+structure, offline behavior, geometry, retained interactions and final regression
+checks. Original evidence and private runtime data remain unchanged; no model
+experiment is rerun. All six implementation steps are delivered, with final
+acceptance subject to this last review.

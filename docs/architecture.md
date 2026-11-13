@@ -29,20 +29,21 @@ tests, configuration, and documentation. **Export SVG** saves a standalone vecto
 diagram of the current visible component set. Reset first for an unhighlighted
 whole-system export; enable Supporting files for the complete inventory.
 
-The map describes the **finished target design**, while its status labels reflect
-the current checkout: all **eight phases exist**; an initial **80-turn measured experiment is complete**.
-See the [case study and evidence](results/study-20261111-002/README.md) for the two paired
-repetitions, costs, accuracy, limitations, and disclosed unsuccessful first attempt.
+The map describes all eight implemented phases and their supporting files.
+The [original study](results/study-20261111-002/README.md) completed 80 turns;
+the [integrated study](results/integrated-004/README.md) completed 960 turns.
+Their reports preserve methods, costs, accuracy, limitations and failed attempts.
+Search, phase focus and workflow paths help navigate the completed architecture;
+implementation-status filters and repeated status badges have been removed.
 Components have wider gutters and connectors use distinct perimeter ports. An
 orthogonal router reserves separate tracks and keeps lines out of every card.
 Parallel line sections cannot overlap; perpendicular crossings use a background
 halo to distinguish one passing over another. Normal and highlighted lines are
 50% thicker than in the original atlas.
 
-Connections touching planned modules describe intended integration; they are not
-claims that those calls already execute. Packaging and documentation connections
-indicate organization or use, rather than an execution sequence. Paths/interfaces
-for future modules are design responsibilities, not implemented method contracts.
+Packaging, test and documentation connections indicate organization or use,
+rather than an execution sequence. Local service/artifact cards identify the
+runtime resources associated with source modules.
 
 ## Where the system runs
 
@@ -191,83 +192,82 @@ experiment is intended to test those benefits rather than assume them.
 
 ## Source modules and verification inventory
 
-The tables below cover every existing Python/SQL source file and every future
-source/test file specified for the eight phases. Supporting repository files are
-included separately. Future implementation may introduce additional helpers or
-metadata beyond the specified deliverables.
+The tables below cover the Python/SQL source modules and phase verification
+suites. Supporting repository files are included separately. The
+[usage guide](usage.md) collects the longer runnable API examples.
 
 ### Phase 1: Local inference
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| [src/network/ollama_client.py](../src/network/ollama_client.py) | Implemented | Own a reusable asynchronous HTTP client. Measure health and model inventories, request short or JSON generations, retain latency and token metadata, and optionally fail over once to the other local node. |
-| [src/config.py](../src/config.py) | Implemented | Load the repository-root .env and process environment, validate private node addresses and local model names, and resolve storage paths. Environment values override dotenv values. |
-| [tests/test_phase1_network.py](../tests/test_phase1_network.py) | Implemented | Offline config/HTTP failure paths and opt-in live two-node checks. |
-| [src/__init__.py](../src/__init__.py) | Implemented | Mark the project Python package; no runtime initialization or service startup. |
-| [src/network/__init__.py](../src/network/__init__.py) | Implemented | Identify the local inference communication package; no service startup. |
+| File | Responsibility |
+| --- | --- |
+| [src/network/ollama_client.py](../src/network/ollama_client.py) | Own a reusable asynchronous HTTP client. Measure health and model inventories, request short or JSON generations, retain latency and token metadata, and optionally fail over once to the other local node. |
+| [src/config.py](../src/config.py) | Load the repository-root .env and process environment, validate private node addresses and local model names, and resolve storage paths. Environment values override dotenv values. |
+| [tests/test_phase1_network.py](../tests/test_phase1_network.py) | Offline config/HTTP failure paths and opt-in live two-node checks. |
+| [src/__init__.py](../src/__init__.py) | Mark the project Python package; no runtime initialization or service startup. |
+| [src/network/__init__.py](../src/network/__init__.py) | Identify the local inference communication package; no service startup. |
 
 ### Phase 2: Graph storage
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| [src/storage/graph_store.py](../src/storage/graph_store.py) | Implemented | Expose the property graph as Python CRUD operations. Canonicalize entity names and predicates, group mutations in transactions, provide literal prefix search, and queue atomic async writes. |
-| [src/storage/database.py](../src/storage/database.py) | Implemented | Initialize the schema and manage a bounded pool with WAL, foreign keys, busy timeouts, FULL synchronization, nested savepoints, and read snapshots. Queue short sync callbacks off the event loop. |
-| [src/storage/schema.sql](../src/storage/schema.sql) | Implemented | Define schema version 3: entities/triples, FTS5, usage/provenance, and durable workflow runs/turns. Preserve version 1/2 graph data through an additive upgrade. |
-| [tests/test_phase2_storage.py](../tests/test_phase2_storage.py) | Implemented | Schema/CRUD/transactions/FTS/concurrency, plus an opt-in durable-insert benchmark. |
-| [src/storage/__init__.py](../src/storage/__init__.py) | Implemented | Identify the embedded graph-storage package; importing this marker does not open a database. |
+| File | Responsibility |
+| --- | --- |
+| [src/storage/graph_store.py](../src/storage/graph_store.py) | Expose the property graph as Python CRUD operations. Canonicalize entity names and predicates, group mutations in transactions, provide literal prefix search, and queue atomic async writes. |
+| [src/storage/database.py](../src/storage/database.py) | Initialize the schema and manage a bounded pool with WAL, foreign keys, busy timeouts, FULL synchronization, nested savepoints, and read snapshots. Queue short sync callbacks off the event loop. |
+| [src/storage/schema.sql](../src/storage/schema.sql) | Define schema version 3: entities/triples, FTS5, usage/provenance, and durable workflow runs/turns. Preserve version 1/2 graph data through an additive upgrade. |
+| [tests/test_phase2_storage.py](../tests/test_phase2_storage.py) | Schema/CRUD/transactions/FTS/concurrency, plus an opt-in durable-insert benchmark. |
+| [src/storage/__init__.py](../src/storage/__init__.py) | Identify the embedded graph-storage package; importing this marker does not open a database. |
 
 ### Phase 3: Fact extraction
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| [src/extraction/extractor.py](../src/extraction/extractor.py) | Implemented | Request JSON-mode output using two examples. Parse and validate the result, check literal source endpoints, and allow one corrective retry. Prefer Node 2; retain every generation attempt and recovered validation error. |
-| [src/extraction/parser.py](../src/extraction/parser.py) | Implemented | Unwrap one JSON object, strip Markdown/prose wrappers, repair limited string-local defects, and validate the result against the graph schema. |
-| [src/models/schemas.py](../src/models/schemas.py) | Implemented | Validate AgentMessage, SemanticTriple, and ExtractedGraph. Normalize label whitespace, case-fold predicates, remove repeated facts, and reject extra fields or invalid confidence. |
-| [tests/test_phase3_extraction.py](../tests/test_phase3_extraction.py) | Implemented | Synthetic malformed outputs, retry/fallback/grounding, and opt-in two-node extraction. |
-| [src/models/__init__.py](../src/models/__init__.py) | Implemented | Re-export AgentMessage, SemanticTriple, and ExtractedGraph for callers. |
-| [src/extraction/__init__.py](../src/extraction/__init__.py) | Implemented | Re-export Extractor, ExtractionResult, ExtractionError, parser functions, and parse result/error types. |
+| File | Responsibility |
+| --- | --- |
+| [src/extraction/extractor.py](../src/extraction/extractor.py) | Request JSON-mode output using two examples. Parse and validate the result, check literal source endpoints, and allow one corrective retry. Prefer Node 2; retain every generation attempt and recovered validation error. |
+| [src/extraction/parser.py](../src/extraction/parser.py) | Unwrap one JSON object, strip Markdown/prose wrappers, repair limited string-local defects, and validate the result against the graph schema. |
+| [src/models/schemas.py](../src/models/schemas.py) | Validate AgentMessage, SemanticTriple, and ExtractedGraph. Normalize label whitespace, case-fold predicates, remove repeated facts, and reject extra fields or invalid confidence. |
+| [tests/test_phase3_extraction.py](../tests/test_phase3_extraction.py) | Synthetic malformed outputs, retry/fallback/grounding, and opt-in two-node extraction. |
+| [src/models/__init__.py](../src/models/__init__.py) | Re-export AgentMessage, SemanticTriple, and ExtractedGraph for callers. |
+| [src/extraction/__init__.py](../src/extraction/__init__.py) | Re-export Extractor, ExtractionResult, ExtractionError, parser functions, and parse result/error types. |
 
 ### Phase 4: Memory governance
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| [src/governance/supersession.py](../src/governance/supersession.py) | Implemented | Before writing a new fact for a single-valued predicate, detect the old value, mark the previous fact SUPERSEDED, and preserve explicit SUPERSEDES provenance atomically. |
-| [src/governance/decay.py](../src/governance/decay.py) | Implemented | Compute a composite retention score from recency, frequency, graph centrality, and turn-based decay. Supply deterministic scores for pruning decisions. |
-| [src/governance/pruning.py](../src/governance/pruning.py) | Implemented | Run periodic maintenance, obtain decay scores, protect pinned entities, and soft-inactivate eligible leaf memory below the pruning threshold. |
-| [tests/test_phase4_governance.py](../tests/test_phase4_governance.py) | Implemented | Deterministic scoring, supersession/reversals, pins, rollback, migration, bounded maintenance, and async lifecycle checks. |
-| [src/governance/__init__.py](../src/governance/__init__.py) | Implemented | Export retention, governed write, and pruning APIs; no services start on import. |
+| File | Responsibility |
+| --- | --- |
+| [src/governance/supersession.py](../src/governance/supersession.py) | Before writing a new fact for a single-valued predicate, detect the old value, mark the previous fact SUPERSEDED, and preserve explicit SUPERSEDES provenance atomically. |
+| [src/governance/decay.py](../src/governance/decay.py) | Compute a composite retention score from recency, frequency, graph centrality, and turn-based decay. Supply deterministic scores for pruning decisions. |
+| [src/governance/pruning.py](../src/governance/pruning.py) | Run periodic maintenance, obtain decay scores, protect pinned entities, and soft-inactivate eligible leaf memory below the pruning threshold. |
+| [tests/test_phase4_governance.py](../tests/test_phase4_governance.py) | Deterministic scoring, supersession/reversals, pins, rollback, migration, bounded maintenance, and async lifecycle checks. |
+| [src/governance/__init__.py](../src/governance/__init__.py) | Export retention, governed write, and pruning APIs; no services start on import. |
 
 ### Phase 5: Context retrieval
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| [src/retrieval/seed_matcher.py](../src/retrieval/seed_matcher.py) | Implemented | Match the current sub-goal to active entity names/descriptions using SQLite FTS5. Fall back to recent active entities when lexical lookup yields no useful seeds. |
-| [src/retrieval/traversal.py](../src/retrieval/traversal.py) | Implemented | Expand seed entities one or two hops across active facts. Keep graph traversal inside SQLite queries rather than loading the entire graph into Python. |
-| [src/retrieval/context_assembler.py](../src/retrieval/context_assembler.py) | Implemented | Select and format retrieved facts as concise Markdown or JSON for the active agent. Enforce the final graph-context token budget before dispatch. |
-| [tests/test_phase5_retrieval.py](../tests/test_phase5_retrieval.py) | Implemented | Active topology, exact budget boundaries, concurrent snapshots, explicit usage, async APIs, and opt-in warm median/p95 latency checks. |
-| [src/retrieval/__init__.py](../src/retrieval/__init__.py) | Implemented | Export seed matching, bounded neighborhoods, context results, and assembler APIs. |
+| File | Responsibility |
+| --- | --- |
+| [src/retrieval/seed_matcher.py](../src/retrieval/seed_matcher.py) | Match the current sub-goal to active entity names/descriptions using SQLite FTS5. Fall back to recent active entities when lexical lookup yields no useful seeds. |
+| [src/retrieval/traversal.py](../src/retrieval/traversal.py) | Expand seed entities one or two hops across active facts. Keep graph traversal inside SQLite queries rather than loading the entire graph into Python. |
+| [src/retrieval/context_assembler.py](../src/retrieval/context_assembler.py) | Select and format retrieved facts as concise Markdown or JSON for the active agent. Enforce the final graph-context token budget before dispatch. |
+| [tests/test_phase5_retrieval.py](../tests/test_phase5_retrieval.py) | Active topology, exact budget boundaries, concurrent snapshots, explicit usage, async APIs, and opt-in warm median/p95 latency checks. |
+| [src/retrieval/__init__.py](../src/retrieval/__init__.py) | Export seed matching, bounded neighborhoods, context results, and assembler APIs. |
 
 ### Phase 6: Agent workflow
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| [src/orchestration/state_machine.py](../src/orchestration/state_machine.py) | Implemented | Own the cyclic workflow: assemble context for the active sub-goal, dispatch an agent, receive its output, extract facts, apply governed persistence, and advance the turn. |
-| [src/agents/base_agent.py](../src/agents/base_agent.py) | Implemented | Abstract agent execution: combine role instructions, the active task, retrieved memory, and the local model client. Provide a common contract for specialized agents and tool-calling execution. |
-| [src/agents/personas.py](../src/agents/personas.py) | Implemented | Define a planner and verifier using Node 1 inference and a research role using Node 2 inference. These are logical roles controlled by the same orchestrator. |
-| [tests/test_phase6_orchestration.py](../tests/test_phase6_orchestration.py) | Implemented | Offline prompt/tool/ownership/rollback/resume checks and direct three-role acceptance across both local nodes. |
-| [src/agents/__init__.py](../src/agents/__init__.py) | Implemented | Export role contracts, local tools, and default personas. |
-| [src/orchestration/__init__.py](../src/orchestration/__init__.py) | Implemented | Export controller, stages, durable checkpoints, and turn results. |
+| File | Responsibility |
+| --- | --- |
+| [src/orchestration/state_machine.py](../src/orchestration/state_machine.py) | Own the cyclic workflow: assemble context for the active sub-goal, dispatch an agent, receive its output, extract facts, apply governed persistence, and advance the turn. |
+| [src/agents/base_agent.py](../src/agents/base_agent.py) | Abstract agent execution: combine role instructions, the active task, retrieved memory, and the local model client. Provide a common contract for specialized agents and tool-calling execution. |
+| [src/agents/personas.py](../src/agents/personas.py) | Define a planner and verifier using Node 1 inference and a research role using Node 2 inference. These are logical roles controlled by the same orchestrator. |
+| [tests/test_phase6_orchestration.py](../tests/test_phase6_orchestration.py) | Offline prompt/tool/ownership/rollback/resume checks and direct three-role acceptance across both local nodes. |
+| [src/agents/__init__.py](../src/agents/__init__.py) | Export role contracts, local tools, and default personas. |
+| [src/orchestration/__init__.py](../src/orchestration/__init__.py) | Export controller, stages, durable checkpoints, and turn results. |
 
 ### Phase 7: Observability
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| [src/telemetry/profiler.py](../src/telemetry/profiler.py) | Implemented | Define the versioned `TurnMetrics` contract; collect measured role/extraction prompt counts and latency, active graph counts in the commit transaction, and current coordinator Python RSS. |
-| [src/telemetry/dashboard.py](../src/telemetry/dashboard.py) | Implemented | Run/resume tasks with a 2 Hz Rich display, bounded 12-row history, pause/quit controls, offline synthetic preview, plain output, and export-only mode. |
-| [src/telemetry/logger.py](../src/telemetry/logger.py) | Implemented | Flush per-turn CSV rows; validate schema and identity on reopen; replay checkpoints idempotently in bounded pages without repeating inference. |
-| [src/telemetry/__init__.py](../src/telemetry/__init__.py) | Implemented | Export profiler, strict metrics, and CSV logger without starting a dashboard or service. |
-| [tests/test_phase7_telemetry.py](../tests/test_phase7_telemetry.py) | Implemented | Offline usage/rollback/recovery/live-output checks plus an opt-in direct two-node measured-usage test. |
-| [docs/testing/phase7.md](testing/phase7.md) | Implemented | Exact commands, expected diagnostics, timing/memory boundaries, CSV contract, and restart/export guidance. |
+| File | Responsibility |
+| --- | --- |
+| [src/telemetry/profiler.py](../src/telemetry/profiler.py) | Define the versioned `TurnMetrics` contract; collect measured role/extraction prompt counts and latency, active graph counts in the commit transaction, and current coordinator Python RSS. |
+| [src/telemetry/dashboard.py](../src/telemetry/dashboard.py) | Run/resume tasks with a 2 Hz Rich display, bounded 12-row history, pause/quit controls, offline synthetic preview, plain output, and export-only mode. |
+| [src/telemetry/logger.py](../src/telemetry/logger.py) | Flush per-turn CSV rows; validate schema and identity on reopen; replay checkpoints idempotently in bounded pages without repeating inference. |
+| [src/telemetry/__init__.py](../src/telemetry/__init__.py) | Export profiler, strict metrics, and CSV logger without starting a dashboard or service. |
+| [tests/test_phase7_telemetry.py](../tests/test_phase7_telemetry.py) | Offline usage/rollback/recovery/live-output checks plus an opt-in direct two-node measured-usage test. |
+| [docs/testing/phase7.md](testing/phase7.md) | Exact commands, expected diagnostics, timing/memory boundaries, CSV contract, and restart/export guidance. |
 
 Telemetry lives in each new turn's existing JSON checkpoint; the database remains
 schema version 3. Old records without telemetry stay unknown. Active edges are
@@ -281,17 +281,17 @@ store; see the Phase 7 protocol for flush and recovery boundaries.
 
 ### Phase 8: Controlled experiment
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| [experiments/common.py](../experiments/common.py) | Implemented | Share condition-neutral roles, recorded extraction, bounded history, inference accounting, inventory checks and source provenance across both studies. Imports do not start model or database work. |
-| [experiments/benchmark_harness.py](../experiments/benchmark_harness.py) | Implemented | Default to plan-only mode. On explicit execution, run fresh A/B conditions in AB/BA order, record inventories/digests/warmups, and export complete input, response, usage, timing and oracle evidence. |
-| [experiments/scenario.py](../experiments/scenario.py) | Implemented | Version the 20-turn observation/question schedule, selected prefix, independent oracle, update/reversion labels and strict answer-contract scoring. |
-| [experiments/contracts.py](../experiments/contracts.py) | Implemented | Define strict plan/row contracts, atomic manifest writes, finite JSON parsing and streaming artifact checksums. |
-| [experiments/analyze_results.py](../experiments/analyze_results.py) | Implemented | Reject incomplete/inconsistent bundles; report measured agent-only and pipeline costs, strict/update/delayed accuracy, history truncation, observed slopes and paired descriptive differences. |
-| [experiments/generate_plots.py](../experiments/generate_plots.py) | Implemented | Validate source evidence and export four figure sets as local SVG/PDF/PNG using headless Matplotlib; label all synthetic test figures. |
-| [experiments/__init__.py](../experiments/__init__.py) | Implemented | Establish the experiment package without running inference, analysis or plotting on import. |
-| [tests/test_phase8_benchmark.py](../tests/test_phase8_benchmark.py) | Implemented | Verify the comparison with simulated HTTP only, blocking real network access; cover planning gates, isolation, updates, missing counters, failed/cancelled evidence, analysis integrity and figure formats. |
-| [docs/testing/phase8.md](testing/phase8.md) | Implemented | Provide synthetic-only verification, methodology, artifact contracts, explicit execution commands and the initial measured case study. |
+| File | Responsibility |
+| --- | --- |
+| [experiments/common.py](../experiments/common.py) | Share condition-neutral roles, recorded extraction, bounded history, inference accounting, inventory checks and source provenance across both studies. Imports do not start model or database work. |
+| [experiments/benchmark_harness.py](../experiments/benchmark_harness.py) | Default to plan-only mode. On explicit execution, run fresh A/B conditions in AB/BA order, record inventories/digests/warmups, and export complete input, response, usage, timing and oracle evidence. |
+| [experiments/scenario.py](../experiments/scenario.py) | Version the 20-turn observation/question schedule, selected prefix, independent oracle, update/reversion labels and strict answer-contract scoring. |
+| [experiments/contracts.py](../experiments/contracts.py) | Define strict plan/row contracts, atomic manifest writes, finite JSON parsing and streaming artifact checksums. |
+| [experiments/analyze_results.py](../experiments/analyze_results.py) | Reject incomplete/inconsistent bundles; report measured agent-only and pipeline costs, strict/update/delayed accuracy, history truncation, observed slopes and paired descriptive differences. |
+| [experiments/generate_plots.py](../experiments/generate_plots.py) | Validate source evidence and export four figure sets as local SVG/PDF/PNG using headless Matplotlib; label all synthetic test figures. |
+| [experiments/__init__.py](../experiments/__init__.py) | Establish the experiment package without running inference, analysis or plotting on import. |
+| [tests/test_phase8_benchmark.py](../tests/test_phase8_benchmark.py) | Verify the comparison with simulated HTTP only, blocking real network access; cover planning gates, isolation, updates, missing counters, failed/cancelled evidence, analysis integrity and figure formats. |
+| [docs/testing/phase8.md](testing/phase8.md) | Provide synthetic-only verification, methodology, artifact contracts, explicit execution commands and the initial measured case study. |
 
 Condition A retains prior task/answer turns in a bounded oldest-first window.
 Condition B ingests the current observation through extraction and governed
@@ -377,8 +377,8 @@ No storage schema migration or new runtime dependency is required.
 ## Keep the map accurate
 
 When changing a component, update the embedded component data in
-`architecture.html`, the status summary, and this inventory together. Verify the
-actual APIs before changing a planned interface into an implemented one. The map
+`architecture.html` and this inventory together. Verify that paths, interfaces
+and connections match the actual APIs. The map
 is a versioned documentation snapshot; opening it does not scan the filesystem,
 start a server, contact Ollama, or mutate graph state.
 

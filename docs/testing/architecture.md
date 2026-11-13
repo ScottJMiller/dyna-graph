@@ -1,7 +1,6 @@
 # Architecture documentation verification
 
-This protocol verifies the architecture documentation. The atlas describes all eight phases and distinguishes current code from planned
-components. No model, network service, new Python dependency, or database is
+This protocol verifies the architecture documentation. The atlas describes all eight completed phases and their component connections. No model, network service, new Python dependency, or database is
 needed to view it.
 
 ## 1. Open locally
@@ -28,7 +27,7 @@ Stop the server with Ctrl+C when finished.
 | Search `database.py`, then select the result | That file is focused; inputs, outputs, interfaces, and connections appear. |
 | Click an incoming/outgoing connection | The connected component is revealed and inspected. |
 | Click a phase button | That subsystem is highlighted and fitted. |
-| Choose Implemented only | No planned component is displayed. Local current inference/storage resources remain visible. |
+| Inspect the toolbar, cards and inventory | No implementation-status selector, planned legend or repeated implementation badges remain. |
 | Enable Supporting files | The map shows all 80 components, including tests, package markers, setup, and documentation. |
 | Choose Remember a fact / Recall context / The A/B experiment | The relevant connection path is highlighted and its explanation changes. |
 | Click Export SVG | A standalone `dynagraph-architecture.svg` is downloaded. Open it as a vector image. |
@@ -37,8 +36,7 @@ Stop the server with Ctrl+C when finished.
 | Navigate cards with keyboard and press Enter | Component details open without requiring a pointer. |
 
 The initial diagram includes the 32 core components. Supporting files add 48
-nodes, for **80 components and 161 connections** in the complete atlas. Lines for
-planned integration are dashed; observation/support relationships are dotted.
+nodes, for **80 components and 161 connections** in the complete atlas. Observation/support relationships are dotted; other connections are solid.
 Components have wider horizontal and vertical gutters. Every connector receives
 its own perimeter attachments. The router reserves tracks before drawing them:
 no two lines share a collinear section, and all paths avoid card interiors.
@@ -65,7 +63,7 @@ of every card interior, no shared collinear tracks, separated parallel lines,
 detours around an obstacle, and deterministic multiple/reverse connections.
 
 The tests include all 161 connectors, even those hidden by filters. Zoom, theme,
-phase, and status changes keep the same routes. This avoids new line collisions
+phase, and workflow changes keep the same routes. This avoids new line collisions
 when supporting files are revealed. Ordinary perpendicular crossings are allowed;
 these are different from two lines occupying the same section.
 
@@ -79,8 +77,8 @@ download is required. The browser console should show no JavaScript errors.
 Review these architectural distinctions:
 
 - All Python coordination and SQLite reside on Node 1; Node 2 serves Ollama only.
-- All eight phases are implemented; the initial 80-turn measured case study is
-  complete. Select its card with supporting files enabled to open the evidence.
+- All eight phases are implemented. Both the original 80-turn and integrated
+  960-turn studies are complete. Their supporting cards open the reports.
   Synthetic tests and their figures remain separate from measured results.
 - Standalone extraction does not write; the controller now persists accepted facts
   atomically with usage, pruning, and the turn checkpoint.
@@ -105,18 +103,13 @@ updates can accompany runtime implementation. `.env` and `docs/local/` remain
 ignored. Viewing the atlas does not change runtime settings or database files.
 
 Browser verification during development covers offline load, node inventory,
-search/reveal, pointer selection, zoom, pan, phase/status/workflow filters,
+search/reveal, pointer selection, zoom, pan, phase/workflow filters,
 theme persistence and storage-unavailable fallback, themed SVG serialization,
 mobile layout, connector geometry, and console/network errors. Documentation-only
 edits do not require backend tests; runtime changes follow their phase protocol.
 
 ## 6. Commit message
 
-```text
-docs: improve architecture themes and connector routing
-
-Add persistent light/dark themes and theme-aware SVG export.
-Widen component spacing and increase connector strokes by 50%.
-Use distinct perimeter ports and obstacle-aware routes with no shared tracks.
-Add geometry regression checks and update verification instructions.
-```
+When atlas changes accompany other documentation work, use that step's message.
+The final readability refactor uses the message in the
+[Step 6 protocol](refactor_step6.md).
