@@ -184,6 +184,10 @@ limitations of their own protocols, including historical verification counts.
 Together, the studies document a consistency, cost and retention tradeoff;
 they do not establish every claim of the motivating thesis.
 
+The [post-experiment refactoring notes](docs/refactoring.md) distinguish the
+measured source revisions from later readability maintenance and document
+the baseline checks that protect published evidence and analysis.
+
 ### Potential benefits and limitations
 
 | Potential benefit | Limitation or tradeoff |
