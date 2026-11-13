@@ -10,6 +10,7 @@ from experiments.analyze_results import analyze_bundle
 
 def generate_plots(bundle, output):
     # Validate all evidence before creating a directory or loading plotting code.
+    """Validate the original study and export four SVG/PDF/PNG figure sets."""
     report = analyze_bundle(bundle)
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     from matplotlib.figure import Figure
@@ -53,6 +54,7 @@ def generate_plots(bundle, output):
 
 
 def main(argv=None):
+    """Generate figures from existing evidence without contacting model servers."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True, help="new figure directory")

@@ -32,13 +32,17 @@ from src.telemetry.profiler import process_rss
 
 
 class _ResearchRole(ResearchAgent):
+    """Use the same research-role framing for both memory representations."""
+
     @property
     def role_prompt(self):
         # Identical condition-neutral framing for both history representations.
+        """Keep the role instructions independent of the condition being compared."""
         return super().role_prompt.replace("graph memory", "memory")
 
 
 def _agents(client):
+    """Create the planner, researcher and verifier in the fixed execution order."""
     return (PlannerAgent(client), _ResearchRole(client), VerificationAgent(client))
 
 
@@ -46,6 +50,7 @@ class _RecordedExtractor(Extractor):
     """Attach exact failed source text for diagnostics; validation is unchanged."""
 
     async def extract(self, message, **kwargs):
+        """Retain the failed extraction source while preserving normal validation."""
         try:
             return await super().extract(message, **kwargs)
         except ExtractionError as exc:
@@ -54,6 +59,7 @@ class _RecordedExtractor(Extractor):
 
 
 def _failure_record(exc, *, manifest, condition, repetition, step, stage, task):
+    """Serialize available failure evidence without exposing endpoint addresses."""
     errors = getattr(exc, "errors", ())
     if callable(errors):
         errors = errors()
@@ -86,21 +92,25 @@ def linear_context(history, budget):
 
 
 def _sum(generations, field):
+    """Sum one attempt field, returning unknown when any counter is unavailable."""
     values = [getattr(g, field) for g in generations]
     return None if any(v is None for v in values) else sum(values)
 
 
 def _add(a, b):
+    """Combine two costs without replacing an unknown value with zero."""
     return None if a is None or b is None else a + b
 
 
 def _routes(generations, client, node):
+    """Require every attempt to use the planned node and model without fallback."""
     if any(g.node != node or g.model != client.settings.node_model(node) or g.failed_attempts
            for g in generations):
         raise ValueError("experiment routing/model differs from the fixed condition plan")
 
 
 def _baseline_metrics(run_id, item, result, context, budget, started):
+    """Build history-only turn metrics with no extraction or graph usage."""
     generations = result.generations
     prompt = _sum(generations, "prompt_tokens")
     latency = sum(g.latency_ms for g in generations)
@@ -130,6 +140,7 @@ async def _observe_input(machine, item, extractor):
         turn=item.step), node="node2", allow_fallback=False)
     _routes(extracted.attempts, machine.client, "node2")
     def write(graph):
+        """Commit accepted observation facts with the next durable governance turn."""
         with graph.database.transaction() as connection:
             turn = connection.execute("SELECT max(COALESCE((SELECT max(last_access_turn) FROM entity_memory),0),"
                 "COALESCE((SELECT max(governance_turn) FROM workflow_turns),0))+1").fetchone()[0]
@@ -142,6 +153,7 @@ async def _observe_input(machine, item, extractor):
 
 
 def _flatten(row):
+    """Project a validated turn and its telemetry into the original CSV layout."""
     values = row.model_dump()
     telemetry = values.pop("telemetry")
     return values | {"m_" + key: value for key, value in telemetry.items()}
@@ -152,6 +164,7 @@ CSV_COLUMNS = tuple(k for k in BenchmarkRow.model_fields if k != "telemetry") + 
 
 
 def _packages():
+    """Record installed analysis/runtime package versions without installing anything."""
     result = {}
     for name in ("pydantic", "pydantic-settings", "httpx", "rich", "matplotlib", "numpy"):
         try:
@@ -162,6 +175,7 @@ def _packages():
 
 
 def _provenance():
+    """Hash the current requirements, implementation and experiment source files."""
     root = Path(__file__).resolve().parents[1]
     paths = [root / "requirements.txt", *(root / "src").rglob("*.py"),
              *(root / "src").rglob("*.sql"), *(root / "experiments").glob("*.py")]
@@ -169,6 +183,7 @@ def _provenance():
 
 
 async def _inventory(client, *, synthetic):
+    """Check both configured local models and return their installed metadata."""
     result = {}
     for node in ("node1", "node2"):
         health = await client.ping(node)
@@ -334,6 +349,7 @@ async def run_experiment(plan: BenchmarkPlan, settings: Settings, output: Path, 
 
 
 def main(argv=None):
+    """Print the original study plan unless execution is explicitly requested."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--execute", action="store_true", help="explicitly run local model inference; default is plan only")
     parser.add_argument("--output", type=Path, help="new directory for one experiment bundle; must not exist")
@@ -355,6 +371,7 @@ def main(argv=None):
             parser.error("--execute requires --output with a new directory")
         from src.config import get_settings
         def progress(row):
+            """Print the usage and latency of each successfully recorded turn."""
             print(f"TURN {row.condition} repetition={row.repetition} step={row.telemetry.step}/{plan.turns} "
                   f"role={row.telemetry.agent_id} node={row.telemetry.node} "
                   f"prompt_tokens={row.total_prompt_tokens} wall_ms={row.wall_ms:.1f}", flush=True)

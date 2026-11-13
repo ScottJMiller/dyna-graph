@@ -45,7 +45,7 @@ completed cohorts or rerun by this verifier.
 
 ## Scope and review sequence
 
-Only Step 1 is implemented here. Each later step requires its own review before
+Steps 1 and 2 are implemented. Each later step requires its own review before
 the next starts. All changes retain local-only inference, the two-node layout,
 existing CLI entry points and generic public setup documentation.
 
@@ -70,3 +70,25 @@ do not overwrite the original baseline when the working source evolves.
 
 See the [Step 1 verification protocol](testing/refactor_step1.md) for commands,
 expected output and the baseline acceptance record.
+
+## Step 2: readable experiments and docstrings
+
+Experiment validation is organized into named stages, compressed integrated
+runner statements are expanded, and temporary names describe the values they
+hold. The original A/B reader separates manifest, artifact, turn, run-order and
+CSV validation. The integrated reader separates protocol/policy checks, turn
+identity, memory replay, SQLite checkpoint agreement and projected CSV checks.
+Integrated row contracts validate attempt costs, role replies, extractions,
+totals and rejected outcomes in their original order.
+
+All classes and functions in the six changed experiment modules have docstrings,
+including nested helpers. The original runner and original plotter have
+only docstring additions; their executable syntax is unchanged. Shared helper
+imports remain in place for Step 3. Core runtime modules and tests remain
+unchanged for their later steps.
+
+The [Step 2 verification protocol](testing/refactor_step2.md) checks both full
+historical summaries, all 115 published evidence hashes, plan-only CLI output,
+and the existing offline regression suite. The original baseline inventory is
+retained; `--check-source` is no longer an acceptance command because these six
+source files intentionally changed. No model-driven experiment is rerun.

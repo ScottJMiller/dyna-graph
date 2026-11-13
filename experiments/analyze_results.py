@@ -11,8 +11,8 @@ from experiments.contracts import BenchmarkPlan, BenchmarkRow, load_json, sha256
 from experiments.scenario import scenario, scenario_records, score
 
 
-def load_bundle(path):
-    path = Path(path).expanduser().resolve()
+def _validate_manifest(path):
+    """Read a completed original-study manifest and verify its frozen scenario."""
     manifest_path = path / "manifest.json"
     if manifest_path.stat().st_size > 2_000_000:
         raise ValueError("manifest exceeds size limit")
@@ -22,6 +22,12 @@ def load_bundle(path):
     plan = BenchmarkPlan.model_validate(manifest["plan"])
     if manifest["scenario_sha256"] != plan.scenario_sha256 or manifest["scenario"] != scenario_records(plan.turns):
         raise ValueError("scenario or oracle differs from its versioned plan")
+    return manifest, plan
+
+
+def _validate_artifacts(path, manifest, plan):
+    """Check required files and hashes before loading any turn records."""
+    manifest_path = path / "manifest.json"
     artifacts = manifest["artifacts"]
     required = {"turns.jsonl", "metrics.csv", *(f"{c}-{r}.csv" for r, c in plan.order()),
                 *(f"{c}-{r}.db" for r, c in plan.order())}
@@ -33,6 +39,10 @@ def load_bundle(path):
             raise ValueError("unsafe artifact path")
         if not target.is_file() or sha256(target) != digest:
             raise ValueError(f"artifact checksum mismatch: {name}")
+
+
+def _read_turns(path, plan):
+    """Load bounded turn records and require the full paired cohort."""
     raw_path = path / "turns.jsonl"
     if raw_path.stat().st_size > 50_000_000:
         raise ValueError("turn evidence exceeds size limit")
@@ -44,6 +54,11 @@ def load_bundle(path):
             rows.append(BenchmarkRow.model_validate_json(line))
     if len(rows) != 2 * plan.repetitions * plan.turns:
         raise ValueError("incomplete or duplicated paired turns")
+    return rows
+
+
+def _validate_run_order(manifest, plan, rows):
+    """Check run identity, frozen inputs, scores, routing and memory allowance."""
     expected_runs = []
     for position, (rep, condition) in enumerate(plan.order(), 1):
         run_id = f"{manifest['bundle_id']}-{condition}-{rep}"
@@ -67,7 +82,10 @@ def load_bundle(path):
                 raise ValueError("memory budget differs from the plan")
     if manifest["runs"] != expected_runs:
         raise ValueError("manifest run completeness differs from its turn evidence")
-    # Verify that the paper-friendly CSV is the exact JSONL projection too.
+
+
+def _validate_metrics_csv(path, rows):
+    """Require the CSV to match the deterministic JSONL projection exactly."""
     from experiments.benchmark_harness import CSV_COLUMNS, _flatten
     with (path / "metrics.csv").open(encoding="utf-8", newline="") as stream:
         reader = csv.DictReader(stream, strict=True)
@@ -77,14 +95,30 @@ def load_bundle(path):
     expected_csv = [{k: "" if v is None else str(v) for k, v in _flatten(row).items()} for row in rows]
     if csv_rows != expected_csv:
         raise ValueError("CSV and JSONL evidence disagree")
+
+
+def load_bundle(path):
+    """Return the manifest, plan and validated turns from a completed A/B bundle.
+
+    Reject partial or inconsistent evidence before analysis. This reader does
+    not initialize databases, create output files or contact either model.
+    """
+    path = Path(path).expanduser().resolve()
+    manifest, plan = _validate_manifest(path)
+    _validate_artifacts(path, manifest, plan)
+    rows = _read_turns(path, plan)
+    _validate_run_order(manifest, plan, rows)
+    _validate_metrics_csv(path, rows)
     return manifest, plan, tuple(rows)
 
 
 def _complete_total(values):
+    """Sum available counters only when the complete series is known."""
     return None if any(v is None for v in values) else sum(values)
 
 
 def _stats(values):
+    """Return descriptive mean, sample SD, median and nearest-rank p95."""
     return {"n": len(values), "mean": statistics.mean(values),
             "sd": statistics.stdev(values) if len(values) > 1 else None,
             "median": statistics.median(values),
@@ -92,10 +126,12 @@ def _stats(values):
 
 
 def _ratio(a, b):
+    """Return percentage savings relative to the first total, or unknown."""
     return None if a is None or b is None or a == 0 else (a - b) / a * 100
 
 
 def analyze_bundle(path):
+    """Validate the original A/B cohort and return descriptive paired results."""
     manifest, plan, rows = load_bundle(path)
     conditions = {}
     for condition in ("A", "B"):
@@ -131,6 +167,7 @@ def analyze_bundle(path):
         for step in range(1, plan.turns + 1):
             selected = [r for r in rows if r.condition == condition and r.telemetry.step == step]
             def mean_complete(values):
+                """Average all repetitions only when none has an unavailable counter."""
                 total = _complete_total(values)
                 return None if total is None else total / len(values)
             curves.append({"condition": condition, "step": step, "n": len(selected),
@@ -164,6 +201,7 @@ def analyze_bundle(path):
 
 
 def write_analysis(bundle, output):
+    """Validate first, then write JSON and CSV results to a fresh directory."""
     report = analyze_bundle(bundle)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
@@ -177,6 +215,7 @@ def write_analysis(bundle, output):
 
 
 def main(argv=None):
+    """Analyze an existing A/B bundle without launching inference."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True, help="completed benchmark bundle")
     parser.add_argument("--output", type=Path, required=True, help="new analysis directory")
