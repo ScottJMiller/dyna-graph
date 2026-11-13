@@ -9,47 +9,58 @@ from experiments.analyze_results import analyze_bundle
 
 
 def generate_plots(bundle, output):
-    # Validate all evidence before creating a directory or loading plotting code.
-    """Validate the original study and export four SVG/PDF/PNG figure sets."""
+    """Export four paper figure sets from a validated original A/B bundle."""
     report = analyze_bundle(bundle)
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     from matplotlib.figure import Figure
-    from matplotlib import rc_context
+    from matplotlib.ticker import PercentFormatter
+    from experiments.plot_style import paper_style, plot_series, save_figure, write_figure_notes
 
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
-    paths = []
-    label = "SYNTHETIC TEST DATA — NOT EXPERIMENT RESULTS" if report["source"] == "synthetic" else "Measured local A/B comparison"
-    with rc_context({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False,
-                     "svg.fonttype": "none", "pdf.fonttype": 42}):
+    paths, captions, data = [], {}, {}
+    with paper_style():
         for key, title, ylabel in (
-            ("role_prompt_tokens", "Role prompt usage", "Measured prompt tokens / turn"),
-            ("total_prompt_tokens", "Complete pipeline prompt usage", "Measured prompt tokens / turn"),
-            ("wall_ms", "Turn wall latency", "Milliseconds / turn"),
-            ("accuracy", "Strict answer-contract accuracy", "Fraction correct"),
+            ('role_prompt_tokens', 'Role Prompt Usage', 'Mean Role Prompt Tokens'),
+            ('total_prompt_tokens', 'Full-Pipeline Prompt Usage', 'Mean Full-Pipeline Prompt Tokens'),
+            ('wall_ms', 'Turn Latency', 'Mean Turn Latency (s)'),
+            ('accuracy', 'Strict Accuracy by Turn', 'Strict Accuracy'),
         ):
-            figure = Figure(figsize=(7.2, 4.4), layout="constrained")
+            figure = Figure(figsize=(7.16, 3.3), layout='constrained')
             FigureCanvasAgg(figure)
             axes = figure.subplots()
-            for condition, color, name in (("A", "#a35f22", "A: windowed history"), ("B", "#087f8c", "B: graph memory")):
-                rows = [r for r in report["curves"] if r["condition"] == condition]
-                y = [float("nan") if r[key] is None else r[key] for r in rows]
-                axes.plot([r["step"] for r in rows], y, marker="o", markersize=3, color=color, label=name)
-            axes.set(xlabel="Scenario turn", ylabel=ylabel, title=title)
-            axes.set_xticks(range(1, report["plan"]["turns"] + 1, 2))
-            axes.grid(axis="y", alpha=0.2)
-            axes.legend(loc="best", frameon=False)
-            if key == "accuracy":
-                axes.set_ylim(-0.05, 1.05)
-            if key.endswith("prompt_tokens") and any(r[key] is None for r in report["curves"]):
-                axes.text(0.5, 0.02, "Missing counters are unknown (gaps), not zero", ha="center", transform=axes.transAxes, fontsize=8)
-            figure.suptitle(label + f"\nMean across {report['plan']['repetitions']} repetition(s)",
-                fontsize=9, color="#a33c22" if report["source"] == "synthetic" else "#555555")
-            for suffix in ("svg", "pdf", "png"):
-                path = output / f"{key}.{suffix}"
-                figure.savefig(path, dpi=200)
-                paths.append(path)
-            figure.clear()
+            data[key] = {}
+            for condition in ('A', 'B'):
+                rows = [row for row in report['curves'] if row['condition'] == condition]
+                x = [row['step'] for row in rows]
+                y = [None if row[key] is None else row[key] / (1000 if key == 'wall_ms' else 1)
+                     for row in rows]
+                plot_series(axes, condition, x, y)
+                data[key][condition] = [dict(turn=turn, value=value) for turn, value in zip(x, y)]
+            axes.set(xlabel='Turn', ylabel=ylabel, title=title)
+            axes.legend(loc='upper left', bbox_to_anchor=(1.01, 1), frameon=False)
+            if key == 'accuracy':
+                axes.set_ylim(-.025, 1.06)
+                axes.yaxis.set_major_formatter(PercentFormatter(xmax=1))
+            else:
+                axes.set_ylim(bottom=0)
+            paths.extend(save_figure(figure, output, key, synthetic=report['source'] == 'synthetic'))
+            captions[key] = (
+                f'Arithmetic means across {report["plan"]["repetitions"]} original-study repetitions. '
+                'A is bounded linear history; B is the original full graph-memory condition. '
+                'The original B differs from integrated-study B; these studies must not be pooled. '
+            )
+            if key == 'wall_ms':
+                captions[key] += 'Measured elapsed turn time converted from milliseconds to seconds.'
+            elif key == 'accuracy':
+                captions[key] += 'The original strict answer contract is unchanged.'
+            else:
+                captions[key] += (
+                    'Role counts omit extraction work; pipeline counts include role and extraction attempts. '
+                    'Missing counters remain unknown (gaps), never zero or partial-subset means.'
+                )
+    write_figure_notes(output, report, captions,
+                       {'A': 'Bounded linear history', 'B': 'Original full graph memory'}, data, bundle)
     return tuple(paths)
 
 

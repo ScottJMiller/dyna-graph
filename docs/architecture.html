@@ -1592,6 +1592,25 @@ svg #arrow-active path { fill: var(--edge-active); }
       "support": false,
       "x": 1980,
       "y": 1888
+    },
+    {
+      "id": "plot-style",
+      "path": "experiments/plot_style.py",
+      "phase": 8,
+      "summary": "Shared paper figure style and exports",
+      "description": "Apply SciencePlots science/ieee/grid/no-latex styles with fixed Okabe–Ito colors, distinct markers and letter-only legends. Export local vector/raster files with captions and plotted values.",
+      "interfaces": [
+        "paper_style()",
+        "plot_series() / save_figure()",
+        "write_figure_notes()"
+      ],
+      "inputs": "Validated study curves, captions and condition identities.",
+      "outputs": "SVG/PDF/PNG paper figures, caption notes and plot_data.json.",
+      "notes": "Presentation-only exports preserve published evidence. No TeX, model requests or remote assets are needed. Styles are scoped to avoid changing global Matplotlib settings.",
+      "kind": "source",
+      "support": true,
+      "x": 60,
+      "y": 4160
     }
   ],
   "edges": [
@@ -2560,6 +2579,18 @@ svg #arrow-active path { fill: var(--edge-active); }
       "target": "contracts",
       "label": "hash current source provenance",
       "kind": "call"
+    },
+    {
+      "source": "plots",
+      "target": "plot-style",
+      "kind": "support",
+      "label": "Shared paper rendering"
+    },
+    {
+      "source": "integrated-analysis",
+      "target": "plot-style",
+      "kind": "support",
+      "label": "Shared paper rendering"
     }
   ],
   "phases": [

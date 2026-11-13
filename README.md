@@ -403,7 +403,7 @@ Run the functional suite without network access or Ollama:
 python3 -m pytest -q
 ```
 
-Expected: **849 passed, 18 skipped**. The skipped checks require physical LAN
+Expected: **851 passed, 18 skipped**. The skipped checks require physical LAN
 nodes or explicitly requested storage/retrieval timing measurements. The guides
 below provide their exact commands and acceptance criteria. Ordinary offline
 verification makes no model requests.
@@ -418,7 +418,7 @@ verification makes no model requests.
 | [Orchestration verification](docs/testing/phase6.md) | Three-role LAN cycles, local tools, atomic checkpoints, restart/cancellation, migration, and complete workflow usage. |
 | [Telemetry verification](docs/testing/phase7.md) | Measured usage, checkpoint snapshots, live controls, CSV integrity/recovery, and a direct two-node telemetry check. |
 | [Experiment implementation verification](docs/testing/phase8.md) | Synthetic-only A/B pipeline checks, plan-only CLI, oracle/scoring, artifact validation, paired analysis, and standalone figures. No experiment run. |
-| [Integrated experiment verification](docs/testing/phase8_integrated.md) | Synthetic-only four-condition checks, consistent simulated aging, delayed recall, transition/checkpoint validation and six figure sets. Model-driven execution is gated. |
+| [Integrated experiment verification](docs/testing/phase8_integrated.md) | Synthetic-only four-condition checks, consistent simulated aging, delayed recall, transition/checkpoint validation and eight figure sets. Model-driven execution is gated. |
 | [Architecture atlas verification](docs/testing/architecture.md) | Optional checks for the documentation's themes, controls, SVG export, and connector geometry. |
 
 ### 8. Troubleshoot and build on the APIs
@@ -446,3 +446,7 @@ explicit: callers own HTTP-client and database cleanup. The
 [architecture narrative](docs/architecture.md) explains the implemented integration and extension points. The
 [initial measured case study](docs/results/study-20261111-002/README.md) includes results,
 limitations, and commands to reproduce the analysis without running the models.
+
+For the revised paper-ready figures, condition definitions and caption notes, see
+[Paper figures](docs/figures/README.md). These are presentation revisions from saved
+evidence; the originally published figures and experiment history remain unchanged.

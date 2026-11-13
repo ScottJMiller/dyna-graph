@@ -489,10 +489,19 @@ def test_analysis_and_plot_outputs_are_descriptive_and_synthetic(evidence, tmp_p
     assert {p['through_step'] for p in report['checkpoints']} == {20, 40, 60}
     assert {r['purpose'] for r in report['contrasts']} == {'complete framework', 'supersession', 'pruning'}
     paths = analysis.generate_plots(output, tmp_path / 'figures')
-    assert len(paths) == 18 and {p.suffix for p in paths} == {'.svg', '.pdf', '.png'}
+    assert len(paths) == 24 and {p.suffix for p in paths} == {'.svg', '.pdf', '.png'}
     for p in paths:
         if p.suffix == '.svg':
             assert 'SYNTHETIC TEST DATA' in p.read_text()
+    plotted = load_json(tmp_path / 'figures' / 'plot_data.json')['plots']
+    assert set(plotted['active_edges']) == set('BCD')
+    for condition in 'ABCD':
+        curves = [row for row in report['curves'] if row['condition'] == condition]
+        assert [point['value'] for point in plotted['wall_ms'][condition]] == [
+            row['wall_ms'] / 1000 for row in curves
+        ]
+        assert plotted['overall_accuracy']['overall'][condition]['n'] == report['conditions'][condition]['turns']
+        assert plotted['overall_accuracy']['overall'][condition]['accuracy'] == report['conditions'][condition]['accuracy']
     with pytest.raises(FileExistsError):
         analysis.write_analysis(output, tmp_path / 'analysis')
     with pytest.raises(FileExistsError):
@@ -955,3 +964,42 @@ def test_unrelated_http_failure_still_aborts_and_records_available_source(tmp_pa
     assert failure['http_failure']['server_error'] == 'unrelated server failure'
     if stage != 'role':
         assert failure['source_message'] is not None
+
+
+def test_exact_recall_gaps_preserve_counts_failures_and_irregular_distances():
+    """Do not invent intermediate gaps, discard failures or include undefined lags."""
+    rows = [
+        dict(condition='C', lag=0, correct=True),
+        dict(condition='C', lag=12, correct=True),
+        dict(condition='C', lag=12, correct=False),
+        dict(condition='C', lag=50, correct=False),
+        dict(condition='C', lag=None, correct=False),
+        dict(condition='D', lag=12, correct=False),
+    ]
+    assert analysis.recall_gap_points(rows, 'C') == [
+        dict(gap=0, n=1, correct=1, accuracy=1),
+        dict(gap=12, n=2, correct=1, accuracy=.5),
+        dict(gap=50, n=1, correct=0, accuracy=0),
+    ]
+
+
+def test_accuracy_bars_keep_weighted_denominators_and_variant_scores():
+    """Pooled accuracy uses all turns; variant markers are descriptive observations."""
+    rows = [
+        dict(condition='C', variant=1, category='delayed', correct=True),
+        dict(condition='C', variant=2, category='delayed', correct=False),
+        dict(condition='C', variant=2, category='frequent', correct=False),
+        dict(condition='D', variant=1, category='delayed', correct=False),
+    ]
+    panels = analysis.accuracy_bar_data(rows)
+    assert panels['overall']['C']['accuracy'] == pytest.approx(1 / 3)
+    assert panels['overall']['C']['correct'] == 1
+    assert panels['overall']['C']['n'] == 3
+    assert panels['overall']['C']['variants'] == {
+        '1': dict(n=1, accuracy=1), '2': dict(n=2, accuracy=0),
+    }
+    assert panels['delayed']['C']['accuracy'] == .5
+    assert panels['delayed']['C']['n'] == 2
+    assert panels['delayed']['D']['accuracy'] == 0
+    assert panels['delayed']['A']['accuracy'] is None
+    assert panels['delayed']['A']['n'] == 0

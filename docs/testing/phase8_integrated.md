@@ -33,13 +33,13 @@ private configuration changes, or database migrations are required.
 python3 -m pytest tests/test_phase8_integrated.py -q
 ```
 
-Expected: **116 passed**. Tests cover gates, counterbalanced ordering, all four
+Expected: **118 passed**. Tests cover gates, counterbalanced ordering, all four
 policies, 60/70/80-turn workloads, actual prompt fingerprints, set-valued scoring,
 full offline execution including four variants at 80 turns, logical versus real
 clocks, explicit scenario turns, pin/multi-value preservation, pruning and delayed
 loss, missing counters, failed/cancelled cohorts, immutable output directories,
 artifact corruption, deliberately rewritten evidence checksums, SQLite agreement,
-legacy measured-bundle analysis, six figure sets and private-path exclusions.
+legacy measured-bundle analysis, eight figure sets and private-path exclusions.
 Checks replay both real truncation cases across A/B/C/D, commit rejected turns
 and the following scheduled turn, preserve attempt costs and unknown counters,
 and reject tampered success/cost/SQLite records. They also run entire synthetic
@@ -82,7 +82,7 @@ git diff --check
 git check-ignore .env .verification/ data/experiments/
 ```
 
-Expected: **848 passed, 18 skipped**, **7 geometry checks passed**, no whitespace
+Expected: **851 passed, 18 skipped**, **7 geometry checks passed**, no whitespace
 errors, and the three private/runtime paths listed as ignored. The skipped checks
 are 16 earlier LAN tests and two opt-in storage/retrieval performance checks.
 Do not enable `--run-lan` as part of this offline extension acceptance.
@@ -269,7 +269,7 @@ python3 -m experiments.integrated_analysis --input data/experiments/integrated-0
 Expected after a successful future run: progress through all 960 scored turns,
 `INTEGRATED EXPERIMENT COMPLETE: <bundle_id>`,
 `INTEGRATED ANALYSIS OK: source=measured variants=4 contrasts=12`, and
-`FIGURES OK: 18 files (SVG, PDF, PNG)`. Choose fresh output paths for every step.
+`FIGURES OK: 24 files (SVG, PDF, PNG)`. Choose fresh output paths for every step.
 Full-cohort run duration has not been measured. Figures distinguish simulated aging
 from actual measured inference; synthetic test figures have a prominent label.
 
@@ -308,3 +308,6 @@ fix(experiments): account for prediction aborts and failed extraction
 - keep role-answer scoring independent and accept no failed-extraction facts
 - validate protocol-4 accounting, retries, checkpoints and strict defaults
 ```
+
+Paper presentation revisions and caption details are documented in the
+[paper-figure protocol](paper_figures.md). Published historical figure sets remain unchanged.

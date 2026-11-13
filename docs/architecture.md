@@ -289,6 +289,7 @@ store; see the Phase 7 protocol for flush and recovery boundaries.
 | [experiments/contracts.py](../experiments/contracts.py) | Define strict plan/row contracts, atomic manifest writes, finite JSON parsing and streaming artifact checksums. |
 | [experiments/analyze_results.py](../experiments/analyze_results.py) | Reject incomplete/inconsistent bundles; report measured agent-only and pipeline costs, strict/update/delayed accuracy, history truncation, observed slopes and paired descriptive differences. |
 | [experiments/generate_plots.py](../experiments/generate_plots.py) | Validate source evidence and export four figure sets as local SVG/PDF/PNG using headless Matplotlib; label all synthetic test figures. |
+| [experiments/plot_style.py](../experiments/plot_style.py) | Share SciencePlots/no-LaTeX rendering, fixed Okabe–Ito colors, markers, exports and caption/data sidecars across both studies. |
 | [experiments/__init__.py](../experiments/__init__.py) | Establish the experiment package without running inference, analysis or plotting on import. |
 | [tests/test_phase8_benchmark.py](../tests/test_phase8_benchmark.py) | Verify the comparison with simulated HTTP only, blocking real network access; cover planning gates, isolation, updates, missing counters, failed/cancelled evidence, analysis integrity and figure formats. |
 | [docs/testing/phase8.md](testing/phase8.md) | Provide synthetic-only verification, methodology, artifact contracts, explicit execution commands and the initial measured case study. |

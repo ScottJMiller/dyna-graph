@@ -562,56 +562,186 @@ def write_analysis(bundle, output):
     return report
 
 
+def recall_gap_points(rows, condition):
+    """Aggregate strict accuracy at every observed numeric gap; omit undefined gaps."""
+    gaps = sorted({row['lag'] for row in rows
+                   if row['condition'] == condition and row['lag'] is not None})
+    points = []
+    for gap in gaps:
+        selected = [row for row in rows if row['condition'] == condition and row['lag'] == gap]
+        points.append(dict(gap=gap, n=len(selected), correct=sum(row['correct'] for row in selected),
+                           accuracy=accuracy(selected)))
+    return points
+
+
+def accuracy_bar_data(rows):
+    """Keep pooled counts and paired variant scores for the two accuracy panels."""
+    panels = {}
+    for category in ('overall', 'delayed'):
+        panels[category] = {}
+        for condition in CONDITIONS:
+            selected = [row for row in rows if row['condition'] == condition
+                        and (category == 'overall' or row['category'] == 'delayed')]
+            variants = {}
+            for variant in sorted({row['variant'] for row in selected}):
+                items = [row for row in selected if row['variant'] == variant]
+                variants[str(variant)] = dict(n=len(items), accuracy=accuracy(items))
+            panels[category][condition] = dict(
+                n=len(selected), correct=sum(row['correct'] for row in selected),
+                accuracy=accuracy(selected), variants=variants,
+            )
+    return panels
+
+
 def generate_plots(bundle, output):
-    """Export six validated figure sets; unknown counters appear as gaps."""
+    """Export eight paper figure sets from validated evidence, without inference."""
     report = analyze_bundle(bundle)
+    _, _, _, rows = load_bundle(bundle)
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     from matplotlib.figure import Figure
-    from matplotlib import rc_context
+    from matplotlib.ticker import PercentFormatter
+    from experiments.plot_style import (
+        COLORS, MARKERS, paper_style, plot_series, save_figure, write_figure_notes,
+    )
 
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
-    paths = []
-    title = ('SYNTHETIC TEST DATA — NOT EXPERIMENT RESULTS' if report['source'] == 'synthetic'
-             else 'Measured local inference with simulated memory aging')
-    with rc_context({'font.size': 10, 'axes.spines.top': False, 'axes.spines.right': False,
-                     'svg.fonttype': 'none', 'pdf.fonttype': 42}):
-        for key, label in [
-            ('role_prompt_tokens', 'Role prompt tokens'),
-            ('total_prompt_tokens', 'Full-pipeline prompt tokens'),
-            ('wall_ms', 'Turn wall latency (ms)'),
-            ('active_edges', 'Active graph triples'),
-            ('accuracy', 'Answer-contract accuracy'),
-            ('delayed_recall', 'Answer accuracy by recall distance'),
-        ]:
-            figure = Figure(figsize=(8, 4.8), layout='constrained')
+    synthetic = report['source'] == 'synthetic'
+    variants = report['plan']['variants']
+    paths, captions, data = [], {}, {}
+    titles = [
+        ('role_prompt_tokens', 'Role Prompt Usage', 'Mean Role Prompt Tokens'),
+        ('total_prompt_tokens', 'Full-Pipeline Prompt Usage', 'Mean Full-Pipeline Prompt Tokens'),
+        ('wall_ms', 'Turn Latency', 'Mean Turn Latency (s)'),
+        ('active_edges', 'Active Graph Size', 'Mean Active Triples'),
+        ('accuracy', 'Strict Accuracy by Turn', 'Strict Accuracy'),
+        ('delayed_recall', 'Accuracy by Recall Gap', 'Strict Accuracy'),
+        ('delayed_recall_exact', 'Accuracy at Observed Recall Gaps', 'Strict Accuracy'),
+    ]
+    with paper_style():
+        for key, title, ylabel in titles:
+            figure = Figure(figsize=(7.16, 3.3), layout='constrained')
             FigureCanvasAgg(figure)
             axes = figure.subplots()
-            for condition, color in zip(CONDITIONS, ['#a35f22', '#6e62a6', '#087f8c', '#167a48']):
+            data[key] = {}
+            for condition in CONDITIONS:
+                if key == 'active_edges' and condition == 'A':
+                    continue
                 if key == 'delayed_recall':
                     points = report['conditions'][condition]['by_lag']
                     x = list(points)
                     y = [points[label]['accuracy'] for label in x]
+                    data[key][condition] = points
+                elif key == 'delayed_recall_exact':
+                    points = recall_gap_points(rows, condition)
+                    x = [point['gap'] for point in points]
+                    y = [point['accuracy'] for point in points]
+                    data[key][condition] = points
                 else:
                     points = [row for row in report['curves'] if row['condition'] == condition]
                     x = [row['step'] for row in points]
-                    y = [row[key] for row in points]
-                axes.plot(x, [float('nan') if value is None else value for value in y],
-                          label=f'{condition}: {CONDITIONS[condition]["name"]}', color=color,
-                          marker='o', markersize=2)
-            axes.set(xlabel='Recall distance (turns)' if key == 'delayed_recall' else 'Scenario turn', ylabel=label)
-            if key in ('accuracy', 'delayed_recall'):
-                axes.set_ylim(-.05, 1.05)
-            axes.grid(axis='y', alpha=.2)
-            axes.legend(loc='best', fontsize=7)
-            figure.suptitle(
-                title + f'\n{report["plan"]["variants"]} workload variants; descriptive means; missing counters are gaps'
-                '\nRejected replies count as incorrect; failed attempts are included in costs.', fontsize=9,
-            )
-            for suffix in ('svg', 'pdf', 'png'):
-                path = output / f'{key}.{suffix}'
-                figure.savefig(path, dpi=200)
-                paths.append(path)
+                    y = [None if row[key] is None else row[key] / (1000 if key == 'wall_ms' else 1)
+                         for row in points]
+                    data[key][condition] = [dict(turn=turn, value=value, n=point['n'])
+                                            for turn, value, point in zip(x, y, points)]
+                plot_series(axes, condition, x, y)
+            axes.set(xlabel='Recall Gap (turns)' if key.startswith('delayed_recall') else 'Turn',
+                     ylabel=ylabel, title=title)
+            if key in ('accuracy', 'delayed_recall', 'delayed_recall_exact'):
+                axes.yaxis.set_major_formatter(PercentFormatter(xmax=1))
+                axes.set_ylim(-.025, 1.06)
+            else:
+                axes.set_ylim(bottom=0)
+            axes.legend(loc='upper left', bbox_to_anchor=(1.01, 1), frameon=False)
+            paths.extend(save_figure(figure, output, key, synthetic=synthetic))
+            if key == 'delayed_recall':
+                denominators = report['conditions']['A']['by_lag']
+                counts = ', '.join(f'{label}: n={point["n"]}' for label, point in denominators.items())
+                captions[key] = (
+                    'Strict accuracy pooled within the declared recall-gap buckets. '
+                    f'Scheduled counts per condition: {counts}. Points are categorical groups, '
+                    'not a fitted forgetting curve. Thin straight lines guide the eye between observed groups; '
+                    'they do not estimate accuracy between them. Undefined gaps (unknown-answer probes) are excluded. '
+                    'Gap measures turns since scheduled observation/questioning, not original fact age.'
+                )
+            elif key == 'delayed_recall_exact':
+                captions[key] = (
+                    'Strict accuracy at every observed numeric recall gap, pooled across workload variants. '
+                    'Points use their actual numeric x positions. Thin straight connecting lines guide the eye; '
+                    'they do not estimate accuracy at unobserved gaps. No smoothing is applied. '
+                    'Overlapping values share coordinates; marker shapes distinguish conditions. '
+                    'Counts and successes at each gap are in plot_data.json. Undefined gaps are excluded. '
+                    'Question composition differs between gaps; this does not isolate forgetting alone.'
+                )
+            else:
+                captions[key] = f'Per-turn arithmetic means across {variants} workload variants. '
+                if key == 'active_edges':
+                    captions[key] += ('A has no graph and is omitted. Counts are active logical triples, '
+                                      'not database-space savings; soft-pruned records remain stored.')
+                elif key == 'wall_ms':
+                    captions[key] += ('Recorded elapsed turn time converted from milliseconds to seconds. '
+                                      'Includes the work and failed attempts recorded inside each turn; '
+                                      'setup/warmups are outside these per-turn measurements.')
+                elif key == 'accuracy':
+                    captions[key] += ('Original strict answer-contract scoring, including rejected replies as incorrect. '
+                                      'Turns are not independent experimental repetitions.')
+                else:
+                    captions[key] += ('Role costs include role correction attempts. Full-pipeline costs also '
+                                      'include observation/response extraction and corrections. '
+                                      'A missing counter in any contributing variant leaves a gap; '
+                                      'there is no imputation or selective-subset mean. Failed-attempt costs '
+                                      'are included when counters are available.')
+
+        figure = Figure(figsize=(7.16, 3.5), layout='constrained')
+        FigureCanvasAgg(figure)
+        axes = figure.subplots(1, 2, sharey=True)
+        panels = accuracy_bar_data(rows)
+        data['overall_accuracy'] = panels
+        for axis, category, title in zip(
+            axes, ('overall', 'delayed'), ('Overall Strict Accuracy', 'Delayed Birch Probe Accuracy'),
+        ):
+            values = panels[category]
+            for position, condition in enumerate(CONDITIONS):
+                point = values[condition]
+                fraction = point['accuracy']
+                if fraction is None:
+                    axis.text(position, .03, 'N/A', ha='center', fontsize=8)
+                    continue
+                axis.bar(position, fraction, width=.62, color=COLORS[condition], alpha=.8,
+                         edgecolor='black', linewidth=.5, zorder=2)
+                variant_scores = list(point['variants'].values())
+                # Offset the paired variant points deterministically, even at 0% or 100%.
+                offsets = [0] if len(variant_scores) == 1 else [
+                    -.16 + .32 * index / (len(variant_scores) - 1)
+                    for index in range(len(variant_scores))
+                ]
+                axis.scatter([position + offset for offset in offsets],
+                             [item['accuracy'] for item in variant_scores],
+                             marker=MARKERS[condition], s=12, facecolors='white',
+                             edgecolors='black', linewidths=.6, zorder=3, clip_on=False)
+                axis.text(position, max([fraction] + [item['accuracy'] for item in variant_scores]) + .035,
+                          f'{fraction:.2%}\n{point["correct"]}/{point["n"]}',
+                          ha='center', va='bottom', fontsize=7)
+            axis.set(title=title, xlabel='Condition', xticks=range(4), xticklabels=list(CONDITIONS),
+                     ylim=(0, 1.18))
+            axis.set_yticks([0, .2, .4, .6, .8, 1])
+            axis.yaxis.set_major_formatter(PercentFormatter(xmax=1))
+            axis.grid(axis='x', visible=False, which='both')
+            axis.set_axisbelow(True)
+        axes[0].set_ylabel('Strict Accuracy')
+        paths.extend(save_figure(figure, output, 'overall_accuracy', synthetic=synthetic))
+        captions['overall_accuracy'] = (
+            'Left: overall strict accuracy across all scheduled turns, with successes/denominators. '
+            'Right: the dedicated delayed Birch probes for all four conditions; B is retained to show '
+            'its successful recall alongside C. Open markers are individual workload-variant scores, '
+            'in the same left-to-right variant order within each bar; they are not independent turn samples '
+            'or confidence intervals. The Birch comparison is a specific scheduled probe result, not a '
+            'universal retention guarantee. The C–D difference is the observed pruning-policy contrast, '
+            'not an identical-graph intervention. A’s low overall strict score also reflects answer-format '
+            'failures and cannot be attributed entirely to forgetting.'
+        )
+    write_figure_notes(output, report, captions,
+                       {key: value['name'] for key, value in CONDITIONS.items()}, data, bundle)
     return tuple(paths)
 
 
