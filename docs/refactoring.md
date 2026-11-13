@@ -45,7 +45,7 @@ completed cohorts or rerun by this verifier.
 
 ## Scope and review sequence
 
-Steps 1–4 are implemented. Each later step requires its own review before
+Steps 1–5 are implemented. Each later step requires its own review before
 the next starts. All changes retain local-only inference, the two-node layout,
 existing CLI entry points and generic public setup documentation.
 
@@ -149,3 +149,26 @@ theme toggle, zoom/pan, search, component details, supporting-file access and SV
 export. Verify the simplified controls and connector geometry before calling
 the refactor complete. This requirement is recorded now; the HTML cleanup is
 not included in Step 4.
+
+## Step 5: readable tests and shared offline setup
+
+Common environment isolation and the identical default settings fixture live in
+`tests/conftest.py`. All offline tests now start independently of workstation
+settings and legacy aliases. LAN-marked cases keep their real configuration;
+module-specific policies and temporary storage stay explicit in their own tests.
+The original and integrated HTTP guards remain local, and the protocol-specific
+fake servers retain their separate behavior.
+
+Compressed suites, semicolon-separated statements, records and assertions are
+expanded. Helpers and complex regressions have purpose/constraint docstrings;
+section comments distinguish setup, failures, accounting, evidence validation
+and opt-in LAN checks. Embedded scripts and existing comments remain intact.
+No test filename or test identity is changed, and no test or assertion is removed.
+The structural review preserves all 857 assertion statements and compares all
+867 collected IDs in order. Application and experiment implementations are
+unchanged by this step.
+
+The [Step 5 verification protocol](testing/refactor_step5.md) documents collection,
+full offline regression, focused categories, unchanged hardware opt-ins and
+historical evidence checks. The architecture control cleanup recorded above
+remains required in Step 6 before the refactor can be called complete.

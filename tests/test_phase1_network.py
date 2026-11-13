@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import os
 
 import httpx
 import pytest
@@ -13,25 +12,6 @@ from src.config import Settings
 from src.network.ollama_client import OllamaClient, OllamaError, OllamaUnavailableError
 
 console = Console(color_system=None)
-
-
-@pytest.fixture(autouse=True)
-def isolated_unit_environment(monkeypatch, request):
-    # Unit tests never inherit workstation .env values or shell configuration.
-    if "lan" not in request.keywords:
-        names = {name.upper() for name in Settings.model_fields}
-        for field in Settings.model_fields.values():
-            alias = field.validation_alias
-            if alias is not None:
-                names.update(name.upper() for name in alias.choices)
-        for name in list(os.environ):
-            if name.upper() in names:
-                monkeypatch.delenv(name)
-
-
-@pytest.fixture
-def settings():
-    return Settings(_env_file=None, node2_ollama_url="http://192.168.1.20:11434")
 
 
 def generated(model="qwen2.5:7b"):
@@ -98,7 +78,10 @@ def test_invalid_or_cloud_model(settings, model):
 
 def test_dotenv_and_environment_precedence(tmp_path, monkeypatch):
     env_file = tmp_path / ".env"
-    env_file.write_text("NODE2_OLLAMA_URL=http://192.168.1.20:11434\nOLLAMA_HEALTH_TIMEOUT_SECONDS=12\n", encoding="utf-8")
+    env_file.write_text(
+        "NODE2_OLLAMA_URL=http://192.168.1.20:11434\nOLLAMA_HEALTH_TIMEOUT_SECONDS=12\n",
+        encoding="utf-8",
+    )
     assert Settings(_env_file=env_file).ollama_health_timeout_seconds == 12
     monkeypatch.setenv("NODE2_OLLAMA_URL", "http://10.0.0.20:11434")
     configured = Settings(_env_file=env_file)
@@ -149,7 +132,10 @@ def test_existing_cluster_dotenv_names(tmp_path):
 ])
 def test_environment_precedence_across_aliases(tmp_path, monkeypatch, env_alias, file_alias):
     env_file = tmp_path / ".env"
-    env_file.write_text(f"NODE2_OLLAMA_URL=http://10.0.60.181:11434\n{file_alias}=file:local\n", encoding="utf-8")
+    env_file.write_text(
+        f"NODE2_OLLAMA_URL=http://10.0.60.181:11434\n{file_alias}=file:local\n",
+        encoding="utf-8",
+    )
     monkeypatch.setenv(env_alias, "environment:local")
     assert Settings(_env_file=env_file).node_model("node1") == "environment:local"
 
@@ -183,7 +169,11 @@ def test_database_path_cannot_be_existing_directory(tmp_path):
 @pytest.mark.parametrize("threads", [0, -1, 65])
 def test_invalid_node_thread_budget(node, threads):
     with pytest.raises(ValidationError):
-        Settings(_env_file=None, node2_ollama_url="http://10.0.60.181:11434", **{f"{node}_ollama_num_threads": threads})
+        Settings(
+            _env_file=None,
+            node2_ollama_url="http://10.0.60.181:11434",
+            **{f"{node}_ollama_num_threads": threads},
+        )
 
 
 def test_example_settings_load_generic_lan_configuration():
@@ -222,6 +212,7 @@ def test_model_inventory(settings, models):
         assert request.method == "GET"
         assert request.url.path == "/api/tags"
         return httpx.Response(200, json={"models": models})
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             inventory = await client.list_models("node2")
@@ -304,9 +295,11 @@ def test_fallback_uses_other_nodes_model(settings, failure, preferred):
 @pytest.mark.parametrize("operation", ["ping", "generate"])
 def test_direct_node_failure_never_falls_back(settings, operation):
     calls = []
+
     def handler(request):
         calls.append(request)
         raise httpx.ConnectError("unreachable", request=request)
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(OllamaError) as caught:
@@ -323,6 +316,7 @@ def test_direct_node_failure_never_falls_back(settings, operation):
 def test_both_nodes_unavailable(settings):
     def handler(request):
         raise httpx.ConnectError("unreachable", request=request)
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(OllamaUnavailableError) as caught:
@@ -335,9 +329,11 @@ def test_both_nodes_unavailable(settings):
 @pytest.mark.parametrize("status", [302, 400, 401, 404])
 def test_http_errors_and_redirects_do_not_fall_back(settings, status):
     calls = []
+
     def handler(request):
         calls.append(request)
         return httpx.Response(status, headers={"Location": "https://example.com"}, json={"error": "request rejected"})
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(OllamaError) as caught:
@@ -366,9 +362,11 @@ def test_malformed_health_responses(settings, payload):
 ])
 def test_malformed_generation_responses(settings, changes):
     calls = []
+
     def handler(request):
         calls.append(request)
         return httpx.Response(200, json=generated() | changes)
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(OllamaError, match="protocol"):
@@ -379,9 +377,11 @@ def test_malformed_generation_responses(settings, changes):
 
 def test_total_wall_clock_timeout(settings):
     configured = Settings(_env_file=None, node2_ollama_url=settings.node_url("node2"), ollama_health_timeout_seconds=0.01)
+
     async def handler(request):
         await asyncio.sleep(0.1)
         return httpx.Response(200, json={"version": "0.11.0"})
+
     async def scenario():
         async with OllamaClient(configured, transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(OllamaError) as caught:
@@ -399,6 +399,7 @@ def test_total_wall_clock_timeout(settings):
 def test_invalid_input_makes_no_request(settings, kwargs):
     def handler(request):
         pytest.fail("invalid input must not make an HTTP request")
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(ValueError):
@@ -410,6 +411,7 @@ def test_proxy_environment_is_ignored(settings, monkeypatch):
     monkeypatch.setenv("HTTP_PROXY", "http://8.8.8.8:8080")
     monkeypatch.setenv("HTTPS_PROXY", "http://8.8.8.8:8080")
     monkeypatch.setenv("ALL_PROXY", "http://8.8.8.8:8080")
+
     async def scenario():
         async with OllamaClient(settings) as client:
             assert client._http.trust_env is False
@@ -435,6 +437,7 @@ def test_lan_ping(node):
 @pytest.mark.parametrize("node", ["node1", "node2"])
 def test_lan_installed_model(node):
     configured = Settings()
+
     async def scenario():
         async with OllamaClient(configured) as client:
             inventory = await client.list_models(node)
@@ -442,7 +445,9 @@ def test_lan_installed_model(node):
             name = configured.node_model(node)
             assert name in models, f"{node}: configured model {name!r} missing; installed: {list(models)}"
             assert models[name].quantization_level == "Q4_K_M"
-            console.print(f"MODEL {node} name={name} quantization={models[name].quantization_level} latency_ms={inventory.latency_ms:.2f}")
+            console.print(
+                f"MODEL {node} name={name} quantization={models[name].quantization_level} latency_ms={inventory.latency_ms:.2f}",
+            )
     asyncio.run(scenario())
 
 
@@ -456,7 +461,9 @@ def test_lan_inference(node):
             assert result.response.strip()
             assert not result.used_fallback
             assert result.latency_ms >= result.node_latency_ms >= 0
-            console.print(f"INFERENCE {node} model={result.model} latency_ms={result.latency_ms:.2f} response={result.response!r}")
+            console.print(
+                f"INFERENCE {node} model={result.model} latency_ms={result.latency_ms:.2f} response={result.response!r}",
+            )
     asyncio.run(scenario())
 
 
@@ -466,6 +473,7 @@ def test_lan_fallback_with_simulated_outage(failed_node):
     # Inject only the preferred node's outage; the surviving node runs real inference.
     configured = Settings()
     survivor = "node2" if failed_node == "node1" else "node1"
+
     async def scenario():
         async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as real:
             async def handler(request):
@@ -479,5 +487,7 @@ def test_lan_fallback_with_simulated_outage(failed_node):
                 assert result.response.strip()
                 assert len(result.failed_attempts) == 1
                 assert result.failed_attempts[0].node == failed_node
-                console.print(f"FALLBACK {failed_node} -> {survivor} latency_ms={result.latency_ms:.2f} response={result.response!r}")
+                console.print(
+                    f"FALLBACK {failed_node} -> {survivor} latency_ms={result.latency_ms:.2f} response={result.response!r}",
+                )
     asyncio.run(scenario())

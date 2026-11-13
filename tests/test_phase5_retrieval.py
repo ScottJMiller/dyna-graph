@@ -3,7 +3,6 @@
 import asyncio
 from dataclasses import replace
 import json
-import os
 import statistics
 from time import perf_counter_ns
 
@@ -18,30 +17,22 @@ from src.storage.database import Database, DatabaseError
 from src.storage.graph_store import GraphStore
 
 
-@pytest.fixture(autouse=True)
-def isolated_environment(monkeypatch):
-    names = {name.upper() for name in Settings.model_fields}
-    for field in Settings.model_fields.values():
-        if field.validation_alias is not None:
-            names.update(name.upper() for name in field.validation_alias.choices)
-    for name in list(os.environ):
-        if name.upper() in names:
-            monkeypatch.delenv(name)
-
-
 @pytest.fixture
 def graph(tmp_path):
+    """Own fresh temporary storage for retrieval and usage assertions."""
     with Database(tmp_path / "retrieval.db") as database:
         yield GraphStore(database)
 
 
 def chain(graph, length=5):
+    """Create a directed chain that also permits testing undirected discovery."""
     nodes = [graph.create_entity(f"Node{i}") for i in range(length)]
     facts = [graph.create_triple(a.id, "leads_to", b.id) for a, b in zip(nodes, nodes[1:])]
     return nodes, facts
 
 
 def metadata(graph):
+    """Read all usage rows without marking any memory as consumed."""
     with graph.database.connection() as connection:
         return [tuple(row) for row in connection.execute("SELECT * FROM entity_memory ORDER BY entity_id")]
 
@@ -79,7 +70,10 @@ def test_recent_active_fallback_has_stable_ties_and_respects_limit(graph):
     assert SeedMatcher(graph, seed_limit=1).match("").entity_ids == (nodes[0].id,)
 
 
-@pytest.mark.parametrize("query", ["", "   ", "!!!", "the and a", '" OR * NEAR(foo) -bar', "subject_id:99", "'; DROP TABLE entities; --"])
+@pytest.mark.parametrize(
+    "query",
+    ["", "   ", "!!!", "the and a", '" OR * NEAR(foo) -bar', "subject_id:99", "'; DROP TABLE entities; --"],
+)
 def test_query_syntax_is_literal_or_falls_back(graph, query):
     item = graph.create_entity("Memory")
     assert SeedMatcher(graph).match(query).entity_ids == (item.id,)
@@ -129,7 +123,9 @@ def test_bfs_depth_and_undirected_discovery_preserve_fact_direction(graph, hops)
     distances = {node.id: node.depth for node in result.entities}
     assert distances == {node.id: abs(i - 2) for i, node in enumerate(nodes) if abs(i - 2) <= hops}
     assert all(t.subject_id < t.object_id for t in result.triples)
-    assert {t.id for t in result.triples} == {t.id for t in facts if t.subject_id in distances and t.object_id in distances}
+    assert (
+        {t.id for t in result.triples} == {t.id for t in facts if t.subject_id in distances and t.object_id in distances}
+    )
     assert not result.may_be_truncated
 
 
@@ -139,7 +135,9 @@ def test_bfs_cycles_self_loops_duplicate_paths_and_minimum_depth(graph):
     graph.create_triple(nodes[0].id, "shortcut", nodes[2].id)
     graph.create_triple(nodes[2].id, "returns", nodes[0].id)
     result = Traversal(graph).expand([nodes[0].id, nodes[0].id])
-    assert {e.id: e.depth for e in result.entities} == {nodes[0].id: 0, nodes[1].id: 1, nodes[2].id: 1, nodes[3].id: 2}
+    assert (
+        {e.id: e.depth for e in result.entities} == {nodes[0].id: 0, nodes[1].id: 1, nodes[2].id: 1, nodes[3].id: 2}
+    )
     assert len({e.id for e in result.entities}) == len(result.entities)
     assert len({t.id for t in result.triples}) == len(result.triples)
     assert result == Traversal(graph).expand([nodes[0].id])
@@ -315,6 +313,7 @@ def test_one_snapshot_survives_a_concurrent_supersession(graph, monkeypatch):
     old = writer.write_fact(a.id, "owner", b.id, turn=1, now=100)
     assembler = ContextAssembler(graph, seed_limit=1)
     original = assembler.matcher._match
+
     def concurrent_update(connection, subgoal):
         seeds = original(connection, subgoal)
         with Database(graph.database.path) as other:
@@ -324,7 +323,11 @@ def test_one_snapshot_survives_a_concurrent_supersession(graph, monkeypatch):
         return seeds
     monkeypatch.setattr(assembler.matcher, "_match", concurrent_update)
     snapshot = assembler.assemble("Project Cedar")
-    assert snapshot.triple_ids == (old.triple.id,) and "Before" in snapshot.text and "After" not in snapshot.text
+    assert (
+        snapshot.triple_ids == (old.triple.id,)
+        and "Before" in snapshot.text
+        and "After" not in snapshot.text
+    )
     assert "After" in ContextAssembler(graph, seed_limit=1).assemble("Project Cedar").text
 
 
@@ -377,6 +380,7 @@ def test_invalid_counter_results_fail_closed(graph, returned):
 
 def test_counter_failure_and_changed_final_count_are_not_hidden(graph):
     graph.create_entity("Only")
+
     def raises(_text):
         raise RuntimeError("tokenizer unavailable")
     with pytest.raises(RuntimeError, match="unavailable"):
@@ -386,7 +390,10 @@ def test_counter_failure_and_changed_final_count_are_not_hidden(graph):
         ContextAssembler(graph, token_counter=lambda _text: next(values)).assemble("Only")
 
 
-@pytest.mark.parametrize("kwargs", [{"token_budget": 0}, {"token_budget": 1001}, {"token_budget": True}, {"token_counter": 123}])
+@pytest.mark.parametrize(
+    "kwargs",
+    [{"token_budget": 0}, {"token_budget": 1001}, {"token_budget": True}, {"token_counter": 123}],
+)
 def test_invalid_assembler_configuration(graph, kwargs):
     with pytest.raises(ValueError):
         ContextAssembler(graph, **kwargs)
@@ -407,6 +414,7 @@ def test_closed_database_errors_are_visible(graph):
 def test_raw_crud_and_full_properties_are_not_loaded_for_recall(graph, monkeypatch):
     root, neighbor = graph.create_entity("Root", properties={"large": "x" * 100000}), graph.create_entity("Neighbor")
     graph.create_triple(root.id, "uses", neighbor.id, properties={"large": "y" * 100000})
+
     def forbidden(*_args, **_kwargs):
         raise AssertionError("recall must not load full CRUD records or scan all Python objects")
     for name in ("list_entities", "list_triples", "get_entity", "get_triple"):
@@ -428,6 +436,7 @@ def test_high_degree_hub_limits_neighbors_before_python_materialization(graph):
 
 def test_counter_must_be_synchronous_and_falsey_callables_are_respected(graph):
     graph.create_entity("Only")
+
     async def counter(_text):
         return 1
     with pytest.raises(ValueError, match="synchronous"):
@@ -437,6 +446,7 @@ def test_counter_must_be_synchronous_and_falsey_callables_are_respected(graph):
     class FalseyCounter:
         def __bool__(self):
             return False
+
         def __call__(self, text):
             return len(text)
     result = ContextAssembler(graph, token_counter=FalseyCounter()).assemble("Only")

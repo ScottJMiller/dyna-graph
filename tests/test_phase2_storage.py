@@ -18,12 +18,14 @@ from src.storage.graph_store import GraphStore
 
 @pytest.fixture
 def database(tmp_path):
+    """Own a temporary pooled database for one persistence test."""
     with Database(tmp_path / "graph.db", pool_size=3) as db:
         yield db
 
 
 @pytest.fixture
 def store(database):
+    """Borrow the temporary database through the graph API."""
     return GraphStore(database)
 
 
@@ -45,6 +47,7 @@ def test_schema_indexes_and_triggers(database):
 
 def test_every_pooled_connection_has_required_pragmas(database):
     barrier = Barrier(database.pool_size)
+
     def inspect_connection(_):
         with database.connection() as connection:
             barrier.wait(timeout=3)
@@ -107,7 +110,11 @@ def test_sqlite_environment_settings(tmp_path, monkeypatch):
     monkeypatch.setenv("SQLITE_WAL_MODE", "true")
     monkeypatch.setenv("SQLITE_BUSY_TIMEOUT_MS", "5000")
     monkeypatch.setenv("SQLITE_POOL_SIZE", "2")
-    settings = Settings(_env_file=None, node2_ollama_url="http://10.0.60.181:11434", database_path=tmp_path / "configured.db")
+    settings = Settings(
+        _env_file=None,
+        node2_ollama_url="http://10.0.60.181:11434",
+        database_path=tmp_path / "configured.db",
+    )
     with Database.from_settings(settings) as database:
         assert database.path == settings.database_path
         assert database.pool_size == 2
@@ -127,7 +134,13 @@ def test_invalid_sqlite_settings(setting, value):
 
 def test_entity_crud_and_property_roundtrip(store):
     properties = {"owner": "Scott", "details": {"tags": ["mémoire", 1, True, None]}}
-    entity = store.create_entity("  Graph   Memory ", entity_type="Concept", description="Persistent context", properties=properties, is_pinned=True)
+    entity = store.create_entity(
+        "  Graph   Memory ",
+        entity_type="Concept",
+        description="Persistent context",
+        properties=properties,
+        is_pinned=True,
+    )
     assert entity.name == "Graph Memory"
     assert entity.canonical_name == "graph memory"
     assert entity.entity_type == "concept"
@@ -136,7 +149,14 @@ def test_entity_crud_and_property_roundtrip(store):
     assert entity.created_at and entity.updated_at
     assert store.get_entity(entity.id) == entity
     assert store.find_entity("GRAPH  memory") == entity
-    changed = store.update_entity(entity.id, name="Working Memory", entity_type="System", description="New description", properties={"revision": 2}, is_pinned=False)
+    changed = store.update_entity(
+        entity.id,
+        name="Working Memory",
+        entity_type="System",
+        description="New description",
+        properties={"revision": 2},
+        is_pinned=False,
+    )
     assert changed.name == "Working Memory"
     assert changed.properties == {"revision": 2}
     assert changed.created_at == entity.created_at
@@ -159,6 +179,7 @@ def test_unicode_canonical_names_and_duplicate_rejection(store):
 
 def test_get_or_create_preserves_existing_properties_and_handles_threads(store):
     original = store.create_entity("Shared Fact", properties={"version": 1})
+
     def worker(_):
         return store.get_or_create_entity(" SHARED   fact ", properties={"version": 2}).id
     with ThreadPoolExecutor(max_workers=8) as executor:
@@ -186,9 +207,19 @@ def test_triple_crud_filters_and_uniqueness(store):
     assert store.get_triple(edge.id) == edge
     with pytest.raises(sqlite3.IntegrityError):
         store.create_triple(alice.id, "Knows", bob.id)
-    changed = store.update_triple(edge.id, subject_id=carol.id, predicate="VERIFIES", object_id=alice.id, confidence=0.5, properties={}, status="SUPERSEDED")
+    changed = store.update_triple(
+        edge.id,
+        subject_id=carol.id,
+        predicate="VERIFIES",
+        object_id=alice.id,
+        confidence=0.5,
+        properties={},
+        status="SUPERSEDED",
+    )
     assert changed.created_at == edge.created_at
-    assert store.list_triples(subject_id=carol.id, predicate="VERIFIES", object_id=alice.id, status="SUPERSEDED") == [changed]
+    assert (
+        store.list_triples(subject_id=carol.id, predicate="VERIFIES", object_id=alice.id, status="SUPERSEDED") == [changed]
+    )
     assert not store.list_triples(subject_id=alice.id)
     assert store.delete_triple(edge.id)
     assert not store.delete_triple(edge.id)
@@ -211,7 +242,11 @@ def test_missing_foreign_key_rejects_insert_and_update(store, endpoint):
 
 def test_foreign_key_delete_cascades_and_fts_removal(store, database):
     a, b, c = [store.create_entity(name) for name in ("Cascade A", "B", "C")]
-    incident = [store.create_triple(a.id, "knows", b.id), store.create_triple(c.id, "knows", a.id), store.create_triple(a.id, "knows", a.id)]
+    incident = [
+        store.create_triple(a.id, "knows", b.id),
+        store.create_triple(c.id, "knows", a.id),
+        store.create_triple(a.id, "knows", a.id),
+    ]
     survivor = store.create_triple(b.id, "knows", c.id)
     assert store.delete_entity(a.id)
     assert all(store.get_triple(edge.id) is None for edge in incident)
@@ -221,7 +256,10 @@ def test_foreign_key_delete_cascades_and_fts_removal(store, database):
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 
 
-@pytest.mark.parametrize("properties", [[], {1: "bad key"}, {"bad": float("nan")}, {"bad": float("inf")}, {"bad": {1, 2}}, {"bad": b"bytes"}])
+@pytest.mark.parametrize(
+    "properties",
+    [[], {1: "bad key"}, {"bad": float("nan")}, {"bad": float("inf")}, {"bad": {1, 2}}, {"bad": b"bytes"}],
+)
 def test_invalid_properties_do_not_mutate_graph(store, properties):
     with pytest.raises(ValueError, match="properties"):
         store.create_entity("Invalid properties", properties=properties)
@@ -251,7 +289,17 @@ def test_invalid_ids(store, identifier):
         store.get_entity(identifier)
 
 
-@pytest.mark.parametrize("attributes", [{"name": ""}, {"name": "   "}, {"entity_type": ""}, {"description": 1}, {"is_pinned": 1}, {"status": "UNKNOWN"}])
+@pytest.mark.parametrize(
+    "attributes",
+    [
+        {"name": ""},
+        {"name": "   "},
+        {"entity_type": ""},
+        {"description": 1},
+        {"is_pinned": 1},
+        {"status": "UNKNOWN"},
+    ],
+)
 def test_invalid_entity_fields(store, attributes):
     options = {"name": "Valid name"} | attributes
     with pytest.raises(ValueError):
@@ -272,7 +320,9 @@ def test_entity_pagination_and_status_filters(store):
     entities = [store.create_entity(f"Item {index}") for index in range(5)]
     store.update_entity(entities[-1].id, status="PRUNED")
     assert store.list_entities(limit=2, offset=1) == entities[1:3]
-    assert [entity.id for entity in store.list_entities(status="ACTIVE")] == [entity.id for entity in entities[:-1]]
+    assert (
+        [entity.id for entity in store.list_entities(status="ACTIVE")] == [entity.id for entity in entities[:-1]]
+    )
     assert [entity.id for entity in store.list_entities(status="PRUNED")] == [entities[-1].id]
 
 
@@ -402,6 +452,7 @@ def test_pool_wait_timeout_recovers_without_losing_connection(tmp_path):
 
 def test_threaded_writers_preserve_atomic_updates(store):
     counter = store.create_entity("Counter", properties={"count": 0})
+
     def increment(index):
         with store.transaction():
             current = store.get_entity(counter.id)
@@ -430,6 +481,7 @@ def test_close_inside_transaction_rejected_and_close_is_idempotent(tmp_path):
 def test_close_waits_for_active_read_lease(tmp_path):
     database = Database(tmp_path / "lease.db")
     started = Event()
+
     def close():
         started.set()
         database.close()
@@ -448,6 +500,7 @@ def test_async_write_queue_is_fifo_and_keeps_event_loop_responsive(tmp_path):
         async with Database(tmp_path / "async.db") as database:
             graph = GraphStore(database)
             started, release = Event(), Event()
+
             def blocking_write(store):
                 started.set()
                 assert release.wait(timeout=3)
@@ -468,6 +521,7 @@ def test_async_failure_rolls_back_and_worker_continues(tmp_path):
     async def scenario():
         async with Database(tmp_path / "async-failure.db") as database:
             graph = GraphStore(database)
+
             def fail(store):
                 store.create_entity("Discard async")
                 raise ValueError("abort queued write")
@@ -486,6 +540,7 @@ def test_queued_cancellation_skips_write(tmp_path):
         async with Database(tmp_path / "cancel.db") as database:
             graph = GraphStore(database)
             started, release = Event(), Event()
+
             def hold(store):
                 started.set()
                 assert release.wait(timeout=3)
@@ -509,6 +564,7 @@ def test_started_cancelled_write_finishes_atomically_and_aclose_drains(tmp_path)
         database = Database(tmp_path / "started-cancel.db")
         graph = GraphStore(database)
         started, release = Event(), Event()
+
         def write(store):
             store.create_entity("Committed before cancellation")
             started.set()
@@ -543,6 +599,7 @@ def test_cancelled_shutdown_can_resume_and_preserves_accepted_write(tmp_path):
         database = Database(tmp_path / "cancel-close.db")
         graph = GraphStore(database)
         started, release = Event(), Event()
+
         def hold(store):
             started.set()
             assert release.wait(timeout=3)
@@ -566,6 +623,7 @@ def test_callback_cancellation_rolls_back_and_worker_continues(tmp_path):
     async def scenario():
         async with Database(tmp_path / "callback-cancel.db") as database:
             graph = GraphStore(database)
+
             def cancel(store):
                 store.create_entity("Rolled back callback")
                 raise asyncio.CancelledError()
@@ -581,6 +639,7 @@ def test_cancelled_shutdown_with_full_queue_can_be_retried(tmp_path):
         database = Database(tmp_path / "full-queue.db", pool_size=1)
         graph = GraphStore(database)
         started, release = Event(), Event()
+
         def hold(store):
             started.set()
             assert release.wait(timeout=3)
@@ -635,6 +694,8 @@ def test_committed_insert_latency_below_one_millisecond(store, database):
         latencies.append((perf_counter_ns() - started) / 1_000_000)
     median = statistics.median(latencies)
     p95 = sorted(latencies)[math.ceil(len(latencies) * 0.95) - 1]
-    print(f"INSERT BENCHMARK committed_inserts=200 median_ms={median:.4f} p95_ms={p95:.4f} max_ms={max(latencies):.4f} synchronous=FULL path={database.path}")
+    print(
+        f"INSERT BENCHMARK committed_inserts=200 median_ms={median:.4f} p95_ms={p95:.4f} max_ms={max(latencies):.4f} synchronous=FULL path={database.path}",
+    )
     assert len(store.list_entities(limit=1000)) == 210
     assert median < 1.0, f"Median committed insert {median:.4f} ms exceeds the 1 ms target; inspect storage/load and preserve the benchmark output"

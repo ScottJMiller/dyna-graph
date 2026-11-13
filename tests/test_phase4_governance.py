@@ -11,7 +11,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.config import Settings
-from src.governance import (
+from src.governance import(
     DecayPolicy, GovernedWriter, MemoryUsage, Pruner, PruningDaemon,
     record_access, score_entity,
 )
@@ -24,17 +24,20 @@ OLD = NOW - 1_000_000
 
 @pytest.fixture
 def graph(tmp_path):
+    """Provide fresh temporary graph storage for deterministic governance checks."""
     with Database(tmp_path / "governance.db") as database:
         yield GraphStore(database)
 
 
 def entity(graph, name, *, pinned=False, turn=0, now=OLD):
+    """Create a test entity and record its explicit initial access metadata."""
     item = graph.create_entity(name, is_pinned=pinned)
     record_access(graph, [item.id], turn=turn, now=now)
     return item
 
 
 def usage(graph, entity_id):
+    """Read persisted usage without refreshing its access count."""
     with graph.database.connection() as connection:
         row = connection.execute("SELECT * FROM entity_memory WHERE entity_id=?", (entity_id,)).fetchone()
         return MemoryUsage(row["last_access_at"], row["last_access_turn"], row["access_count"])
@@ -168,7 +171,9 @@ def test_immediate_supersession_has_explicit_fact_edges(graph):
     assert [t.id for t in graph.list_triples(status="ACTIVE")] == [new.triple.id]
     edge, = writer.list_supersessions()
     assert edge == new.edges[0]
-    assert (edge.newer_triple_id, edge.relation, edge.older_triple_id) == (new.triple.id, "SUPERSEDES", old.triple.id)
+    assert (
+        (edge.newer_triple_id, edge.relation, edge.older_triple_id) == (new.triple.id, "SUPERSEDES", old.triple.id)
+    )
     assert (edge.turn, edge.asserted_at) == (2, NOW + 1)
     print("SUPERSESSION OK: old=SUPERSEDED new=ACTIVE relation=SUPERSEDES")
 
@@ -307,7 +312,9 @@ def test_threshold_boundary_is_strict_and_zero_disables_pruning(graph):
     score = score_entity(graph, item.id, current_turn=200, now=NOW)
     assert Pruner(graph, threshold=0).run_once(current_turn=200, now=NOW).pruned_ids == ()
     assert Pruner(graph, threshold=score.retention).run_once(current_turn=200, now=NOW).pruned_ids == ()
-    assert Pruner(graph, threshold=score.retention + 0.001).run_once(current_turn=200, now=NOW).pruned_ids == (item.id,)
+    assert (
+        Pruner(graph, threshold=score.retention + 0.001).run_once(current_turn=200, now=NOW).pruned_ids == (item.id,)
+    )
 
 
 def test_batched_cursor_eventually_visits_later_ids_and_wraps(graph):
@@ -544,7 +551,9 @@ def test_governance_settings_and_factories(graph, monkeypatch):
     monkeypatch.setenv("SINGLE_VALUED_PREDICATES", '[" Owner ","owner","primary_database"]')
     settings = Settings(_env_file=None, node2_ollama_url="http://192.168.1.20:11434")
     assert settings.single_valued_predicates == ("owner", "primary_database")
-    assert GovernedWriter.from_settings(graph, settings).single_valued_predicates == frozenset(settings.single_valued_predicates)
+    assert (
+        GovernedWriter.from_settings(graph, settings).single_valued_predicates == frozenset(settings.single_valued_predicates)
+    )
     assert Pruner.from_settings(graph, settings).threshold == 0.2
     assert DecayPolicy.from_settings(settings) == DecayPolicy()
 

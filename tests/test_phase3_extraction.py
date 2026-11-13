@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import os
 
 import httpx
 import pytest
@@ -19,25 +18,8 @@ GRAPH = json.dumps({"triples": [FACT]})
 MESSAGE = "## Notes\n- Project Cedar uses SQLite.\n```text\nStatus: ready\n```"
 
 
-@pytest.fixture(autouse=True)
-def isolated_environment(monkeypatch, request):
-    if "lan" in request.keywords:
-        return
-    names = {name.upper() for name in Settings.model_fields}
-    for field in Settings.model_fields.values():
-        if field.validation_alias is not None:
-            names.update(name.upper() for name in field.validation_alias.choices)
-    for name in list(os.environ):
-        if name.upper() in names:
-            monkeypatch.delenv(name)
-
-
-@pytest.fixture
-def settings():
-    return Settings(_env_file=None, node2_ollama_url="http://192.168.1.20:11434")
-
-
 def generation(request, response=GRAPH, **fields):
+    """Return a synthetic Ollama generation with explicit extraction counters."""
     return httpx.Response(200, json={
         "model": json.loads(request.content)["model"], "response": response,
         "done": True, "done_reason": "stop", "total_duration": 5_000_000,
@@ -46,6 +28,7 @@ def generation(request, response=GRAPH, **fields):
 
 
 def message(content=MESSAGE):
+    """Build the source message used by parser and grounding checks."""
     return AgentMessage(agent_id="researcher", content=content, turn=2)
 
 
@@ -170,13 +153,16 @@ def test_parser_resource_bounds(raw):
     # The decoder's integer limit must also become a controlled parse failure.
     giant_number = "9" * 5000
     with pytest.raises(GraphParseError):
-        parse_graph_response('{"triples":[{"subject":"A","predicate":"uses","object":"B","confidence":' + giant_number + '}]}')
+        parse_graph_response(
+            '{"triples":[{"subject":"A","predicate":"uses","object":"B","confidence":' + giant_number + '}]}',
+        )
 
 
 @pytest.mark.parametrize("node", ["node1", "node2"])
 @pytest.mark.parametrize("raw", [GRAPH, "```json\n" + GRAPH + "\n```", "Notes:\n" + GRAPH])
 def test_synthetic_small_model_extraction(settings, node, raw):
     calls = []
+
     def handler(request):
         calls.append(request)
         payload = json.loads(request.content)
@@ -189,6 +175,7 @@ def test_synthetic_small_model_extraction(settings, node, raw):
         assert "Example 1:" in payload["system"] and "Example 2:" in payload["system"]
         assert json.loads(payload["prompt"].split("\n", 1)[1])["message"] == MESSAGE
         return generation(request, raw)
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             result = await Extractor(client).extract(message(), node=node, allow_fallback=False)
@@ -207,6 +194,7 @@ def test_synthetic_small_model_extraction(settings, node, raw):
 ])
 def test_corrective_retry_is_bounded_and_source_preserving(settings, bad, kind):
     calls = []
+
     def handler(request):
         calls.append(request)
         if len(calls) == 1:
@@ -215,6 +203,7 @@ def test_corrective_retry_is_bounded_and_source_preserving(settings, bad, kind):
         assert "Previous output failed validation:" in payload["prompt"]
         assert json.loads(payload["prompt"].split("\n", 2)[1])["message"] == MESSAGE
         return generation(request)
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             result = await Extractor(client).extract(message())
@@ -228,9 +217,11 @@ def test_corrective_retry_is_bounded_and_source_preserving(settings, bad, kind):
 @pytest.mark.parametrize("max_retries", [0, 1])
 def test_exhausted_retries_raise_instead_of_returning_empty_graph(settings, max_retries):
     calls = []
+
     def handler(request):
         calls.append(request)
         return generation(request, '{"triples":[{"subject":null}]}')
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(ExtractionError) as caught:
@@ -265,6 +256,7 @@ def test_empty_graph_is_valid_without_retry(settings):
 @pytest.mark.parametrize("endpoint", ["subject", "object"])
 def test_ungrounded_entities_and_word_substrings_are_rejected(settings, endpoint):
     invalid = FACT | {endpoint: "SQL" if endpoint == "object" else "Cede"}
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(
             lambda request: generation(request, json.dumps({"triples": [invalid]})),
@@ -277,6 +269,7 @@ def test_ungrounded_entities_and_word_substrings_are_rejected(settings, endpoint
 
 def test_grounding_handles_unicode_case_whitespace_and_punctuation(settings):
     fact = {"subject": "CAFÉ Cedar", "predicate": "uses", "object": "C++"}
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(
             lambda request: generation(request, json.dumps({"triples": [fact]})),
@@ -288,6 +281,7 @@ def test_grounding_handles_unicode_case_whitespace_and_punctuation(settings):
 
 def test_fallback_then_correction_uses_responding_node(settings):
     calls = []
+
     def handler(request):
         calls.append(request)
         if request.url.host == settings.node2_ollama_url.host:
@@ -299,6 +293,7 @@ def test_fallback_then_correction_uses_responding_node(settings):
         assert payload["model"] == settings.node_model("node1")
         assert payload["options"]["num_thread"] == settings.node_threads("node1")
         return generation(request)
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             result = await Extractor(client).extract(message())
@@ -312,9 +307,11 @@ def test_fallback_then_correction_uses_responding_node(settings):
 @pytest.mark.parametrize("status", [400, 404, 503])
 def test_http_errors_remain_visible_without_schema_retry(settings, status):
     calls = []
+
     def handler(request):
         calls.append(request)
         return httpx.Response(status, json={"error": "controlled failure"})
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             expected = OllamaUnavailableError if status == 503 else OllamaError
@@ -326,9 +323,11 @@ def test_http_errors_remain_visible_without_schema_retry(settings, status):
 
 def test_cancellation_does_not_trigger_fallback_or_schema_retry(settings):
     calls = []
+
     async def handler(request):
         calls.append(request)
         raise asyncio.CancelledError
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(asyncio.CancelledError):
@@ -357,6 +356,7 @@ def test_invalid_extractor_limits(settings, kwargs):
 def test_invalid_json_request_makes_no_http_call(settings, kwargs):
     def handler(request):
         pytest.fail("invalid input must not send a request")
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(ValueError):
@@ -367,6 +367,7 @@ def test_invalid_json_request_makes_no_http_call(settings, kwargs):
 def test_mutated_or_wrong_message_is_rejected_before_network(settings):
     def handler(request):
         pytest.fail("invalid input must not send a request")
+
     async def scenario():
         async with OllamaClient(settings, transport=httpx.MockTransport(handler)) as client:
             extractor = Extractor(client)
@@ -379,10 +380,12 @@ def test_mutated_or_wrong_message_is_rejected_before_network(settings):
     asyncio.run(scenario())
 
 
+# Opt-in live LAN acceptance (skipped by default)
+
 @pytest.mark.lan
 @pytest.mark.parametrize("node", ["node1", "node2"])
 @pytest.mark.parametrize("content, expected", [
-    (MESSAGE, {( "project cedar", "uses", "sqlite")}),
+    (MESSAGE, {("project cedar", "uses", "sqlite")}),
     ("**Status**\n- Avery maintains Project Cedar.\n- Project Cedar uses SQLite.",
      {("avery", "maintains", "project cedar"), ("project cedar", "uses", "sqlite")}),
     ("Hello! Which database should we choose?", set()),

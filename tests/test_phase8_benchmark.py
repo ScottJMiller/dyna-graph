@@ -3,7 +3,6 @@
 import asyncio
 import csv
 import json
-import os
 from pathlib import Path
 import re
 import shutil
@@ -29,26 +28,19 @@ from src.storage.graph_store import GraphStore
 
 @pytest.fixture(scope="module", autouse=True)
 def no_real_network():
+    """Reject real HTTP throughout the original-study test module."""
     patch = pytest.MonkeyPatch()
+
     async def blocked(*args, **kwargs):
+        """Fail immediately if a supposedly synthetic test reaches the real HTTP transport."""
         raise AssertionError("Phase 8 verification must never use real network requests")
     patch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", blocked)
     yield
     patch.undo()
 
 
-@pytest.fixture(autouse=True)
-def isolated_environment(monkeypatch):
-    names = {name.upper() for name in Settings.model_fields}
-    for field in Settings.model_fields.values():
-        if field.validation_alias is not None:
-            names.update(alias.upper() for alias in field.validation_alias.choices)
-    for name in list(os.environ):
-        if name.upper() in names:
-            monkeypatch.delenv(name)
-
-
 def configured(path):
+    """Create offline study settings using a temporary application database path."""
     return Settings(_env_file=None, node2_ollama_url="http://192.168.1.20:11434", database_path=path / "application.db")
 
 
@@ -56,12 +48,14 @@ class SyntheticOllama:
     """Read only the provided prompt/memory, never the scenario oracle."""
 
     def __init__(self, settings, *, missing=False, fail_at=None, wrong_model=False, inventory_change=False, invalid_first=False):
+        """Record only fake requests and explicitly configured generation faults."""
         self.settings, self.missing, self.fail_at = settings, missing, fail_at
         self.wrong_model, self.inventory_change = wrong_model, inventory_change
         self.invalid_first = invalid_first
         self.posts, self.requests, self.inventories = [], [], 0
 
     async def __call__(self, request):
+        """Derive synthetic replies from task and memory, without reading oracle metadata."""
         self.requests.append(request)
         node = "node1" if request.url.host == "localhost" else "node2"
         model = self.settings.node_model(node)
@@ -106,6 +100,7 @@ class SyntheticOllama:
 
 
 def make_bundle(path, *, turns=20, repetitions=1, **fake_options):
+    """Execute an isolated synthetic A/B cohort and return its saved evidence and fake server."""
     settings = configured(path)
     fake = SyntheticOllama(settings, **fake_options)
     plan = BenchmarkPlan(turns=turns, repetitions=repetitions, warmups_per_node=0)
@@ -116,17 +111,24 @@ def make_bundle(path, *, turns=20, repetitions=1, **fake_options):
 
 @pytest.fixture(scope="module")
 def evidence(tmp_path_factory):
+    """Reuse one immutable synthetic cohort for read-only analysis assertions."""
     return make_bundle(tmp_path_factory.mktemp("synthetic-phase8"), repetitions=2)
 
 
+# Planning, gates, scenario and scoring
+
 def test_default_cli_only_plans_without_settings_models_or_output(tmp_path, monkeypatch, capsys):
     from src import config
-    def forbidden(): raise AssertionError("plan-only must not load deployment configuration")
+
+    def forbidden():
+        raise AssertionError("plan-only must not load deployment configuration")
     monkeypatch.setattr(config, "get_settings", forbidden)
     output = tmp_path / "must-not-exist"
     assert benchmark_harness.main(["--output", str(output)]) == 0
     assert not output.exists()
-    assert "PLAN ONLY: 4 condition runs; 80 scored turns; no model requests or experiment files" in capsys.readouterr().out
+    assert (
+        "PLAN ONLY: 4 condition runs; 80 scored turns; no model requests or experiment files" in capsys.readouterr().out
+    )
 
 
 def test_api_requires_explicit_execution_before_any_side_effect(tmp_path):
@@ -145,7 +147,8 @@ def test_cli_execution_requires_new_output_argument():
     {"repetitions": 11}, {"memory_budget": 127}, {"memory_budget": 1001}, {"max_tokens": 63},
     {"max_tokens": 257}, {"warmups_per_node": -1}, {"warmups_per_node": 4}, {"version": 2}])
 def test_invalid_plans_fail_before_execution(kwargs):
-    with pytest.raises(ValidationError): BenchmarkPlan(**kwargs)
+    with pytest.raises(ValidationError):
+        BenchmarkPlan(**kwargs)
 
 
 @pytest.mark.parametrize("turns", [15, 16, 17, 18, 19, 20])
@@ -161,7 +164,8 @@ def test_scenario_is_bounded_versioned_and_has_updates_and_reversions(turns):
 
 @pytest.mark.parametrize("value", [True, 0, 14, 21, "20"])
 def test_scenario_rejects_invalid_lengths(value):
-    with pytest.raises(ValueError): scenario(value)
+    with pytest.raises(ValueError):
+        scenario(value)
 
 
 def test_rendered_tasks_are_placeholder_free_and_part_of_fingerprint(monkeypatch):
@@ -192,17 +196,26 @@ def test_history_window_preserves_whole_newest_records_and_reports_truncation():
     assert linear_context([], 1000) == ("", 0, 0)
 
 
+# Synthetic execution and inference accounting
+
 def test_synthetic_end_to_end_uses_real_workflow_graph_and_analysis(evidence):
     output, manifest, fake = evidence
     validated, plan, rows = analyze_results.load_bundle(output)
     assert manifest["source"] == "synthetic" and manifest["status"] == "COMPLETED"
-    assert [(r["repetition"], r["condition"]) for r in manifest["runs"]] == [(1, "A"), (1, "B"), (2, "B"), (2, "A")]
-    assert len(rows) == 80 and all(r.telemetry.context_budget_used <= r.telemetry.context_budget_limit <= 1000 for r in rows)
+    assert (
+        [(r["repetition"], r["condition"]) for r in manifest["runs"]] == [(1, "A"), (1, "B"), (2, "B"), (2, "A")]
+    )
+    assert (
+        len(rows) == 80
+        and all(r.telemetry.context_budget_used <= r.telemetry.context_budget_limit <= 1000 for r in rows)
+    )
     assert all(r.telemetry.active_edges == 0 and r.observation_calls == 0 for r in rows if r.condition == "A")
     assert any(r.telemetry.active_edges > 0 and r.observation_calls > 0 for r in rows if r.condition == "B")
     assert any(r.history_dropped_turns for r in rows if r.condition == "A")
     assert all(r.total_prompt_tokens >= r.telemetry.agent_prompt_tokens for r in rows)
-    assert all(body["options"]["num_ctx"] == 2048 and body["options"]["temperature"] == 0 for body in fake.posts)
+    assert (
+        all(body["options"]["num_ctx"] == 2048 and body["options"]["temperature"] == 0 for body in fake.posts)
+    )
     assert all("graph memory" not in body.get("system", "").lower() for body in fake.posts)
     # Expected values occur only in the independent record/oracle, not as a
     # special prompt field or external answer lookup in the model fixture.
@@ -230,7 +243,8 @@ def test_model_inventory_and_metadata_preserve_digests_without_private_addresses
 
 @pytest.mark.parametrize("options", [{"fail_at": 1}, {"wrong_model": True}, {"inventory_change": True}])
 def test_failed_or_changed_model_bundles_cannot_be_analyzed(tmp_path, options):
-    with pytest.raises(Exception): make_bundle(tmp_path, **options)
+    with pytest.raises(Exception):
+        make_bundle(tmp_path, **options)
     manifest = load_json(tmp_path / "bundle/manifest.json")
     assert manifest["status"] == "FAILED" and manifest["error_type"]
     with pytest.raises(ValueError, match="complete"):
@@ -242,6 +256,7 @@ def test_extraction_failure_preserves_exact_source_and_raw_attempts(tmp_path, fa
     settings = configured(tmp_path)
     fake = SyntheticOllama(settings)
     role_calls = 0
+
     async def bad_extraction(request):
         nonlocal role_calls
         body = json.loads(request.content) if request.method == "POST" else {}
@@ -262,7 +277,9 @@ def test_extraction_failure_preserves_exact_source_and_raw_attempts(tmp_path, fa
     assert failure["stage"] == failure_stage and failure["step"] == 1
     assert failure["condition"] == "B" and failure["repetition"] == 1
     assert failure["source_message"]["content"] == "Project Cedar uses SQLite."
-    assert failure["source_message"]["agent_id"] == ("observation" if failure_stage == "observation_extraction" else "planner")
+    assert (
+        failure["source_message"]["agent_id"] == ("observation" if failure_stage == "observation_extraction" else "planner")
+    )
     assert len(failure["generation_attempts"]) == 2
     assert all("NotInSource" in g["response"] for g in failure["generation_attempts"])
     assert all(e["kind"] == "grounding" for e in failure["validation_errors"])
@@ -279,7 +296,15 @@ def test_fresh_output_and_application_database_are_protected(tmp_path):
     sentinel = existing / "keep.txt"
     sentinel.write_text("preserve")
     with pytest.raises(FileExistsError):
-        asyncio.run(run_experiment(BenchmarkPlan(), settings, existing, execute=True, transport=httpx.MockTransport(SyntheticOllama(settings))))
+        asyncio.run(
+            run_experiment(
+                BenchmarkPlan(),
+                settings,
+                existing,
+                execute=True,
+                transport=httpx.MockTransport(SyntheticOllama(settings)),
+            ),
+        )
     assert sentinel.read_text() == "preserve"
     with pytest.raises(ValueError, match="application database"):
         asyncio.run(run_experiment(BenchmarkPlan(), settings, tmp_path, execute=True))
@@ -287,16 +312,27 @@ def test_fresh_output_and_application_database_are_protected(tmp_path):
 
 
 def test_arbitrary_transport_cannot_be_mislabeled_as_synthetic(tmp_path):
-    class UnknownTransport(httpx.AsyncBaseTransport): pass
+    class UnknownTransport(httpx.AsyncBaseTransport):
+        pass
     with pytest.raises(TypeError, match="MockTransport"):
-        asyncio.run(run_experiment(BenchmarkPlan(), configured(tmp_path), tmp_path / "bundle", execute=True, transport=UnknownTransport()))
+        asyncio.run(
+            run_experiment(
+                BenchmarkPlan(),
+                configured(tmp_path),
+                tmp_path / "bundle",
+                execute=True,
+                transport=UnknownTransport(),
+            ),
+        )
     assert not (tmp_path / "bundle").exists()
 
 
 def test_missing_counters_remain_unknown_and_prevent_savings_claims(tmp_path):
     output, _, _ = make_bundle(tmp_path, turns=15, missing=True)
     report = analyze_results.analyze_bundle(output)
-    assert all(c["total_prompt_tokens"] is None and c["role_prompt_tokens"] is None for c in report["conditions"].values())
+    assert all(
+        (c["total_prompt_tokens"] is None and c["role_prompt_tokens"] is None for c in report["conditions"].values()),
+    )
     assert report["paired"][0]["total_prompt_savings_pct"] is None
     assert report["paired"][0]["role_prompt_savings_pct"] is None
     assert all(c["total_counter_coverage"] == 0 for c in report["conditions"].values())
@@ -319,15 +355,20 @@ def test_warmups_are_recorded_separately_from_scored_turns(tmp_path):
     manifest = asyncio.run(run_experiment(plan, settings, output, execute=True, transport=httpx.MockTransport(fake)))
     _, _, rows = analyze_results.load_bundle(output)
     assert len(manifest["warmups"]) == 4 and len(rows) == 30
-    assert len(fake.posts) == 4 + sum(r.telemetry.agent_calls + r.telemetry.extraction_calls + r.observation_calls for r in rows)
+    assert (
+        len(fake.posts) == 4 + sum(r.telemetry.agent_calls + r.telemetry.extraction_calls + r.observation_calls for r in rows)
+    )
 
 
 def test_cancelled_bundle_retains_partial_evidence_but_cannot_be_analyzed(tmp_path):
     settings = configured(tmp_path)
+
     async def case():
         entered = asyncio.Event()
         fake = SyntheticOllama(settings)
+
         async def blocked(request):
+            """Fail immediately if a supposedly synthetic test reaches the real HTTP transport."""
             if request.url.path == "/api/generate":
                 entered.set()
                 await asyncio.Event().wait()
@@ -336,12 +377,15 @@ def test_cancelled_bundle_retains_partial_evidence_but_cannot_be_analyzed(tmp_pa
             settings, tmp_path / "bundle", execute=True, transport=httpx.MockTransport(blocked)))
         await asyncio.wait_for(entered.wait(), timeout=3)
         task.cancel()
-        with pytest.raises(asyncio.CancelledError): await task
+        with pytest.raises(asyncio.CancelledError):
+            await task
     asyncio.run(case())
     assert load_json(tmp_path / "bundle/manifest.json")["status"] == "CANCELLED"
     with pytest.raises(ValueError, match="complete"):
         analyze_results.analyze_bundle(tmp_path / "bundle")
 
+
+# Evidence validation and derived outputs
 
 @pytest.mark.parametrize("mutation", ["checksum", "incomplete", "missing", "duplicate", "wrong_score", "wrong_order",
     "oracle", "source", "scenario", "nonfinite", "csv", "traversal", "run_count"])
@@ -354,20 +398,31 @@ def test_analysis_refuses_damaged_incomplete_or_inconsistent_evidence(tmp_path, 
     row = json.loads(lines[0])
     if mutation == "checksum":
         (output / "metrics.csv").write_text("damaged")
-    elif mutation == "incomplete": manifest["status"] = "RUNNING"
-    elif mutation == "missing": (output / "B-1.csv").unlink()
-    elif mutation == "duplicate": lines.append(lines[0])
-    elif mutation == "wrong_score": row["correct"] = not row["correct"]
-    elif mutation == "wrong_order": row["condition"] = "B"
-    elif mutation == "oracle": row["expected"] = "wrong"
-    elif mutation == "source": row["source"] = "measured"
-    elif mutation == "scenario": manifest["scenario_sha256"] = "0" * 64
-    elif mutation == "nonfinite": row["wall_ms"] = float("nan")
+    elif mutation == "incomplete":
+        manifest["status"] = "RUNNING"
+    elif mutation == "missing":
+        (output / "B-1.csv").unlink()
+    elif mutation == "duplicate":
+        lines.append(lines[0])
+    elif mutation == "wrong_score":
+        row["correct"] = not row["correct"]
+    elif mutation == "wrong_order":
+        row["condition"] = "B"
+    elif mutation == "oracle":
+        row["expected"] = "wrong"
+    elif mutation == "source":
+        row["source"] = "measured"
+    elif mutation == "scenario":
+        manifest["scenario_sha256"] = "0" * 64
+    elif mutation == "nonfinite":
+        row["wall_ms"] = float("nan")
     elif mutation == "csv":
         (output / "metrics.csv").write_text("bad,header\n")
         manifest["artifacts"]["metrics.csv"] = sha256(output / "metrics.csv")
-    elif mutation == "traversal": manifest["artifacts"]["../outside"] = "0" * 64
-    elif mutation == "run_count": manifest["runs"][0]["completed_turns"] = 19
+    elif mutation == "traversal":
+        manifest["artifacts"]["../outside"] = "0" * 64
+    elif mutation == "run_count":
+        manifest["runs"][0]["completed_turns"] = 19
     if mutation in ("wrong_score", "wrong_order", "oracle", "source", "nonfinite"):
         lines[0] = json.dumps(row)
     if mutation in ("duplicate", "wrong_score", "wrong_order", "oracle", "source", "nonfinite"):
@@ -385,7 +440,8 @@ def test_analysis_csv_outputs_and_existing_directory_protection(tmp_path, eviden
     with (tmp_path / "analysis/paired.csv").open() as stream:
         assert len(list(csv.DictReader(stream))) == 2
     assert len(report["curves"]) == 40
-    with pytest.raises(FileExistsError): analyze_results.write_analysis(bundle, tmp_path / "analysis")
+    with pytest.raises(FileExistsError):
+        analyze_results.write_analysis(bundle, tmp_path / "analysis")
 
 
 def test_figures_are_standalone_and_synthetic_source_is_visible(tmp_path, evidence, monkeypatch):
@@ -402,8 +458,10 @@ def test_figures_are_standalone_and_synthetic_source_is_visible(tmp_path, eviden
                 for key, value in element.attrib.items():
                     if key.endswith("href"):
                         assert value.startswith("#"), "figure must not fetch external resources"
-        elif path.suffix == ".pdf": assert path.read_bytes().startswith(b"%PDF")
-        elif path.suffix == ".png": assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+        elif path.suffix == ".pdf":
+            assert path.read_bytes().startswith(b"%PDF")
+        elif path.suffix == ".png":
+            assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
     print("FIGURES SYNTHETIC OK: 12 standalone files; synthetic labels retained")
 
 
@@ -418,13 +476,15 @@ def test_analysis_and_plot_cli_report_invalid_bundle_without_creating_output(tmp
 def test_per_turn_input_override_is_validated_and_saved_atomically(tmp_path):
     settings = configured(tmp_path)
     fake = SyntheticOllama(settings)
+
     async def case():
         async with OllamaClient(settings, transport=httpx.MockTransport(fake)) as client:
             async with Database(tmp_path / "inputs.db") as database:
                 machine = StateMachine(client, GraphStore(database))
                 first, second = scenario(15)[:2]
                 run = await machine.start(first.task, initial_subgoal=first.subject, max_turns=2)
-                with pytest.raises(ValueError): await machine.step(run.id, task="")
+                with pytest.raises(ValueError):
+                    await machine.step(run.id, task="")
                 saved = await machine.get_checkpoint(run.id)
                 assert saved.status == "READY" and saved.task == first.task and not fake.posts
                 turn = await machine.step(run.id, task=second.task, subgoal=second.subject)
@@ -433,6 +493,8 @@ def test_per_turn_input_override_is_validated_and_saved_atomically(tmp_path):
                 assert (await machine.get_checkpoint(run.id)).task == second.task
     asyncio.run(case())
 
+
+# Import boundaries and side-effect prevention
 
 def test_analysis_imports_do_not_load_runners_or_start_work():
     """Analysis imports must not require execution modules or start local services."""
