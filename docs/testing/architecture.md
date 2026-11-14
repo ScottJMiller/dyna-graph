@@ -57,7 +57,8 @@ with built-in modules and require no npm packages. From the repository root:
 node docs/testing/architecture-routing.mjs
 ```
 
-Expected: all seven geometry checks pass with no failures. They verify unique
+Expected: all eight checks pass with no failures. The component-data regression verifies labels and other fields required by rendering,
+inspection and search. Seven geometry checks verify unique
 ports on the actual rectangle perimeter, orthogonal nonzero segments, avoidance
 of every card interior, no shared collinear tracks, separated parallel lines,
 detours around an obstacle, and deterministic multiple/reverse connections.
@@ -113,3 +114,8 @@ edits do not require backend tests; runtime changes follow their phase protocol.
 When atlas changes accompany other documentation work, use that step's message.
 The final readability refactor uses the message in the
 [Step 6 protocol](refactor_step6.md).
+
+The component-field regression prevents a missing display label from stopping
+map initialization. After component-data edits, open the HTML in a browser too:
+confirm the diagram, eight phase buttons, theme toggle, search and Supporting
+files all work, and that the console has no JavaScript errors.

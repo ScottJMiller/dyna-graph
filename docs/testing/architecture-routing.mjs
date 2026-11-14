@@ -36,6 +36,27 @@ function noSharedTracks(routes) {
   }
 }
 
+test('every component supplies the fields needed to render and inspect it', () => {
+  const ids = new Set();
+  for (const node of data.nodes) {
+    assert(!ids.has(node.id), `Duplicate component: ${node.id}`);
+    ids.add(node.id);
+    for (const field of ['id', 'label', 'summary', 'description', 'kind', 'inputs', 'outputs', 'notes']) {
+      assert.equal(typeof node[field], 'string', `${node.id}: missing ${field}`);
+      assert(node[field].trim(), `${node.id}: empty ${field}`);
+    }
+    assert.equal(typeof node.path, 'string', `${node.id}: invalid path`);
+    assert(Array.isArray(node.interfaces), `${node.id}: missing interfaces`);
+    assert(node.interfaces.every(value => typeof value === 'string'), `${node.id}: invalid interface`);
+    assert(data.phases.some(phase => phase.id === node.phase), `${node.id}: unknown phase`);
+    assert.equal(typeof node.support, 'boolean', `${node.id}: missing support flag`);
+    assert(Number.isFinite(node.x) && Number.isFinite(node.y), `${node.id}: invalid position`);
+  }
+  for (const edge of data.edges) {
+    assert(ids.has(edge.source) && ids.has(edge.target), `Unknown endpoint: ${edge.source} / ${edge.target}`);
+  }
+});
+
 test('every connector reaches its two unique component-perimeter ports', () => {
   assert.equal(result.routes.length,data.edges.length);
   const byId=new Map(data.nodes.map(n=>[n.id,n])), used=new Map(data.nodes.map(n=>[n.id,new Set()]));
