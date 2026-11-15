@@ -13,7 +13,7 @@ def generate_plots(bundle, output):
     report = analyze_bundle(bundle)
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     from matplotlib.figure import Figure
-    from matplotlib.ticker import PercentFormatter
+    from matplotlib.ticker import MaxNLocator, PercentFormatter
     from experiments.plot_style import paper_style, plot_series, save_figure, write_figure_notes
 
     output = Path(output)
@@ -38,6 +38,7 @@ def generate_plots(bundle, output):
                 plot_series(axes, condition, x, y)
                 data[key][condition] = [dict(turn=turn, value=value) for turn, value in zip(x, y)]
             axes.set(xlabel='Turn', ylabel=ylabel, title=title)
+            axes.xaxis.set_major_locator(MaxNLocator(nbins='auto', integer=True))
             axes.legend(loc='upper left', bbox_to_anchor=(1.01, 1), frameon=False)
             if key == 'accuracy':
                 axes.set_ylim(-.025, 1.06)
