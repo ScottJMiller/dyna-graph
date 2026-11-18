@@ -39,7 +39,7 @@ def generate_plots(bundle, output):
                 data[key][condition] = [dict(turn=turn, value=value) for turn, value in zip(x, y)]
             axes.set(xlabel='Turn', ylabel=ylabel, title=title)
             axes.xaxis.set_major_locator(MaxNLocator(nbins='auto', integer=True))
-            axes.legend(loc='upper left', bbox_to_anchor=(1.01, 1), frameon=False)
+            axes.legend(labels=['1', '2'], loc='upper left', bbox_to_anchor=(1.01, 1), frameon=False)
             if key == 'accuracy':
                 axes.set_ylim(-.025, 1.06)
                 axes.yaxis.set_major_formatter(PercentFormatter(xmax=1))
