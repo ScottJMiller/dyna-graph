@@ -8,8 +8,8 @@ strict scorer, including rejected replies as incorrect.
 
 ## Conditions
 
-- **A**: Bounded linear history.
-- **B**: Original full graph memory.
+- **A**: Bounded linear history: Relabeled as **1** to distinguish from `integrated-004` condition nomenclature.
+- **B**: Original full graph memory. Relabeled as **2** to distinguish from `integrated-004` condition nomenclature.
 
 ## Figure captions
 
