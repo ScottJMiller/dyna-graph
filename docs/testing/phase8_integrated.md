@@ -30,7 +30,7 @@ private configuration changes, or database migrations are required.
 ## 2. Dedicated automated checks
 
 ```bash
-python3 -m pytest tests/test_phase8_integrated.py -q
+python3 -m pytest tests/test_integrated.py -q
 ```
 
 Expected: **118 passed**. Tests cover gates, counterbalanced ordering, all four

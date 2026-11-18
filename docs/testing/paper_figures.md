@@ -22,7 +22,7 @@ Rendering remains local after package installation.
 ## 2. Automated scientific-data and regression checks
 
 ```bash
-python3 -m pytest tests/test_phase8_benchmark.py tests/test_phase8_integrated.py -q
+python3 -m pytest tests/test_benchmark.py tests/test_integrated.py -q
 python3 docs/testing/verify_refactor_baseline.py
 ```
 

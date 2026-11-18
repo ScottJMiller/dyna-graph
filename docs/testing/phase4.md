@@ -44,7 +44,7 @@ and whitespace; the array is JSON. Environment variables override `.env`.
 ## 2. Dedicated automated tests
 
 ```bash
-python3 -m pytest tests/test_phase4_governance.py -v -s
+python3 -m pytest tests/test_governance.py -v -s
 ```
 
 Expected: **102 passed**, no failures or skips. Diagnostic lines include:
@@ -90,7 +90,7 @@ benchmark on your storage host:
 
 ```bash
 mkdir -p .verification
-python3 -m pytest tests/test_phase2_storage.py --run-storage-benchmark --basetemp .verification/phase4-storage -v -s
+python3 -m pytest tests/test_storage.py --run-storage-benchmark --basetemp .verification/phase4-storage -v -s
 ```
 
 Expected: **83 passed**; the printed median for 200 individually FULL-committed
@@ -311,7 +311,7 @@ printed for a new database. `.verification/` and `.env` stay ignored by Git.
 ## 7. Failure logs, acceptance, and commit message
 
 ```bash
-python3 -m pytest tests/test_phase4_governance.py -v -s --tb=long
+python3 -m pytest tests/test_governance.py -v -s --tb=long
 git status --short
 git check-ignore .env .verification/
 ```

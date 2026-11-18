@@ -145,12 +145,12 @@ name per setting. Configuration validation creates no database or directory.
 
 ## 2. Automated test execution
 
-Dedicated test script: `tests/test_phase1_network.py`.
+Dedicated test script: `tests/test_network.py`.
 
 ### Offline functional suite
 
 ```bash
-python3 -m pytest tests/test_phase1_network.py -v -s
+python3 -m pytest tests/test_network.py -v -s
 ```
 
 Expected: **114 passed, 8 skipped**. Network requests are simulated, and tests
@@ -168,7 +168,7 @@ isolate shell and dotenv settings. Coverage includes:
 While bringing up the cluster, test Node 2 from Node 1:
 
 ```bash
-python3 -m pytest tests/test_phase1_network.py --run-lan --lan-node node2 -m lan -v -s
+python3 -m pytest tests/test_network.py --run-lan --lan-node node2 -m lan -v -s
 ```
 
 Expected diagnostics use your configuration:
@@ -187,8 +187,8 @@ This partial check does not establish two-node acceptance.
 ### Both-node acceptance
 
 ```bash
-python3 -m pytest tests/test_phase1_network.py --run-lan -m lan -v -s
-python3 -m pytest tests/test_phase1_network.py --run-lan -q
+python3 -m pytest tests/test_network.py --run-lan -m lan -v -s
+python3 -m pytest tests/test_network.py --run-lan -q
 python3 -m pip check
 ```
 
@@ -243,7 +243,7 @@ also verifies actual generation and both fallback directions.
 Collect detailed logs with:
 
 ```bash
-python3 -m pytest tests/test_phase1_network.py --run-lan -v -s --tb=long
+python3 -m pytest tests/test_network.py --run-lan -v -s --tb=long
 ```
 
 Acceptance requires two distinct machines, cloud-disabled servers, local Q4_K_M

@@ -94,7 +94,7 @@ The resulting comparison is a **bounded-window case study**, not proof of
 unbounded linear growth versus constant asymptotic cost. Exact-match scoring
 checks a declared one-sentence answer contract against an independent oracle.
 
-[tests/test_phase8_benchmark.py](tests/test_phase8_benchmark.py) verifies the
+[tests/test_benchmark.py](tests/test_benchmark.py) verifies the
 pipeline using simulated HTTP only. Analysis validates complete paired evidence
 and checksums before calculating descriptive comparisons. Plotting exports SVG,
 PDF, and PNG figures; synthetic test figures are visibly labeled. The completed
@@ -396,6 +396,9 @@ Matplotlib is pinned for local, headless figure export; no plotting server or
 cloud account is needed.
 
 ### 7. Verify the installed components
+
+The [test guide](tests/README.md) lists the subsystem suites, optional hardware
+checks and historical filename conventions.
 
 Run the functional suite without network access or Ollama:
 

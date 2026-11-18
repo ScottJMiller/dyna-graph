@@ -42,7 +42,7 @@ plain constructor uses its documented defaults without reading configuration.
 ## 2. Dedicated correctness and regression tests
 
 ```bash
-python3 -m pytest tests/test_phase5_retrieval.py -v -s
+python3 -m pytest tests/test_retrieval.py -v -s
 ```
 
 Expected: **107 passed, 1 skipped**. Only the explicit latency benchmark skips.
@@ -78,7 +78,7 @@ configured database is not modified.
 
 ```bash
 mkdir -p .verification
-python3 -m pytest tests/test_phase5_retrieval.py --run-retrieval-benchmark --basetemp .verification/phase5 -v -s
+python3 -m pytest tests/test_retrieval.py --run-retrieval-benchmark --basetemp .verification/phase5 -v -s
 ```
 
 Expected: **108 passed**, no skips/failures. Four diagnostic lines resemble:
@@ -280,7 +280,7 @@ phases 6–8 remain planned. Existing pan/zoom, themes, and separated routes rem
 For failures:
 
 ```bash
-python3 -m pytest tests/test_phase5_retrieval.py --run-retrieval-benchmark -v -s --tb=long
+python3 -m pytest tests/test_retrieval.py --run-retrieval-benchmark -v -s --tb=long
 git status --short
 git check-ignore .env .verification/
 ```

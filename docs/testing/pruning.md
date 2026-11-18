@@ -65,7 +65,7 @@ may require a separately versioned probe and new reference results.
 ## 3. Existing regression and documentation checks
 
 ```bash
-python3 -m pytest tests/test_phase4_governance.py -q
+python3 -m pytest tests/test_governance.py -q
 node docs/testing/architecture-routing.mjs
 git diff --check
 git status --short

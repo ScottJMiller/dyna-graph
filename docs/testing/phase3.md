@@ -44,12 +44,12 @@ the graph's data contract. See [structured outputs](https://docs.ollama.com/capa
 
 ## 2. Automated test execution
 
-Dedicated script: `tests/test_phase3_extraction.py`.
+Dedicated script: `tests/test_extraction.py`.
 
 ### Offline functional tests
 
 ```bash
-python3 -m pytest tests/test_phase3_extraction.py -v -s
+python3 -m pytest tests/test_extraction.py -v -s
 ```
 
 Expected: **105 passed, 6 skipped**. The skipped checks require real LAN nodes.
@@ -70,7 +70,7 @@ Assertions cover:
 ### Both-node synthetic live acceptance
 
 ```bash
-python3 -m pytest tests/test_phase3_extraction.py --run-lan -m lan -v -s
+python3 -m pytest tests/test_extraction.py --run-lan -m lan -v -s
 ```
 
 Expected: **6 passed, 105 deselected**. Three inputs are tested on each node:
@@ -98,7 +98,7 @@ the other node. Latency varies with hardware, model loading, and CPU load.
 If only one server is available during setup, run a partial check:
 
 ```bash
-python3 -m pytest tests/test_phase3_extraction.py --run-lan --lan-node node2 -m lan -v -s
+python3 -m pytest tests/test_extraction.py --run-lan --lan-node node2 -m lan -v -s
 ```
 
 Expected: **3 passed, 3 skipped, 105 deselected**. This is insufficient for
@@ -107,7 +107,7 @@ two-node acceptance.
 The complete Phase 3 acceptance command is:
 
 ```bash
-python3 -m pytest tests/test_phase3_extraction.py --run-lan -q
+python3 -m pytest tests/test_extraction.py --run-lan -q
 ```
 
 Expected: **111 passed, no skips or failures**.
@@ -225,7 +225,7 @@ Ollama exception types. The caller owns the client's async context and cleanup.
 ## 6. Failure logs and acceptance
 
 ```bash
-python3 -m pytest tests/test_phase3_extraction.py --run-lan -v -s --tb=long
+python3 -m pytest tests/test_extraction.py --run-lan -v -s --tb=long
 ```
 
 | Failure | Check |

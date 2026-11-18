@@ -61,7 +61,7 @@ remain unchanged.
 ## 2. Dedicated controller and telemetry tests
 
 ```bash
-python3 -m pytest tests/test_phase6_orchestration.py tests/test_phase7_telemetry.py -q
+python3 -m pytest tests/test_orchestration.py tests/test_telemetry.py -q
 ```
 
 Expected: **158 passed, 2 skipped**. The two skipped cases require an explicit

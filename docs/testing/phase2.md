@@ -69,7 +69,7 @@ SQLITE_POOL_SIZE=4
 Run the dedicated functional suite:
 
 ```bash
-python3 -m pytest tests/test_phase2_storage.py -v -s
+python3 -m pytest tests/test_storage.py -v -s
 ```
 
 Expected: **82 passed, 1 skipped**. The skipped test is the explicit hardware
@@ -92,7 +92,7 @@ Run the required storage-host benchmark and full Phase 2 approval check:
 
 ```bash
 mkdir -p .verification
-python3 -m pytest tests/test_phase2_storage.py --run-storage-benchmark --basetemp .verification/phase2 -v -s
+python3 -m pytest tests/test_storage.py --run-storage-benchmark --basetemp .verification/phase2 -v -s
 ```
 
 Expected: **83 passed, no skips or failures**, plus a line like:
@@ -113,7 +113,7 @@ This directory is ignored by Git and separate from `data/dynagraph.db`.
 Verify the Phase 1 offline regression suite alongside storage:
 
 ```bash
-python3 -m pytest tests/test_phase1_network.py tests/test_phase2_storage.py -q
+python3 -m pytest tests/test_network.py tests/test_storage.py -q
 python3 -m pip check
 ```
 
@@ -235,7 +235,7 @@ pruning, supersession, and semantic extraction algorithms remain future phases.
 
 ```bash
 mkdir -p .verification
-python3 -m pytest tests/test_phase2_storage.py --run-storage-benchmark --basetemp .verification/phase2 -v -s --tb=long
+python3 -m pytest tests/test_storage.py --run-storage-benchmark --basetemp .verification/phase2 -v -s --tb=long
 ```
 
 | Failure | Next check |

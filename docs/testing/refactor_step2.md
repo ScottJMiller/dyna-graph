@@ -50,7 +50,7 @@ complete saved JSON summaries must continue to match exactly.
 ## 2. Dedicated automated experiment tests
 
 ```bash
-python3 -m pytest tests/test_phase8_benchmark.py tests/test_phase8_integrated.py -q
+python3 -m pytest tests/test_benchmark.py tests/test_integrated.py -q
 ```
 
 Expected: **180 passed**, no skips. The tests block real HTTP and cover planning,

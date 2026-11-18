@@ -55,7 +55,7 @@ existing CLI entry points and generic public setup documentation.
 | 2 | Expand dense experiment code, improve local names and divide long validation functions into readable stages. | Historical summaries remain identical; existing experiment regression tests pass. |
 | 3 | Give shared experiment helpers an explicit home; review private helper imports in the core modules. | Original and integrated entry points retain their behavior; historical analyses and affected tests pass. |
 | 4 | Clarify orchestration stages and explain storage ownership. Preserve atomic commits, retries, cancellation and the existing database schema. | Storage, orchestration, governance, extraction and telemetry checks pass. |
-| 5 | Improve test readability and repeated setup without removing failure coverage or changing phase-based filenames. | Full offline suite passes with live requests still opt-in. |
+| 5 | Improve test readability and repeated setup without removing failure coverage or changing the then-current filenames. | Full offline suite passes with live requests still opt-in. |
 | 6 | Make README starting points clearer and link detailed guides; retain the full experiment history and optional interactive atlas. | Documentation links and relevant commands work; diagram geometry remains valid. |
 
 This is a behavior-preserving refactor. Changes to prompts, scenarios, answer
@@ -181,3 +181,13 @@ structure, offline behavior, geometry, retained interactions and final regressio
 checks. Original evidence and private runtime data remain unchanged; no model
 experiment is rerun. All six implementation steps are delivered, with final
 acceptance subject to this last review.
+
+## Post-refactor test filenames
+
+After the six-step readability refactor was approved, test-module filenames were
+renamed by subsystem, removing their development-phase prefixes. Test contents,
+function names, parameters and execution gates are unchanged. The phase-based
+filenames mentioned in the historical acceptance narrative describe that earlier
+checkout; runnable commands in these guides now use current filenames. See the
+[test guide](../tests/README.md) for the current inventory and the handling of
+immutable publication/source-baseline records.

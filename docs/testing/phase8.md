@@ -33,7 +33,7 @@ Do not replace the private `.env` with the illustrative example.
 ## 2. Dedicated synthetic-only tests
 
 ```bash
-python3 -m pytest tests/test_phase8_benchmark.py -v -s
+python3 -m pytest tests/test_benchmark.py -v -s
 ```
 
 Expected: **64 passed**, without skips or real network access. Real HTTP is
@@ -59,7 +59,7 @@ Coverage includes:
 For the focused synthetic acceptance checks:
 
 ```bash
-python3 -m pytest tests/test_phase8_benchmark.py -k 'default_cli or synthetic_end_to_end or figures_are_standalone' -v -s
+python3 -m pytest tests/test_benchmark.py -k 'default_cli or synthetic_end_to_end or figures_are_standalone' -v -s
 ```
 
 Expected: **3 passed, 61 deselected**, including:

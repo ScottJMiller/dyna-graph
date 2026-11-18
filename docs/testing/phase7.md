@@ -30,7 +30,7 @@ Schema version remains **3**: telemetry uses the existing turn JSON column.
 Run without Ollama or network access:
 
 ```bash
-python3 -m pytest tests/test_phase7_telemetry.py -v -s
+python3 -m pytest tests/test_telemetry.py -v -s
 ```
 
 Expected: **82 passed, 1 skipped**. The skipped check requires both real nodes.
@@ -45,7 +45,7 @@ synthetic offline demo.
 A focused diagnostic run:
 
 ```bash
-python3 -m pytest tests/test_phase7_telemetry.py -k 'committed_metrics or rollback_together or reopen_exports or logs_while_execution' -v -s
+python3 -m pytest tests/test_telemetry.py -k 'committed_metrics or rollback_together or reopen_exports or logs_while_execution' -v -s
 ```
 
 Expected: **6 passed, 77 deselected**, with these diagnostic lines:
@@ -66,7 +66,7 @@ unavailable token counters are never replaced with the retrieval byte bound.
 For the CSV reuse and pause regression checks:
 
 ```bash
-python3 -m pytest tests/test_phase7_telemetry.py -k 'reused_csv or repeated_tasks or commits_while_display_paused' -v -s
+python3 -m pytest tests/test_telemetry.py -k 'reused_csv or repeated_tasks or commits_while_display_paused' -v -s
 ```
 
 Expected: **5 passed, 78 deselected**. The checks prove that repeated tasks use
@@ -129,7 +129,7 @@ and extraction on Node 2, and exports the resulting checkpoint. **Fallback is
 disabled**, so both actual routes must work:
 
 ```bash
-python3 -m pytest tests/test_phase7_telemetry.py --run-lan -m lan -v -s
+python3 -m pytest tests/test_telemetry.py --run-lan -m lan -v -s
 ```
 
 Expected: **1 passed, 82 deselected**, with:
@@ -146,7 +146,7 @@ This checks telemetry transport and export, not the experiment's hypothesis.
 To run all dedicated tests, including live acceptance:
 
 ```bash
-python3 -m pytest tests/test_phase7_telemetry.py --run-lan -q
+python3 -m pytest tests/test_telemetry.py --run-lan -q
 ```
 
 Expected: **83 passed**. Selecting only one node with `--lan-node` skips the

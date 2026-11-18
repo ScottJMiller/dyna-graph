@@ -66,7 +66,7 @@ summaries must continue to match.
 ## 2. Dedicated automated experiment checks
 
 ```bash
-python3 -m pytest tests/test_phase8_benchmark.py tests/test_phase8_integrated.py -q
+python3 -m pytest tests/test_benchmark.py tests/test_integrated.py -q
 ```
 
 Expected: **181 passed**, no skips (65 original-study checks and 116 integrated

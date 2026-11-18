@@ -46,7 +46,7 @@ Automated tests use isolated databases and do not upgrade your project graph.
 ## 2. Offline correctness tests
 
 ```bash
-python3 -m pytest tests/test_phase6_orchestration.py -v -s
+python3 -m pytest tests/test_orchestration.py -v -s
 ```
 
 Expected: **76 passed, 1 skipped**. Only the real two-node cycle skips. HTTP
@@ -59,7 +59,7 @@ monotonic governance turns, cancellation, competing owners, and v1/v2 upgrades.
 For a short deterministic smoke check:
 
 ```bash
-python3 -m pytest tests/test_phase6_orchestration.py -k 'default_cycle or reopen_resumes or checkpoint_sql_failure' -v -s
+python3 -m pytest tests/test_orchestration.py -k 'default_cycle or reopen_resumes or checkpoint_sql_failure' -v -s
 ```
 
 Expected: **3 passed, 74 deselected**, with these diagnostics:
@@ -73,7 +73,7 @@ ROLLBACK OK: graph, usage and turn checkpoint commit together
 ## 3. Direct two-node live acceptance
 
 ```bash
-python3 -m pytest tests/test_phase6_orchestration.py --run-lan -m lan -v -s
+python3 -m pytest tests/test_orchestration.py --run-lan -m lan -v -s
 ```
 
 Expected: **1 passed, 76 deselected**. The test uses a temporary database, checks
@@ -100,14 +100,14 @@ minutes; hardware, model loading, CPU load, and retries affect elapsed time.
 Full Phase 6 acceptance can be run in one command:
 
 ```bash
-python3 -m pytest tests/test_phase6_orchestration.py --run-lan -q
+python3 -m pytest tests/test_orchestration.py --run-lan -q
 ```
 
 Expected: **77 passed**, no skips or failures. Partial node selection cannot
 verify this test:
 
 ```bash
-python3 -m pytest tests/test_phase6_orchestration.py --run-lan --lan-node node2 -m lan -q
+python3 -m pytest tests/test_orchestration.py --run-lan --lan-node node2 -m lan -q
 ```
 
 Expected: **1 skipped, 76 deselected**, with a reason requiring both nodes.
@@ -330,7 +330,7 @@ the old version. Older application versions reject version 3 databases.
 ## 9. Failure logs, acceptance, and commit message
 
 ```bash
-python3 -m pytest tests/test_phase6_orchestration.py --run-lan -v -s --tb=long
+python3 -m pytest tests/test_orchestration.py --run-lan -v -s --tb=long
 git status --short
 git check-ignore .env .verification/
 ```

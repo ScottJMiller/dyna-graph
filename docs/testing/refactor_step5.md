@@ -1,9 +1,11 @@
 # Refactor Step 5: readable tests and shared offline setup
 
-This step changes test setup and presentation, not application behavior. The
-phase-based test filenames remain in place, so existing verification commands
-still work. No production module, experiment implementation, measured evidence,
-scenario, dependency or model configuration changes.
+This step changed test setup and presentation, not application behavior, and
+retained the original filenames. A later naming cleanup removed their phase
+prefixes; commands below use current subsystem filenames. Recorded acceptance
+counts describe Step 5; see the [test guide](../../tests/README.md) for current
+counts. No production module, experiment implementation, measured evidence,
+scenario, dependency or model configuration changes were included in Step 5.
 
 ## Changes to review
 
@@ -65,7 +67,7 @@ python3 -m pytest --collect-only -q
 ```
 
 Expected final summary: **867 tests collected**; elapsed time varies. The same
-phase-based test names and parameterized IDs remain available for selection.
+test function names and parameterized cases remain available for selection.
 Collection does not perform model requests or run performance measurements.
 
 Then run the full offline suite:
@@ -87,8 +89,8 @@ are examples for learning or investigating a particular failure, not extra
 required repetitions after a successful full run:
 
 ```bash
-python3 -m pytest tests/test_phase6_orchestration.py tests/test_phase7_telemetry.py -q
-python3 -m pytest tests/test_phase8_benchmark.py tests/test_phase8_integrated.py -q
+python3 -m pytest tests/test_orchestration.py tests/test_telemetry.py -q
+python3 -m pytest tests/test_benchmark.py tests/test_integrated.py -q
 ```
 
 Expected, respectively: **158 passed, 2 skipped** and **181 passed**.
